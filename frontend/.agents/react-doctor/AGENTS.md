@@ -13,3 +13,11 @@ npx -y react-doctor@latest . --verbose --diff
 ## Workflow
 
 Run after making changes to catch issues early. Fix errors first, then re-run to verify the score improved.
+
+## Frontend Responsiveness
+
+Develop mobile-first. Avoid fixed pixel widths/heights on core layout containers, and ensure screens work at minimum on `360px`, `768px`, and `1280px` viewport widths.
+
+## UI Stack
+
+Use MUI components and theming (`ThemeProvider`, `CssBaseline`, `sx`, and theme tokens). Avoid adding other UI libraries unless explicitly requested.

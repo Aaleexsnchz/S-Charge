@@ -24,6 +24,10 @@ Run commands from the relevant service directory unless noted.
 - Python: 4-space indentation, max line length 100, and Black-compatible formatting style. If you use a Black editor extension, configure line length to `100` for consistency. Repository checks use Ruff + MyPy via `pyproject.toml`.
 - TypeScript/React: use Prettier for formatting and follow ESLint rules in `frontend/eslint.config.js`; prefer functional components.
 - Naming: `snake_case` for Python files/functions, `PascalCase` for React components, `camelCase` for TS variables/functions.
+- Frontend responsive baseline: keep exactly one viewport meta tag in `frontend/index.html`:
+  `<meta name="viewport" content="width=device-width, initial-scale=1" />`.
+- Frontend responsiveness: implement UI mobile-first, avoid fixed pixel widths/heights for core layout containers, and ensure pages work at minimum on `360px`, `768px`, and `1280px` widths.
+- Frontend UI stack: use MUI components and theming (`ThemeProvider`, `CssBaseline`, `sx`, and theme tokens). Avoid adding other UI libraries unless explicitly requested.
 
 ## Testing Guidelines
 - Backend tests should live in `backend/tests/` and use `pytest` (`uv run pytest`).
