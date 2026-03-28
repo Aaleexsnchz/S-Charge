@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tfm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tfm_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-ev_charging}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-ONLY", "pg_isready", "-U", "${POSTGRES_USER:-tfm}"]
+      interval: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tfm}:${POSTGRES_PASSWORD:-tfm_secret}@db:5432/${POSTGRES_DB:-ev_charging}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  pgdata:
