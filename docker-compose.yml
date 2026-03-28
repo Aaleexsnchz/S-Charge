@@ -1,41 +1,57 @@
+name: ev-charging-app
+
 services:
   db:
     image: postgres:16-alpine
+    container_name: ev-charging-app-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-tfm}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tfm_secret}
+      POSTGRES_USER: ${POSTGRES_USER:-ev_charging_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ev_charging_app_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ev_charging}
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ev_charging_app_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-ONLY", "pg_isready", "-U", "${POSTGRES_USER:-tfm}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ev_charging_app} -d ${POSTGRES_DB:-ev_charging}"]
       interval: 5s
-      retries: 5
+      timeout: 5s
+      retries: 10
 
   backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ev-charging-app-backend
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tfm}:${POSTGRES_PASSWORD:-tfm_secret}@db:5432/${POSTGRES_DB:-ev_charging}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://ev_charging_app:ev_charging_app_secret@db:5432/ev_charging}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ACN_API_TOKEN: ${ACN_API_TOKEN:-}
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "8000:8000"
     volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ev-charging-app-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    depends_on:
+      - backend
     ports:
       - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0
 
 volumes:
-  pgdata:
+  ev_charging_app_postgres_data:

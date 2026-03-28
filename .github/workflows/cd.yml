@@ -1,0 +1,17 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy (configure target)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment target not configured
+        run: |
+          echo "CD scaffold is enabled, but no deployment target is configured yet."
+          echo "Choose your provider (Render, Railway, Fly.io, AWS, etc.) and replace this job."
