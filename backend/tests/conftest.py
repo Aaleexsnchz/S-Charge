@@ -4,6 +4,7 @@ from urllib.parse import urlparse, urlunparse
 import asyncpg
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from app.config import settings
@@ -48,6 +49,7 @@ async def _test_database() -> AsyncIterator[None]:
 async def engine(_test_database: None) -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(settings.test_database_url, echo=False)
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
