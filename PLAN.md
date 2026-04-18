@@ -114,14 +114,14 @@ Per-package Claude Code skills and conventions, before any feature work starts. 
 - [ ] Installed skills committed (`.claude/` directory)
 - [ ] Commit: `chore: add per-package CLAUDE.md and install frontend skills`
 
-### Phase 1 — Foundation (20–25h)
+### Phase 1 — Foundation (22–28h)
 
-Docker Compose, FastAPI + Postgres + Alembic, JWT auth (email/password + Google OAuth), React + MUI scaffold, PWA manifest.
+Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/password + Google OAuth) with Argon2id, in-memory access token + HttpOnly refresh cookie, per-IP rate limiting, and audit logging. React + MUI scaffold and PWA manifest. Decisions and rationale: [docs/auth-decisions.md](docs/auth-decisions.md).
 
 - [ ] `docker compose up` starts full stack
 - [ ] `/docs` and `/health` reachable; Alembic migration runs clean
-- [ ] Register + login (email/password) + protected route works
-- [ ] Google OAuth login works end-to-end; first-time Google users auto-provisioned
+- [ ] Email/password auth: register, login, protected `/auth/me`, refresh, logout, per-IP rate limiting, structured audit logging
+- [ ] Google OAuth login works end-to-end via `httpx-oauth`; first-time users auto-provisioned in the `oauth_account` table; existing email accounts can link Google without duplication
 - [ ] Chrome shows "Install app" prompt and add from Safari
 - [ ] README documents setup in ≤5 commands (including Google OAuth client setup)
 
