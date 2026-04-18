@@ -1,3 +1,1 @@
-from app.models.charging_station import ChargingStation
-
-__all__ = ["ChargingStation"]
+__all__: list[str] = []
