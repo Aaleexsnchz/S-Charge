@@ -24,4 +24,10 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Claude Code (skills tracked in SKILLS.md + skills-lock.json; user-local settings and
+# other-agent copies excluded)
+**/.claude/skills/
+**/.claude/settings.local.json
+**/.agents/
+
 .codex

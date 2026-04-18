@@ -12,7 +12,7 @@ Do not restate what those files already cover. Link to them instead.
 
 ## Monorepo Layout
 
-```
+```text
 tfm/
 ├── backend/      FastAPI + PostgreSQL + SQLAlchemy + Alembic  (see backend/CLAUDE.md)
 ├── frontend/     React + Vite + TypeScript + MUI              (see frontend/CLAUDE.md)
