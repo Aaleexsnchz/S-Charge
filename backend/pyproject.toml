@@ -8,9 +8,12 @@ dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
     "fastapi>=0.135.2",
+    "fastapi-users[oauth,sqlalchemy]>=15.0.5",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
     "pytest>=9.0.2",
+    "python-json-logger>=4.1.0",
+    "slowapi>=0.1.9",
     "sqlalchemy>=2.0.48",
     "uvicorn[standard]>=0.42.0",
 ]
