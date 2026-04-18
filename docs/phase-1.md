@@ -27,61 +27,117 @@ Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). 
 - Stdlib JSON audit logging on auth events
 - Per-account lockout, DB-tracked refresh rotation, and persisted audit table are explicit future work
 
-**Backend — deps**
-- [ ] Add: `fastapi-users[sqlalchemy]`, `argon2-cffi`, `slowapi`, `python-json-logger`
+### Task plan
 
-**Backend — config**
-- [ ] Extend [app/config.py](../backend/app/config.py) with `jwt_algorithm`, `access_token_expire_minutes`, `refresh_token_expire_days`, `refresh_cookie_name`, `refresh_cookie_secure` (overridable for local dev), `refresh_cookie_path = "/auth/refresh"`
-- [ ] Reuse existing `secret_key` for JWT signing
+Ordered commits, each small and self-contained. Files listed are relative to the repo root. Each task ends with a concrete deliverable that can be checked off.
 
-**Backend — models & migration**
-- [ ] [app/models/user.py](../backend/app/models/user.py): subclass fastapi-users' `SQLAlchemyBaseUserTableUUID` and override the `email` column to use `CITEXT`; add `name`, `last_login_at`, `email_verified_at` (nullable, populated by Slice 2 OAuth flow), `picture_url` (nullable, Slice 2)
-- [ ] Register the model in [app/models/__init__.py](../backend/app/models/__init__.py) so autogenerate sees it
-- [ ] Wire [alembic/env.py](../backend/alembic/env.py) to import `app.models` and set `target_metadata = Base.metadata`
-- [ ] Alembic revision: `CREATE EXTENSION IF NOT EXISTS citext`, create `users`
+After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constraint; the sequence below is the recommended walk. Strict dependency chain: 1 → 2 → 5 → 6 → 10 → 11 → 12 → 13 → 14/15.
 
-**Backend — security wiring**
-- [ ] [app/utils/security.py](../backend/app/utils/security.py): `Argon2PasswordHelper` thin wrapper conforming to fastapi-users' `PasswordHelperProtocol`, using OWASP-recommended Argon2id parameters (`memory_cost=19456`, `time_cost=2`, `parallelism=1`); auto-rehash on verify
-- [ ] [app/utils/jwt_strategy.py](../backend/app/utils/jwt_strategy.py): two `JWTStrategy` instances — access (15 min, audience `users:access`) and refresh (14 d, audience `users:refresh`)
-- [ ] [app/utils/auth_backends.py](../backend/app/utils/auth_backends.py): `BearerTransport` for access; `CookieTransport` for refresh (HttpOnly, Secure, SameSite=Lax, scoped path)
-- [ ] [app/utils/audit.py](../backend/app/utils/audit.py): `audit(event, **fields)` helper backed by stdlib `logging` + `python-json-logger`; events `register`, `login_ok`, `login_fail`, `refresh_ok`, `logout`
-- [ ] [app/services/user_manager.py](../backend/app/services/user_manager.py): `UserManager` subclass overriding `validate_password` (length ≥ 12), and `on_after_register` / `on_after_login` to emit audit events
-- [ ] [app/services/rate_limit.py](../backend/app/services/rate_limit.py): `slowapi` `Limiter` instance + decorators
+#### Backend
 
-**Backend — schemas**
-- [ ] [app/schemas/auth.py](../backend/app/schemas/auth.py): subclass fastapi-users' `BaseUser` / `BaseUserCreate` / `BaseUserUpdate` with our extra fields (`name`, `picture_url`); add Pydantic validator on `email` to trim and lowercase
+**1. `chore(backend): add auth dependencies`**
 
-**Backend — routes**
-- [ ] [app/routers/auth.py](../backend/app/routers/auth.py): mount fastapi-users' built-in routers (`get_register_router`, `get_auth_router`, `get_users_router`) under `/auth` and `/users`
-- [ ] Add custom `POST /auth/refresh` (reads cookie, validates refresh JWT, mints new access token, rotates refresh cookie) and `POST /auth/logout` (clears cookie + audit) — both rate-limited
-- [ ] Register router in [app/main.py](../backend/app/main.py); register `slowapi` middleware and exception handler
+- Files: `backend/pyproject.toml`, `backend/uv.lock`
+- Deliverable: `fastapi-users[sqlalchemy]`, `argon2-cffi`, `slowapi`, `python-json-logger` declared and locked. `uv sync --locked` passes inside the backend container.
 
-**Backend — dependencies**
-- [ ] [app/dependencies.py](../backend/app/dependencies.py): re-export fastapi-users' `current_active_user` as `get_current_user` so the rest of the codebase has a stable name
+**2. `chore(backend): wire alembic to app metadata`**
 
-**Backend — tests**
-- [ ] Pytest fixture for transactional test DB (new test infra — used by every future slice)
-- [ ] Happy path: register → login → `/auth/me` → refresh → logout
-- [ ] Duplicate email → 409
-- [ ] Wrong password → 401; existing-user and missing-user response latencies are within 2× of each other (timing-equivalence guard)
-- [ ] Missing / malformed / bad-signature / expired access token → 401
-- [ ] Refresh happy path returns new access token and rotates cookie
-- [ ] Refresh with missing / expired / wrong-audience cookie → 401
-- [ ] Logout clears cookie
-- [ ] Rate limit: 6th login within 1 min from the same IP → 429
-- [ ] Password shorter than 12 chars → 400 with clear message
+- Files: `backend/alembic/env.py`
+- Deliverable: `app.models` imported and `target_metadata = Base.metadata`. A dry-run `uv run alembic revision --autogenerate -m probe` produces a non-empty (but discarded) diff.
 
-**Frontend**
-- [ ] [api/client.ts](../frontend/src/api/client.ts): fetch wrapper with `credentials: 'include'`, injects in-memory access token as `Authorization: Bearer`; on 401 attempts `POST /auth/refresh` once and retries; on second 401 clears state and redirects to `/login`
-- [ ] [auth/AuthStore.ts](../frontend/src/auth/AuthStore.ts) (Zustand or context): holds `user` and `accessToken` **in memory only**; exposes `login`, `register`, `logout`, `bootstrap` (calls `/auth/refresh` on app mount and, if successful, loads `/auth/me`)
-- [ ] [components/ProtectedRoute.tsx](../frontend/src/components/ProtectedRoute.tsx): waits for `bootstrap` to finish, then renders children or redirects
-- [ ] [pages/LoginPage.tsx](../frontend/src/pages/LoginPage.tsx) + [pages/RegisterPage.tsx](../frontend/src/pages/RegisterPage.tsx): MUI forms mapping 400/401/409/429 to inline human-readable errors
-- [ ] Add `/login`, `/register`, `/profile` routes; `/profile` is protected and shows `user`
-- [ ] Enforced in code review: the access token must never be written to `localStorage` or `sessionStorage`
+**3. `feat(backend): add auth settings`**
 
-**Infra / docs**
-- [ ] Add to [backend/.env.example](../backend/.env.example): `SECRET_KEY`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`, `REFRESH_COOKIE_NAME`, `REFRESH_COOKIE_SECURE`
-- [ ] Once the code lands, add a short "Auth architecture" section to [backend/CLAUDE.md](../backend/CLAUDE.md) cross-referencing [auth-decisions.md](auth-decisions.md) so later slices inherit the rules
+- Files: `backend/app/config.py`, `backend/.env.example`
+- Deliverable: new settings — `jwt_algorithm`, `access_token_expire_minutes`, `refresh_token_expire_days`, `refresh_cookie_name`, `refresh_cookie_secure`, `refresh_cookie_path`. `backend/.env.example` updated. Existing `secret_key` reused for JWT signing.
+
+**4. `test(backend): add transactional db fixture`**
+
+- Files: `backend/tests/conftest.py`
+- Deliverable: async engine + per-test transaction rollback + `httpx.AsyncClient` app-level fixture. A trivial smoke test using the client returns 200 from `/api/health`.
+
+**5. `feat(backend): add user model with citext email`**
+
+- Files: `backend/app/models/user.py`, `backend/app/models/__init__.py`
+- Deliverable: `User(SQLAlchemyBaseUserTableUUID)` with `email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True)`, plus `name`, `last_login_at`, `email_verified_at`, `picture_url`. Imported in `__init__.py` so Alembic sees it.
+
+**6. `feat(backend): initial auth migration`**
+
+- Files: `backend/alembic/versions/xxxx_auth_initial.py`
+- Deliverable: migration executes `CREATE EXTENSION IF NOT EXISTS citext` then creates `users`. `alembic upgrade head` runs clean on a fresh DB and `alembic downgrade base` reverts cleanly.
+
+**7. `feat(backend): add argon2id password helper`**
+
+- Files: `backend/app/utils/security.py`
+- Deliverable: `Argon2PasswordHelper` implementing fastapi-users' `PasswordHelperProtocol` with OWASP Argon2id parameters (`memory_cost=19456`, `time_cost=2`, `parallelism=1`); auto-rehash on verify.
+
+**8. `feat(backend): add jwt strategies and auth transports`**
+
+- Files: `backend/app/utils/jwt_strategy.py`, `backend/app/utils/auth_backends.py`
+- Deliverable: two `JWTStrategy` instances (access: `aud="users:access"`, 15 min; refresh: `aud="users:refresh"`, 14 d); `BearerTransport` for access; `CookieTransport` scoped to `/auth/refresh` with `HttpOnly`, `Secure`, `SameSite=Lax`; `AuthenticationBackend` composed for access flow.
+
+**9. `feat(backend): add audit logger and rate limiter`**
+
+- Files: `backend/app/utils/audit.py`, `backend/app/services/rate_limit.py`
+- Deliverable: `audit(event, **fields)` helper emitting JSON log lines via stdlib `logging` + `python-json-logger`; `limiter = Limiter(key_func=get_remote_address)` instance.
+
+**10. `feat(backend): add auth schemas and user manager`**
+
+- Files: `backend/app/schemas/auth.py`, `backend/app/services/user_manager.py`
+- Deliverable: `UserRead` / `UserCreate` / `UserUpdate` subclassing fastapi-users' bases, with `name` / `picture_url` fields and an email validator that trims and lowercases. `UserManager(BaseUserManager[User, UUID])` overrides `validate_password` (length ≥ 12) and emits audit events in `on_after_register` / `on_after_login`.
+
+**11. `feat(backend): mount fastapi-users auth routers`**
+
+- Files: `backend/app/routers/auth.py`
+- Deliverable: `FastAPIUsers` instance composed from auth backend + user manager + schemas; include `get_register_router`, `get_auth_router`, `get_users_router` under `/auth` and `/users`. Register decorated with `limiter.limit("10/hour")`; login with `limiter.limit("5/minute")`.
+
+**12. `feat(backend): add refresh endpoint with cookie rotation`**
+
+- Files: `backend/app/routers/auth.py` (extend)
+- Deliverable: `POST /auth/refresh` reads the refresh cookie, validates via refresh `JWTStrategy`, issues a new access token and rotates the cookie; rate-limited `30/minute`. `POST /auth/logout` clears the refresh cookie and emits a `logout` audit event.
+
+**13. `feat(backend): wire auth router and rate limit middleware`**
+
+- Files: `backend/app/main.py`, `backend/app/dependencies.py`
+- Deliverable: auth router registered under `/auth`; `SlowAPIMiddleware` + 429 exception handler installed; `get_current_user = fastapi_users.current_user(active=True)` re-exported from `dependencies.py`. `/docs` shows all auth endpoints; `/api/health` still returns 200.
+
+**14. `test(backend): happy path auth flow`**
+
+- Files: `backend/tests/test_auth_happy.py`
+- Deliverable: end-to-end test — register → login (captures bearer token + refresh cookie) → `GET /auth/me` (200) → `POST /auth/refresh` (new token + new cookie) → `POST /auth/logout` → `GET /auth/me` with old token (401).
+
+**15. `test(backend): auth negative paths`**
+
+- Files: `backend/tests/test_auth_negative.py`
+- Deliverable: tests cover duplicate email; wrong password (with timing-equivalence guard — existing- and missing-user latencies within 2× of each other); missing / malformed / expired access token; refresh token presented at a protected endpoint (wrong audience); password shorter than 12 chars; 6th login attempt within 60s returns 429.
+
+#### Frontend
+
+**16. `feat(frontend): add api client with auth store`**
+
+- Files: `frontend/src/api/client.ts`, `frontend/src/auth/AuthStore.ts`
+- Deliverable: fetch wrapper with `credentials: 'include'`, injects in-memory access token as `Authorization: Bearer`; on 401 attempts `POST /auth/refresh` once and retries; on second 401 clears state. Zustand store holds `user` + `accessToken` **in memory only** and exposes `login`, `register`, `logout`, `bootstrap`. `grep -r localStorage frontend/src/api frontend/src/auth` returns no matches.
+
+**17. `feat(frontend): add protected route and bootstrap`**
+
+- Files: `frontend/src/components/ProtectedRoute.tsx`, `frontend/src/main.tsx`
+- Deliverable: `ProtectedRoute` renders children when `user` is set, shows a loading state while `bootstrap` is pending, redirects to `/login` otherwise. App root invokes `AuthStore.bootstrap()` once on mount.
+
+**18. `feat(frontend): add login and register pages`**
+
+- Files: `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/RegisterPage.tsx`
+- Deliverable: MUI forms for each; inline error mapping for 400/401/409/429 to human-readable messages; successful submit routes to `/profile`.
+
+**19. `feat(frontend): wire auth routes`**
+
+- Files: `frontend/src/router.tsx`
+- Deliverable: `/login`, `/register`, `/profile` routes; `/profile` wrapped in `ProtectedRoute` and renders the `user` from the store.
+
+#### Docs
+
+**20. `docs(backend): document auth architecture`**
+
+- Files: `backend/CLAUDE.md`, `backend/.env.example` (final pass)
+- Deliverable: short "Auth architecture" section in `backend/CLAUDE.md` cross-referencing [auth-decisions.md](auth-decisions.md) and this slice; `backend/.env.example` confirmed to include every new variable introduced in task 3.
 
 ---
 
