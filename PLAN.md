@@ -11,7 +11,7 @@ Master's thesis (IoT) project: a **PWA** for managing EV charging. Combines the 
 ## Data Strategy
 
 | Source | Role | Provides |
-|---|---|---|
+| --- | --- | --- |
 | **REVE API** | Real-world map layer | Live CPO locations, status, price, connectors |
 | **ACN-Data** | Analytics + simulation backbone | Real historical sessions, charging profiles |
 | **User-generated** | Platform contribution | Private charging points with public/private toggle |
@@ -23,7 +23,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 ## Tech Stack
 
 | Layer | Choice |
-|---|---|
+| --- | --- |
 | Frontend | React + TypeScript + Vite, MUI, Recharts, Leaflet |
 | PWA | Vite PWA plugin (installable, offline shell) |
 | Backend | Python + FastAPI |
@@ -38,7 +38,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 
 ## Architecture
 
-```
+```text
     PWA Frontend (React + Vite)
            │ HTTPS/REST
            ▼
@@ -76,7 +76,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 ## Mocked / Simplified (academically honest)
 
 | Feature | Approach |
-|---|---|
+| --- | --- |
 | Payment | Not implemented |
 | Commission payout | Tracked as number only |
 | Real-time private point occupation | Derived from bookings |
@@ -87,7 +87,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 ## Key Screens
 
 | Route | Purpose |
-|---|---|
+| --- | --- |
 | `/` | Dashboard |
 | `/map` | Live map (REVE) |
 | `/points/:id` | Point detail + booking |
@@ -102,7 +102,17 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 
 ## Development Phases
 
-**Total: ~195–260h over 12 weeks (~16–22h/week)**
+Total: **~195–260h** over 12 weeks (~16–22h/week).
+
+### Phase 0 — Tooling Setup (2–4h)
+
+Per-package Claude Code skills and conventions, before any feature work starts. Each package gets its own `CLAUDE.md` so Claude Code loads the right context when editing each side of the stack.
+
+- [ ] Root `CLAUDE.md` written (project orientation, links to PLAN.md, CONTRIBUTING.md, DOCKER.md)
+- [ ] `npx autoskills` run from `frontend/` — generated `frontend/CLAUDE.md` reviewed, trimmed of generic filler
+- [ ] `backend/CLAUDE.md` hand-written (FastAPI layout, uv commands, Ruff/MyPy, Alembic workflow, Pydantic patterns)
+- [ ] Installed skills committed (`.claude/` directory)
+- [ ] Commit: `chore: add per-package CLAUDE.md and install frontend skills`
 
 ### Phase 1 — Foundation (20–25h)
 
@@ -187,7 +197,7 @@ Document, diagram, defend.
 ## Risk Watch
 
 | Risk | Mitigation |
-|---|---|
+| --- | --- |
 | Phase 4 slips | Budget buffer; algorithm can start simple (greedy) and iterate |
 | Mobile bugs found late | Test on phone during Phase 2, not Phase 6 |
 | REVE API limits or changes | Cache aggressively; fallback to snapshot JSON if API fails |
