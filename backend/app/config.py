@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Reused as the HMAC signing key for both access and refresh JWTs (see auth-decisions §4).
     secret_key: str = "change_me_secret_key"
     database_url: str = "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db"
+    test_database_url: str = (
+        "postgresql+asyncpg://app_user:change_me_db_password@db:5432/app_db_test"
+    )
 
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
