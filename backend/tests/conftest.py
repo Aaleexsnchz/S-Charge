@@ -1,16 +1,20 @@
+import asyncio
 from collections.abc import AsyncIterator
+from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 import asyncpg
 import pytest_asyncio
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
+from alembic import command
 from app.config import settings
-from app.database import Base
 from app.dependencies import get_db
 from app.main import app
+
+ALEMBIC_CFG_PATH = Path(__file__).resolve().parents[1] / "alembic.ini"
 
 
 def _admin_dsn_and_db_name(async_url: str) -> tuple[str, str]:
@@ -45,12 +49,17 @@ async def _test_database() -> AsyncIterator[None]:
         await conn.close()
 
 
+def _run_migrations() -> None:
+    cfg = Config(str(ALEMBIC_CFG_PATH))
+    cfg.set_main_option("sqlalchemy.url", settings.test_database_url)
+    command.upgrade(cfg, "head")
+
+
 @pytest_asyncio.fixture(scope="session")
 async def engine(_test_database: None) -> AsyncIterator[AsyncEngine]:
+    await asyncio.to_thread(_run_migrations)
+
     engine = create_async_engine(settings.test_database_url, echo=False)
-    async with engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
-        await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
 
