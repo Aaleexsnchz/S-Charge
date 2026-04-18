@@ -116,13 +116,14 @@ Per-package Claude Code skills and conventions, before any feature work starts. 
 
 ### Phase 1 — Foundation (20–25h)
 
-Docker Compose, FastAPI + Postgres + Alembic, JWT auth, React + MUI scaffold, PWA manifest.
+Docker Compose, FastAPI + Postgres + Alembic, JWT auth (email/password + Google OAuth), React + MUI scaffold, PWA manifest.
 
 - [ ] `docker compose up` starts full stack
 - [ ] `/docs` and `/health` reachable; Alembic migration runs clean
-- [ ] Register + login + protected route works
-- [ ] Chrome shows "Install app" prompt
-- [ ] README documents setup in ≤5 commands
+- [ ] Register + login (email/password) + protected route works
+- [ ] Google OAuth login works end-to-end; first-time Google users auto-provisioned
+- [ ] Chrome shows "Install app" prompt and add from Safari
+- [ ] README documents setup in ≤5 commands (including Google OAuth client setup)
 
 ### Phase 2 — REVE + Map (25–30h)
 
