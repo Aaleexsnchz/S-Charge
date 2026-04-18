@@ -58,7 +58,7 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 **5. `feat(backend): add user model with citext email`**
 
 - Files: `backend/app/models/user.py`, `backend/app/models/__init__.py`
-- Deliverable: `User(SQLAlchemyBaseUserTableUUID)` with `email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True)`, plus `name`, `last_login_at`, `email_verified_at`, `picture_url`. Imported in `__init__.py` so Alembic sees it.
+- Deliverable: `User(SQLAlchemyBaseUserTableUUID)` with `email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True)`, plus `name`, `last_login_at`, `picture_url`. `is_verified` (inherited from the mixin) is the verification flag — no separate `email_verified_at` timestamp. Imported in `__init__.py` so Alembic sees it.
 
 **6. `feat(backend): initial auth migration`**
 
