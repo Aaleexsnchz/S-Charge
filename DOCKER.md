@@ -44,6 +44,15 @@ docker compose build backend && docker compose up -d --force-recreate backend
 
 **Edit source files (`.py`):** Nothing needed — `--reload` watches `/app/app` automatically.
 
+**Database migrations (Alembic):** Run inside the backend container so the `db` hostname resolves:
+
+```bash
+docker compose exec backend uv run alembic upgrade head
+docker compose exec backend uv run alembic revision --autogenerate -m "msg"
+```
+
+Running `alembic` from the host fails with `Temporary failure in name resolution` because `DATABASE_URL` in `backend/.env` points to `@db:5432` (the Docker service name, not reachable from the host). To run from the host anyway, override the URL inline with `@localhost:5432`.
+
 ---
 
 ## Environment variables
