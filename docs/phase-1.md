@@ -16,7 +16,7 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 1. Organized as vertical slices: 
 
 Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). This slice implements them via `fastapi-users` natively — no custom endpoints in Slice 1, since the library handles login, logout, and register directly when composed with a single cookie-backed `AuthenticationBackend`.
 
-**Acceptance:** a new visitor can register, receives an HttpOnly session cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL), calls protected `GET /auth/me`, and logs out (cookie cleared). Invalid credentials return a generic 401 (no email-exists oracle). Duplicate email returns 409.
+**Acceptance:** a new visitor can register, receives an HttpOnly session cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL), calls protected `GET /api/users/me`, and logs out via `POST /api/auth/logout` (cookie cleared). Invalid credentials return a generic 401 (no email-exists oracle). Duplicate email returns 409. All backend endpoints are under the `/api/*` prefix for consistency with `/api/health`.
 
 **Locked decisions** (full rationale in [auth-decisions.md](auth-decisions.md))
 - UUID v4 PK (library default, `uuid.uuid4`); `citext` email; Argon2id via `pwdlib`; HS256 JWT
@@ -85,23 +85,23 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 
 **11. `feat(backend): mount fastapi-users auth routers`**
 
-- Files: `backend/app/routers/auth.py`
-- Deliverable: `FastAPIUsers` instance composed from auth backend + user manager + schemas. Mount `get_register_router`, `get_auth_router` (includes `/login` and `/logout`), and `get_users_router` under `/auth` and `/users`. No rate-limiting decorators — nothing custom to wrap.
+- Files: `backend/app/routers/auth.py`, `backend/app/routers/users.py`, `backend/app/services/user_manager.py` (extend)
+- Deliverable: split router files by URL prefix — `routers/auth.py` mounts `get_auth_router` (login/logout) and `get_register_router` under `/auth`; `routers/users.py` mounts `get_users_router` under `/users`. The shared `FastAPIUsers[User, UUID]` instance (composed from auth backend + user manager) is added to `services/user_manager.py` alongside the existing `UserManager`, together with `current_user = fastapi_users.current_user(active=True)` for task 12 to re-export. No rate-limiting decorators — nothing custom to wrap.
 
-**12. `feat(backend): wire auth router and user dependency`**
+**12. `feat(backend): wire auth routers into main`**
 
-- Files: `backend/app/main.py`, `backend/app/dependencies.py`
-- Deliverable: auth router registered under `/auth`; `get_current_user = fastapi_users.current_user(active=True)` re-exported from `dependencies.py`. `/docs` shows all auth endpoints (`POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /users/me`, etc.); `/api/health` still returns 200.
+- Files: `backend/app/main.py`
+- Deliverable: both routers (`app.routers.auth`, `app.routers.users`) mounted via `app.include_router(..., prefix="/api")` so the full surface lives under `/api/*` (matching `/api/health`). `/docs` shows all auth endpoints (`POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/users/me`, etc.); `/api/health` still returns 200. No re-export of `current_user` through `dependencies.py` — consumers import directly from `app.services.user_manager`.
 
 **13. `test(backend): happy path auth flow`**
 
 - Files: `backend/tests/test_auth_happy.py`
-- Deliverable: end-to-end test — register → login (captures session cookie) → `GET /users/me` (200) → `POST /auth/logout` → `GET /users/me` (401, cookie cleared).
+- Deliverable: end-to-end test — register → login (captures session cookie) → `GET /api/users/me` (200) → `POST /api/auth/logout` → `GET /api/users/me` (401, cookie cleared).
 
 **14. `test(backend): auth negative paths`**
 
 - Files: `backend/tests/test_auth_negative.py`
-- Deliverable: tests cover duplicate email (409); wrong password (401, generic); missing / malformed / expired session cookie (401); password shorter than 12 chars (400 from `validate_password`); no cookie on a protected endpoint (401).
+- Deliverable: tests cover duplicate email (409); wrong password (401, generic); missing / malformed / expired session cookie (401); password shorter than 12 chars (400 from `validate_password`); no cookie on a protected endpoint (401). All paths under `/api/*`.
 
 #### Frontend
 
