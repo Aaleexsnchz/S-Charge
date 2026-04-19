@@ -140,6 +140,7 @@ REVE API client with cache, Leaflet map, filters, point detail.
 
 ETL pipeline, aggregation endpoints, charts dashboard.
 
+- [ ] App-wide structured logging (`app/utils/logging.py` configures root logger to JSON; per-module `logger = logging.getLogger(__name__)` usage) — adopted here because ETL and simulation benefit most from filterable per-module logs
 - [ ] ETL imports ACN-Data; row counts match source
 - [ ] Core tables populated and indexed
 - [ ] Statistics endpoints return aggregations
