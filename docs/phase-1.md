@@ -16,7 +16,7 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 1. Organized as vertical slices: 
 
 Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). This slice implements them via `fastapi-users` natively — no custom endpoints in Slice 1, since the library handles login, logout, and register directly when composed with a single cookie-backed `AuthenticationBackend`.
 
-**Acceptance:** a new visitor can register, receives an HttpOnly session cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL), calls protected `GET /api/users/me`, and logs out via `POST /api/auth/logout` (cookie cleared). Invalid credentials return a generic 401 (no email-exists oracle). Duplicate email returns 409. All backend endpoints are under the `/api/*` prefix for consistency with `/api/health`.
+**Acceptance:** a new visitor can register, receives an HttpOnly session cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL), calls protected `GET /api/users/me`, and logs out via `POST /api/auth/logout` (cookie cleared). Invalid credentials return `400 LOGIN_BAD_CREDENTIALS` — same status and detail whether the email exists or not (no email-exists oracle). Duplicate email returns `400 REGISTER_USER_ALREADY_EXISTS`. Missing or malformed session cookie on a protected endpoint returns `401`. All error codes follow fastapi-users' convention: a single `400` discriminated by a machine-readable `detail` enum. All backend endpoints are under the `/api/*` prefix for consistency with `/api/health`.
 
 **Locked decisions** (full rationale in [auth-decisions.md](auth-decisions.md))
 - UUID v4 PK (library default, `uuid.uuid4`); `citext` email; Argon2id via `pwdlib`; HS256 JWT
@@ -101,7 +101,7 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 **14. `test(backend): auth negative paths`**
 
 - Files: `backend/tests/test_auth_negative.py`
-- Deliverable: tests cover duplicate email (409); wrong password (401, generic); missing / malformed / expired session cookie (401); password shorter than 12 chars (400 from `validate_password`); no cookie on a protected endpoint (401). All paths under `/api/*`.
+- Deliverable: tests cover duplicate email (`400 REGISTER_USER_ALREADY_EXISTS`); wrong password and non-existent email (both `400 LOGIN_BAD_CREDENTIALS` — same response proves no email-exists oracle); password shorter than 12 chars (`400 REGISTER_INVALID_PASSWORD` with our length-policy message); missing or malformed session cookie on `/api/users/me` (`401`). Expired-cookie case is deferred because deterministic testing requires time-mocking or per-test settings overrides; not worth the complexity for marginal coverage. All paths under `/api/*`.
 
 #### Frontend
 
