@@ -16,6 +16,8 @@ Cross-refs: [auth-decisions.md](auth-decisions.md) has fuller rationale for auth
 
 **HIBP k-anonymity password check.** Reject passwords known to be in breach corpora via the Pwned Passwords API (one pseudonymous call per password set). Deferred because the external dependency complicates tests. Trigger: observed correlation between breach-notification emails and local registrations. Rationale: [auth-decisions §11](auth-decisions.md).
 
+**Sliding session expiration.** The current design ([auth-decisions §5](auth-decisions.md), `session_token_expire_days=14`) hard-expires every session at 14 days regardless of activity — users must re-login on schedule. Sliding expiration resets the clock on each authenticated request (middleware that re-mints the JWT and re-sets the cookie when the token is past half its lifetime), matching the UX of Gmail, GitHub, Discord, Netflix. Deferred because a thesis demo is reviewed in short bursts where hard expiry isn't noticeable. Trigger: real users complaining about unexpected logouts, or "real app feel" becoming a hard requirement. Estimated effort: ~15 lines of middleware, no DB changes.
+
 ## Rate limiting beyond Nginx
 
 **Application-level limiter.** Phase 1 defers rate limiting to Nginx `limit_req` ([auth-decisions §7](auth-decisions.md)). Adding slowapi or fastapi-limiter at the app layer would let us count per-user (not only per-IP) and apply limits in dev/test. Trigger: production traffic patterns where per-IP limits are too blunt — shared-office IPs, mobile carrier NAT, or per-user abuse that stays under the per-IP threshold.
