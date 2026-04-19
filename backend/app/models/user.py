@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import DateTime, String
@@ -11,7 +12,10 @@ from app.database import Base
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "users"
 
-    email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True, nullable=False)
+    if TYPE_CHECKING:
+        email: str
+    else:
+        email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True, nullable=False)
 
     name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
