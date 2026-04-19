@@ -1,9 +1,20 @@
-from fastapi_users.authentication import AuthenticationBackend, CookieTransport
+from fastapi_users.authentication import AuthenticationBackend, CookieTransport, JWTStrategy
 
 from app.config import settings
-from app.utils.jwt_strategy import get_jwt_strategy
 
+ALGORITHM = "HS256"
+TOKEN_AUDIENCE = ["tfm:session"]
 COOKIE_NAME = "session"
+
+
+def get_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(
+        secret=settings.secret_key,
+        lifetime_seconds=settings.session_token_expire_days * 86400,
+        algorithm=ALGORITHM,
+        token_audience=TOKEN_AUDIENCE,
+    )
+
 
 cookie_transport = CookieTransport(
     cookie_name=COOKIE_NAME,

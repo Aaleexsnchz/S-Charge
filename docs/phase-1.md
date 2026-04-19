@@ -70,8 +70,8 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 
 **8. `feat(backend): add jwt strategy and auth backend`**
 
-- Files: `backend/app/utils/jwt_strategy.py`, `backend/app/utils/auth_backends.py`
-- Deliverable: one `get_jwt_strategy() -> JWTStrategy` factory (14-day lifetime, `algorithm` and `token_audience` pulled from settings); `CookieTransport` with `HttpOnly`, `Secure`, `SameSite=Lax`, path `/`, `cookie_max_age` matching the JWT lifetime; single `AuthenticationBackend` composed from the transport + strategy. Also renames the session settings from `refresh_*` to `session_*` in `app/config.py` + `backend/.env.example` + `backend/.env`, and drops now-unused settings (`access_token_expire_minutes`, `refresh_token_expire_days`, `refresh_cookie_path`).
+- Files: `backend/app/utils/auth_backend.py`
+- Deliverable: single module containing the JWT strategy factory (`get_jwt_strategy()` — 14-day lifetime, HS256 algorithm, `tfm:session` audience), `CookieTransport` (HttpOnly, Secure, SameSite=Lax, path `/`, `cookie_max_age` matching JWT lifetime), and the composed `AuthenticationBackend`. Module-level constants (`ALGORITHM`, `TOKEN_AUDIENCE`, `COOKIE_NAME`) pin the security-relevant non-env values. Also renames the session settings from `refresh_*` to `session_*` in `app/config.py` + `backend/.env.example` + `backend/.env`, and drops now-unused settings (`access_token_expire_minutes`, `refresh_token_expire_days`, `refresh_cookie_path`).
 
 **9. `feat(backend): add audit logger`**
 
