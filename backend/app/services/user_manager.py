@@ -3,7 +3,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, Request
-from fastapi_users import BaseUserManager, UUIDIDMixin
+from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.exceptions import InvalidPasswordException
 
@@ -11,6 +11,7 @@ from app.config import settings
 from app.dependencies import get_user_db
 from app.models.user import User
 from app.utils.audit import audit
+from app.utils.auth_backend import auth_backend
 from app.utils.security import password_helper
 
 MIN_PASSWORD_LENGTH = 12
@@ -53,3 +54,7 @@ async def get_user_manager(
     user_db: Annotated[SQLAlchemyUserDatabase, Depends(get_user_db)],
 ) -> AsyncIterator[UserManager]:
     yield UserManager(user_db, password_helper)
+
+
+fastapi_users = FastAPIUsers[User, UUID](get_user_manager, [auth_backend])
+current_user = fastapi_users.current_user(active=True)
