@@ -12,13 +12,13 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 
 ## 1. UUID v4 as primary key for `users`
 
-**Decision.** User IDs are random UUIDs (`gen_random_uuid()` from PostgreSQL's `pgcrypto`), not auto-increment integers.
+**Decision.** User IDs are random UUID v4 values generated client-side by Python's `uuid.uuid4()`, not auto-increment integers.
 
 **Rationale.** The user PK is exposed in URLs, JWT `sub` claims, and (later) in shared resources like booking and private-point ownership. Sequential integers leak (a) total user count and growth rate, (b) registration order, and (c) make it trivial to enumerate or guess neighbouring resources by incrementing the ID. UUID v4 has 122 bits of entropy — non-guessable in practice.
 
-**Implementation.** Slice 1. fastapi-users supports UUID primary keys natively via its `SQLAlchemyBaseUserTableUUID` base class.
+**Implementation.** Slice 1. fastapi-users supports UUID primary keys natively via its `SQLAlchemyBaseUserTableUUID` base class, which declares `id: Mapped[UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)`. Python-side generation via `uuid.uuid4()` is cryptographically equivalent to PostgreSQL's `gen_random_uuid()` — both draw from the OS CSPRNG (`os.urandom` / `/dev/urandom`). We accept the library default rather than overriding with `server_default=func.gen_random_uuid()` and managing the `pgcrypto` extension; the security claim (122 bits of entropy) is preserved either way.
 
-**Rejected alternatives.** `BIGSERIAL` (smallest, fastest index, but enables enumeration); UUID v7 (time-ordered, better B-tree locality, but PostgreSQL native support landed only in v18 and Python ecosystem support is uneven); Snowflake/KSUID (require an external generator).
+**Rejected alternatives.** `BIGSERIAL` (smallest, fastest index, but enables enumeration); UUID v7 (time-ordered, better B-tree locality, but PostgreSQL native support landed only in v18 and Python ecosystem support is uneven); Snowflake/KSUID (require an external generator); server-side `gen_random_uuid()` (equivalent security, extra migration complexity for no gain).
 
 **Trade-offs accepted.** 16-byte vs 8-byte index entries and minor B-tree fragmentation due to random insert order. Negligible at thesis-app scale.
 
@@ -26,7 +26,7 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 
 - RFC 9562 — Universally Unique IDentifiers (UUIDs), §5.4 (v4)
 - OWASP ASVS v4.0.3 §V8.3.1 (non-sequential identifiers for sensitive resources)
-- PostgreSQL documentation — pgcrypto, `gen_random_uuid()`
+- Python standard library — `uuid.uuid4` (draws from `os.urandom`)
 
 ---
 
@@ -100,21 +100,21 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 
 ---
 
-## 5. Token transport: in-memory access token + httpOnly refresh cookie
+## 5. Token transport: single JWT in an HttpOnly cookie
 
-**Decision.** The access token is returned in the JSON response body and held only in JavaScript memory on the client (React state). The refresh token is delivered as an `HttpOnly; Secure; SameSite=Lax` cookie scoped to the `/auth/refresh` path.
+**Decision.** Authentication state is a single JWT delivered as an `HttpOnly; Secure; SameSite=Lax` cookie at path `/`, with a 14-day lifetime. No separate access/refresh pair. No bearer tokens. No in-memory credential on the client.
 
 **Rationale.**
 
-- *XSS exposure of `localStorage`.* Any token placed in `localStorage` or `sessionStorage` is reachable by any JavaScript executing in the page. Realistic XSS vectors include `dangerouslySetInnerHTML`, third-party scripts (analytics, A/B testing, embedded chat widgets), and supply-chain compromise of any npm dependency — and for a project that depends on MUI, Leaflet, and Recharts, the transitive dep tree is wide. Token theft from `localStorage` is the dominant SPA credential-loss pattern in industry post-mortems.
-- *`HttpOnly` cookie.* Cannot be read by JavaScript at all; the refresh token cannot be exfiltrated by XSS. XSS can still issue authenticated requests as the victim, but only from within the victim's browser session — it cannot persist the credential elsewhere or use it offline.
-- *`SameSite=Lax`.* Blocks the cookie from cross-site sub-requests, neutralising most CSRF vectors. Because frontend and backend are reverse-proxied through a single Nginx on the same origin in production, `Lax` is sufficient; `Strict` would interfere with the OAuth callback redirect.
-- *`Secure`.* Cookie only transmitted over TLS in production (overridden in local dev).
-- *Path scope `/auth/refresh`.* The cookie is attached only to refresh requests, never to ordinary API calls — minimising accidental exposure surface.
+- *`HttpOnly`.* Cannot be read by JavaScript at all; the token cannot be exfiltrated by XSS. This is the dominant SPA credential-loss vector — `localStorage` / `sessionStorage` tokens are reachable by any script running on the page (including transitive npm dependencies, analytics, embedded widgets). XSS executing in the page can still issue authenticated requests while the page is open, but it cannot persist the credential elsewhere or use it offline.
+- *`SameSite=Lax`.* Blocks the cookie from cross-site sub-requests, neutralising most CSRF vectors. Frontend and backend share a single Nginx reverse proxy on the same origin in production; `Lax` is sufficient. `Strict` would interfere with the OAuth callback redirect (Slice 2).
+- *`Secure`.* TLS-only transmission in production (overridden to `false` in local dev, where HTTP is the only option).
+- *PWA fit.* A PWA is a same-origin web app, not a native mobile app. Its authentication constraints are the constraints of a browser, not of a cross-service OAuth client: one origin, browser-managed cookie jar, service-worker-intercepted fetches that automatically include cookies. A single HttpOnly cookie behaves correctly across every PWA-specific scenario (cold start after the app is closed, service-worker background sync, offline cache with later retry) without any client-side token management.
+- *Single long-lived credential.* Our threat model (see §6) does not distinguish "short-lived access token limits blast radius" as a meaningful improvement over "long-lived HttpOnly cookie" for a same-origin SPA: XSS in the page authenticates as the user either way, and HttpOnly prevents exfiltration in both cases. The security posture is equivalent; the operational complexity is not.
 
-**Implementation.** Slice 1. fastapi-users provides a `CookieTransport` that we configure for the refresh token (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/auth/refresh`) and a `BearerTransport` for the access token. A small custom `/auth/refresh` endpoint reads the cookie, validates the refresh JWT, and issues a fresh access token (and rotates the refresh cookie).
+**Implementation.** Slice 1. fastapi-users' `CookieTransport` configured with our security flags, composed with a single `JWTStrategy` into one `AuthenticationBackend`. Logout is `CookieTransport.get_logout_response()` (library-provided) which sets `Set-Cookie` with `Max-Age=0` to clear. No custom endpoints.
 
-**Rejected alternatives.** Both tokens in `localStorage` (maximum XSS exposure); access token in cookie + double-submit CSRF token (viable but adds CSRF infrastructure across every API call instead of confining the cookie surface to one endpoint).
+**Rejected alternatives.** `localStorage` storage (maximum XSS exposure). Dual-token (in-memory access + HttpOnly refresh cookie) — the industry-standard SPA pattern; discussed and rejected in §6 for PWA-specific reasons. Access token in cookie + double-submit CSRF token (viable but adds CSRF infrastructure across every API call — unnecessary when `SameSite=Lax` already addresses the relevant threat).
 
 **References.**
 
@@ -126,38 +126,76 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 
 ---
 
-## 6. Refresh tokens: stateless JWT with rotation; family revocation deferred
+## 6. Refresh tokens: not used (dual-token pattern rejected for a same-origin PWA)
 
-**Decision.** Refresh tokens are stateless JWTs (no DB row per token). On each `/auth/refresh` call a new refresh token is minted and the cookie is overwritten — the old token is no longer presented by the legitimate client, but is *cryptographically* still valid until its `exp` (14 days). Logout clears the cookie client-side.
+**Decision.** No refresh tokens. The single HttpOnly cookie (§5) is both the active credential and the long-lived session; there is no `/auth/refresh` endpoint.
 
-**Rationale.** A fully stateful design — DB-tracked tokens with `replaced_by` chains and reuse-detection that revokes the entire token family — is the gold standard for SPA auth and is recommended by RFC 9700 for public clients. It was specified in an earlier draft and rejected on scope grounds: the substantive thesis contribution lies in Phases 3–4 (data integration, simulation, algorithm) and the implementation effort for stateful refresh (DB schema + reuse detection + audit hooks + tests for replay) is best invested there. The stateless design is the standard fastapi-users default and is sufficient against opportunistic threats; it is materially weaker against a determined attacker who has already obtained a refresh token (no session can be revoked server-side; logout is best-effort).
+**Rationale.** The dual-token dance (short-lived access token in memory + long-lived refresh token in a cookie, with periodic calls to `/auth/refresh`) is the industry-standard SPA pattern. It originated in mobile apps and multi-origin OAuth flows where a bearer token must be presented to a third-party API and the access token cannot be stored in a cookie. For a same-origin monolithic PWA — which is what we are building — the problems the dual-token dance solves are mostly problems we don't have:
 
-**Implementation.** Slice 1. fastapi-users default `JWTStrategy` for the refresh token, with cookie transport. `/auth/refresh` is a thin wrapper that invokes the library's token-refresh path.
+- *No third-party API.* The PWA talks only to our own backend. Bearer tokens are not required.
+- *"Short access TTL limits blast radius if stolen."* Defeated in practice for SPAs: XSS executing in the page can issue authenticated requests as the user regardless of where the token lives, and `HttpOnly` on a single long-lived cookie prevents exfiltration just as effectively as splitting the credential in two.
+- *"Refresh rotation enables revocation."* Not in our threat model — §6 of the previous draft acknowledged that the stateless refresh design cannot revoke an in-flight refresh token before its `exp` either. The long-lived-credential security properties apply whether or not we formally separate access+refresh.
+- *PWA cold-start cost.* A memory-only access token is lost when the user closes the PWA window (common for installed PWAs). Every launch then pays for a bootstrap `/auth/refresh` round-trip before any real API call — wasted latency and additional failure surface. A single persistent cookie eliminates this entirely.
+- *Service-worker background sync.* A service worker runs in a separate context from the React app and cannot read the in-memory access token. To support background sync with dual-token you would have to stash the token somewhere the service worker can reach (IndexedDB, localStorage), negating the XSS protection that was the whole point. Cookies are sent automatically by the browser, including on fetches replayed by a service worker.
 
-**Future work.** Replace stateless refresh with a DB-backed `refresh_tokens` table (`id` = jti, `user_id`, `issued_at`, `expires_at`, `revoked_at`, `replaced_by`, `user_agent`, `ip`). Each refresh rotates: old row marked revoked, new row chained via `replaced_by`. Presenting a token whose `revoked_at IS NOT NULL` triggers revocation of the entire chain (`refresh_reuse_detected` audit event). This is the model in RFC 9700 §4.14.2.
+Put plainly: the dual-token pattern is cargo-culted into SPA tutorials from earlier mobile-app architectures, and for a same-origin PWA it adds a bootstrap dance, a custom `/auth/refresh` endpoint, and client-side token-management state without meaningfully improving the security posture over a single HttpOnly cookie.
 
-**Rejected alternatives (still rejected).** Single long-lived refresh token without rotation (no defence against replay).
+**Implementation.** Nothing to build. fastapi-users' `CookieTransport` issues the session JWT on login and clears it on logout; there is no refresh path to implement.
+
+**Future work.** If the project ever exposes a programmatic API for non-browser clients (e.g., researchers querying simulation results via curl, or a future native mobile client), a separate bearer-token authentication backend can be added alongside the cookie backend — fastapi-users supports multiple backends on the same `FastAPIUsers` instance. That is orthogonal to the PWA session story and is explicitly out of Slice 1 scope. Within the PWA session story, the relevant future work is DB-backed session revocation (a `sessions` table with per-session revoke, instead of a stateless JWT) — the same hardening that RFC 9700 §4.14 recommends for refresh tokens applies equally to a long-lived session JWT.
+
+**Rejected alternatives.**
+
+- *Dual-token (in-memory access + refresh cookie).* Discussed above.
+- *Stateless refresh with rotation.* A previous draft of this document specified this (fastapi-users default `JWTStrategy` on the refresh cookie, custom `/auth/refresh` endpoint). Rejected in favour of the simpler single-cookie design described in §5 — the security properties are equivalent for our threat model and the PWA UX is strictly better.
+- *DB-tracked refresh with family revocation (RFC 9700).* The gold standard for public OAuth clients; rejected on scope grounds — the implementation effort (schema + reuse detection + audit hooks + tests for replay) is disproportionate to thesis scope, and the upgrade path to a session-table variant is straightforward when needed.
 
 **References.**
 
-- RFC 6749 — OAuth 2.0, §10.4 (Refresh Token Security)
-- RFC 9700 — OAuth 2.0 Security Best Current Practice, §4.14 (refresh-token rotation and reuse detection)
-- Auth0 documentation, *Refresh Token Rotation*
+- RFC 6749 — OAuth 2.0, §10.4 (Refresh Token Security) — not applicable when no refresh token is issued
+- RFC 9700 — OAuth 2.0 Security Best Current Practice, §4.14 (refresh-token rotation and reuse detection) — same
+- Auth0, *Silent Authentication* — contrasting mobile-vs-SPA token strategies
 
 ---
 
-## 7. Per-IP rate limiting
+## 7. Rate limiting: deferred to the reverse proxy (Nginx)
 
-**Decision.** `slowapi` middleware with an in-memory backend. Limits: `/auth/login` 5 req/min/IP, `/auth/register` 10 req/hour/IP, `/auth/refresh` 30 req/min/IP. Migration path to Redis backend if multi-process deployment becomes necessary.
+**Decision.** Rate limiting is applied at the reverse proxy layer (Nginx `limit_req` module) in production, not in application code. Development and tests run without rate limiting.
 
-**Rationale.** Rate limiting is the first-line defence against credential stuffing and brute-force. Limits are loose enough that no real user will hit them under normal conditions, tight enough to make automated attacks economically expensive. In-memory state is appropriate for a single-VPS, single-Uvicorn-process deployment; a Redis backend would be over-engineering at this scale.
+**Rationale.**
 
-**Implementation.** Slice 1. A `slowapi.Limiter` is registered as application middleware in `app/main.py`; decorators are applied to the fastapi-users register/login endpoints (which we expose via the library's pre-built routers) and to our custom `/auth/refresh` endpoint.
+- *Composition with fastapi-users.* Application-level rate limiting via `slowapi` would require either wrapping fastapi-users' pre-built `get_register_router` / `get_auth_router` with custom endpoints (negating the "use the library natively" principle for Slice 1) or pattern-matching middleware against path strings (fragile — paths can drift, and path matching in ASGI middleware is awkward).
+- *Nginx is in the critical path anyway.* The Hetzner deployment (PLAN.md phase 6) terminates TLS and reverse-proxies to the Uvicorn worker via Nginx regardless. `limit_req` is one configuration block in the same Nginx config that already handles TLS and static serving — it costs nothing incremental to add.
+- *Operationally mature.* Nginx `limit_req` uses a leaky-bucket algorithm with a shared-memory zone keyed on `$binary_remote_addr`; it is widely deployed and well-understood. No Python dependency, no middleware to reason about, no per-request overhead inside the app.
+- *Dev/test scope.* Local development and CI tests have no automated attackers to rate-limit against; adding limits there would complicate the test story (timing-dependent 429s) for no benefit.
 
-**Limitations acknowledged.** Per-IP limits are bypassable by botnets and IPv6 address rotation. In a fully production-grade design this would be combined with per-account lockout (see §8) — that combination is deferred. Nginx's `limit_req` could be added as defence-in-depth at the reverse proxy layer.
+**Implementation.** Phase 6 (deployment), not Slice 1. Nginx configuration:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=auth_login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=auth_register:10m rate=10r/m;
+
+location /auth/login    { limit_req zone=auth_login    burst=0 nodelay; proxy_pass http://backend; }
+location /auth/register { limit_req zone=auth_register burst=0 nodelay; proxy_pass http://backend; }
+```
+
+A 429 response is emitted by Nginx directly when the limit is exceeded.
+
+**Limitations acknowledged.**
+
+- Per-IP limits are bypassable by botnets and IPv6 address rotation (same caveat as any IP-based scheme).
+- Behind a CDN, `$remote_addr` is the CDN's IP; `$http_x_forwarded_for` must be used with `set_real_ip_from` configured for the CDN's ranges, or the entire site is vulnerable to IP-spoofed `X-Forwarded-For` headers. We are not behind a CDN; the direct-to-Nginx Hetzner setup avoids this class of bug.
+- In a fully production-grade design this would be combined with per-account lockout (see §8) — that combination remains deferred.
+
+**Rejected alternatives.**
+
+- *`slowapi` in application code.* Does not compose cleanly with fastapi-users' pre-built routers without writing custom login / register endpoints, which was the point we were trying to avoid.
+- *`fastapi-limiter`.* Would compose via `Depends(...)` on `include_router`, but requires Redis — a new service to operate and a new failure mode. Not justified at single-VPS scale.
+- *Per-endpoint middleware with path matching.* Fragile against path changes; no advantage over the reverse-proxy layer.
 
 **References.**
 
+- Nginx documentation — `ngx_http_limit_req_module`
 - OWASP Authentication Cheat Sheet §"Common Authentication Errors"
 - OWASP ASVS v4.0.3 §V2.2.1 (anti-automation)
 - NIST SP 800-63B §5.2.2 (rate-limiting authentication attempts)
@@ -186,7 +224,7 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 
 **Rationale.** Differential responses ("Invalid email" vs "Invalid password") are a confirmed user-enumeration oracle. Differential *latency* is the same oracle by another mechanism: if existing-user logins take ~50 ms (the Argon2id cost) and missing-user logins return in <5 ms, an attacker can enumerate the user database by timing alone. Equalising both the response and the latency closes both oracles. This pattern is recommended by OWASP and is a routine finding in penetration tests of SPA-style applications.
 
-**Implementation.** Slice 1. fastapi-users returns a generic 400/401 on bad credentials by default and runs the password hasher even when the user lookup misses (its `PasswordHelper.verify_and_update` is invoked with a dummy hash for the absent-user case). No custom code required beyond confirming the behaviour with a timing-equivalence test.
+**Implementation.** Slice 1. fastapi-users returns a generic 400/401 on bad credentials by default and runs the password hasher even when the user lookup misses (its `PasswordHelper.verify_and_update` is invoked with a dummy hash for the absent-user case). The timing-equivalence property is a documented library behaviour; we rely on it rather than adding an empirical timing-equivalence test, which would be inherently flaky on CI due to container scheduling noise and CPU frequency variability.
 
 **Trade-off acknowledged.** Slightly worse UX — users cannot tell whether they mistyped their email or their password. Account-recovery flows (out of Slice 1 scope) provide the safe path to recovery without introducing the oracle.
 
@@ -265,9 +303,9 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 | 2 | `citext` email | ✓ | — |
 | 3 | Argon2id hashing | ✓ | — |
 | 4 | JWT HS256 + audience claim | ✓ | — |
-| 5 | In-memory access + HttpOnly refresh cookie | ✓ | — |
-| 6 | Refresh-token rotation | partial (stateless rotation) | DB-tracked rotation + family revocation on reuse |
-| 7 | Per-IP rate limiting | ✓ | — |
+| 5 | Single JWT in HttpOnly cookie | ✓ | — |
+| 6 | No refresh tokens (PWA-specific rationale) | ✓ (N/A) | DB-backed session revocation if server-side logout becomes a hard requirement |
+| 7 | Rate limiting at Nginx (not in app) | deferred to phase 6 (infra) | Application-level limits if ever needed beyond the reverse proxy |
 | 8 | Per-account lockout | — | `failed_login_attempts` + `locked_until` |
 | 9 | Generic 401 + constant-time | ✓ (library default) | — |
 | 10 | Audit logging | partial (stdlib JSON logs) | persisted `auth_events` table |

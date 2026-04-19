@@ -12,26 +12,24 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 1. Organized as vertical slices: 
 
 ---
 
-## Slice 1 — Email/password auth via fastapi-users with httpOnly refresh cookie
+## Slice 1 — Email/password auth via fastapi-users with HttpOnly session cookie
 
-Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). This slice implements them via `fastapi-users` with targeted custom code where the library defaults don't match.
+Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). This slice implements them via `fastapi-users` natively — no custom endpoints in Slice 1, since the library handles login, logout, and register directly when composed with a single cookie-backed `AuthenticationBackend`.
 
-**Acceptance:** a new visitor can register, receives an access token (JSON body) and a refresh cookie (`HttpOnly; Secure; SameSite=Lax` scoped to `/auth/refresh`), calls protected `GET /auth/me`, refreshes their session via `POST /auth/refresh`, and logs out (cookie cleared). Invalid credentials return a generic 401 (no email-exists oracle). Duplicate email returns 409. Per-IP rate-limit triggers return 429.
+**Acceptance:** a new visitor can register, receives an HttpOnly session cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL), calls protected `GET /auth/me`, and logs out (cookie cleared). Invalid credentials return a generic 401 (no email-exists oracle). Duplicate email returns 409.
 
 **Locked decisions** (full rationale in [auth-decisions.md](auth-decisions.md))
-- UUID v4 PK; `citext` email; Argon2id (`argon2-cffi`); HS256 JWT with audience claim
-- Access token in response body, in-memory on client; refresh in HttpOnly cookie scoped to `/auth/refresh`
-- 15 min access TTL, 14 day refresh TTL, stateless rotation
-- Per-IP rate limits (login 5/min, register 10/hr, refresh 30/min) via `slowapi`
+- UUID v4 PK (library default, `uuid.uuid4`); `citext` email; Argon2id via `pwdlib`; HS256 JWT
+- Single JWT session in HttpOnly cookie (`HttpOnly; Secure; SameSite=Lax`; 14-day TTL); no refresh tokens (see auth-decisions §6)
 - Length-only password policy (≥ 12 chars)
 - Stdlib JSON audit logging on auth events
-- Per-account lockout, DB-tracked refresh rotation, and persisted audit table are explicit future work
+- Rate limiting deferred to Nginx `limit_req` (phase 6 infra); per-account lockout, DB-backed session revocation, and persisted audit table are explicit future work
 
 ### Task plan
 
 Ordered commits, each small and self-contained. Files listed are relative to the repo root. Each task ends with a concrete deliverable that can be checked off.
 
-After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constraint; the sequence below is the recommended walk. Strict dependency chain: 1 → 2 → 5 → 6 → 10 → 11 → 12 → 13 → 14/15.
+After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constraint; the sequence below is the recommended walk. Strict dependency chain: 1 → 2 → 5 → 6 → 10 → 11 → 12 → 13/14.
 
 #### Backend
 
@@ -70,74 +68,69 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 - Files: `backend/app/utils/security.py`
 - Deliverable: `password_helper = PasswordHelper(...)` exposed at module level, wrapping pwdlib's `Argon2Hasher(memory_cost=19456, time_cost=2, parallelism=1)` to match OWASP minimums (tuned down from argon2-cffi defaults for CX22 login latency). No custom protocol class — fastapi-users' `PasswordHelper` already implements `PasswordHelperProtocol` and pwdlib handles auto-rehash on verify.
 
-**8. `feat(backend): add jwt strategies and auth transports`**
+**8. `feat(backend): add jwt strategy and auth backend`**
 
 - Files: `backend/app/utils/jwt_strategy.py`, `backend/app/utils/auth_backends.py`
-- Deliverable: two `JWTStrategy` instances (access: `aud="users:access"`, 15 min; refresh: `aud="users:refresh"`, 14 d); `BearerTransport` for access; `CookieTransport` scoped to `/auth/refresh` with `HttpOnly`, `Secure`, `SameSite=Lax`; `AuthenticationBackend` composed for access flow.
+- Deliverable: one `get_jwt_strategy() -> JWTStrategy` factory (14-day lifetime, `algorithm` and `token_audience` pulled from settings); `CookieTransport` with `HttpOnly`, `Secure`, `SameSite=Lax`, path `/`, `cookie_max_age` matching the JWT lifetime; single `AuthenticationBackend` composed from the transport + strategy. Also renames the session settings from `refresh_*` to `session_*` in `app/config.py` + `backend/.env.example` + `backend/.env`, and drops now-unused settings (`access_token_expire_minutes`, `refresh_token_expire_days`, `refresh_cookie_path`).
 
-**9. `feat(backend): add audit logger and rate limiter`**
+**9. `feat(backend): add audit logger`**
 
-- Files: `backend/app/utils/audit.py`, `backend/app/services/rate_limit.py`
-- Deliverable: `audit(event, **fields)` helper emitting JSON log lines via stdlib `logging` + `python-json-logger`; `limiter = Limiter(key_func=get_remote_address)` instance.
+- Files: `backend/app/utils/audit.py`
+- Deliverable: `audit(event, **fields)` helper emitting JSON log lines to stdout via stdlib `logging` + `python-json-logger`. No rate limiter — rate limiting is deferred to Nginx in phase 6 (auth-decisions §7).
 
 **10. `feat(backend): add auth schemas and user manager`**
 
-- Files: `backend/app/schemas/auth.py`, `backend/app/services/user_manager.py`
-- Deliverable: `UserRead` / `UserCreate` / `UserUpdate` subclassing fastapi-users' bases, with `name` / `picture_url` fields and an email validator that trims and lowercases. `UserManager(BaseUserManager[User, UUID])` overrides `validate_password` (length ≥ 12) and emits audit events in `on_after_register` / `on_after_login`.
+- Files: `backend/app/schemas/auth.py`, `backend/app/services/user_manager.py`, `backend/app/dependencies.py` (extend)
+- Deliverable: `UserRead` / `UserCreate` / `UserUpdate` subclassing fastapi-users' bases, with `name` / `picture_url` fields and an email validator that trims and lowercases. `UserManager(BaseUserManager[User, UUID])` overrides `validate_password` (length ≥ 12) and emits audit events in `on_after_register` / `on_after_login`. `get_user_db` dependency added alongside `get_db` (wraps the session in `SQLAlchemyUserDatabase(session, User)`).
 
 **11. `feat(backend): mount fastapi-users auth routers`**
 
 - Files: `backend/app/routers/auth.py`
-- Deliverable: `FastAPIUsers` instance composed from auth backend + user manager + schemas; include `get_register_router`, `get_auth_router`, `get_users_router` under `/auth` and `/users`. Register decorated with `limiter.limit("10/hour")`; login with `limiter.limit("5/minute")`.
+- Deliverable: `FastAPIUsers` instance composed from auth backend + user manager + schemas. Mount `get_register_router`, `get_auth_router` (includes `/login` and `/logout`), and `get_users_router` under `/auth` and `/users`. No rate-limiting decorators — nothing custom to wrap.
 
-**12. `feat(backend): add refresh endpoint with cookie rotation`**
-
-- Files: `backend/app/routers/auth.py` (extend)
-- Deliverable: `POST /auth/refresh` reads the refresh cookie, validates via refresh `JWTStrategy`, issues a new access token and rotates the cookie; rate-limited `30/minute`. `POST /auth/logout` clears the refresh cookie and emits a `logout` audit event.
-
-**13. `feat(backend): wire auth router and rate limit middleware`**
+**12. `feat(backend): wire auth router and user dependency`**
 
 - Files: `backend/app/main.py`, `backend/app/dependencies.py`
-- Deliverable: auth router registered under `/auth`; `SlowAPIMiddleware` + 429 exception handler installed; `get_current_user = fastapi_users.current_user(active=True)` re-exported from `dependencies.py`. `/docs` shows all auth endpoints; `/api/health` still returns 200.
+- Deliverable: auth router registered under `/auth`; `get_current_user = fastapi_users.current_user(active=True)` re-exported from `dependencies.py`. `/docs` shows all auth endpoints (`POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /users/me`, etc.); `/api/health` still returns 200.
 
-**14. `test(backend): happy path auth flow`**
+**13. `test(backend): happy path auth flow`**
 
 - Files: `backend/tests/test_auth_happy.py`
-- Deliverable: end-to-end test — register → login (captures bearer token + refresh cookie) → `GET /auth/me` (200) → `POST /auth/refresh` (new token + new cookie) → `POST /auth/logout` → `GET /auth/me` with old token (401).
+- Deliverable: end-to-end test — register → login (captures session cookie) → `GET /users/me` (200) → `POST /auth/logout` → `GET /users/me` (401, cookie cleared).
 
-**15. `test(backend): auth negative paths`**
+**14. `test(backend): auth negative paths`**
 
 - Files: `backend/tests/test_auth_negative.py`
-- Deliverable: tests cover duplicate email; wrong password (with timing-equivalence guard — existing- and missing-user latencies within 2× of each other); missing / malformed / expired access token; refresh token presented at a protected endpoint (wrong audience); password shorter than 12 chars; 6th login attempt within 60s returns 429.
+- Deliverable: tests cover duplicate email (409); wrong password (401, generic); missing / malformed / expired session cookie (401); password shorter than 12 chars (400 from `validate_password`); no cookie on a protected endpoint (401).
 
 #### Frontend
 
-**16. `feat(frontend): add api client with auth store`**
+**15. `feat(frontend): add api client with auth store`**
 
 - Files: `frontend/src/api/client.ts`, `frontend/src/auth/AuthStore.ts`
-- Deliverable: fetch wrapper with `credentials: 'include'`, injects in-memory access token as `Authorization: Bearer`; on 401 attempts `POST /auth/refresh` once and retries; on second 401 clears state. Zustand store holds `user` + `accessToken` **in memory only** and exposes `login`, `register`, `logout`, `bootstrap`. `grep -r localStorage frontend/src/api frontend/src/auth` returns no matches.
+- Deliverable: fetch wrapper with `credentials: 'include'` so the HttpOnly session cookie is sent automatically; on 401 clears the auth store and redirects to `/login`. No client-side token handling — the cookie is the session. Zustand store holds only the `user` object (fetched from `GET /users/me`) and exposes `login`, `register`, `logout`, `bootstrap`. `grep -r localStorage frontend/src/api frontend/src/auth` returns no matches.
 
-**17. `feat(frontend): add protected route and bootstrap`**
+**16. `feat(frontend): add protected route and bootstrap`**
 
 - Files: `frontend/src/components/ProtectedRoute.tsx`, `frontend/src/main.tsx`
 - Deliverable: `ProtectedRoute` renders children when `user` is set, shows a loading state while `bootstrap` is pending, redirects to `/login` otherwise. App root invokes `AuthStore.bootstrap()` once on mount.
 
-**18. `feat(frontend): add login and register pages`**
+**17. `feat(frontend): add login and register pages`**
 
 - Files: `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/RegisterPage.tsx`
-- Deliverable: MUI forms for each; inline error mapping for 400/401/409/429 to human-readable messages; successful submit routes to `/profile`.
+- Deliverable: MUI forms for each; inline error mapping for 400/401/409 to human-readable messages (429 is handled generically if/when Nginx rate-limiting is enabled in phase 6); successful submit routes to `/profile`.
 
-**19. `feat(frontend): wire auth routes`**
+**18. `feat(frontend): wire auth routes`**
 
 - Files: `frontend/src/router.tsx`
 - Deliverable: `/login`, `/register`, `/profile` routes; `/profile` wrapped in `ProtectedRoute` and renders the `user` from the store.
 
 #### Docs
 
-**20. `docs(backend): document auth architecture`**
+**19. `docs(backend): document auth architecture`**
 
 - Files: `backend/CLAUDE.md`, `backend/.env.example` (final pass)
-- Deliverable: short "Auth architecture" section in `backend/CLAUDE.md` cross-referencing [auth-decisions.md](auth-decisions.md) and this slice; `backend/.env.example` confirmed to include every new variable introduced in task 3.
+- Deliverable: short "Auth architecture" section in `backend/CLAUDE.md` cross-referencing [auth-decisions.md](auth-decisions.md) and this slice; `backend/.env.example` confirmed to include every setting introduced in tasks 3 and 8 (session JWT + cookie flags).
 
 ---
 
