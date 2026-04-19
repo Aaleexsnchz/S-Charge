@@ -68,7 +68,7 @@ After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constrai
 **7. `feat(backend): add argon2id password helper`**
 
 - Files: `backend/app/utils/security.py`
-- Deliverable: `Argon2PasswordHelper` implementing fastapi-users' `PasswordHelperProtocol` with OWASP Argon2id parameters (`memory_cost=19456`, `time_cost=2`, `parallelism=1`); auto-rehash on verify.
+- Deliverable: `password_helper = PasswordHelper(...)` exposed at module level, wrapping pwdlib's `Argon2Hasher(memory_cost=19456, time_cost=2, parallelism=1)` to match OWASP minimums (tuned down from argon2-cffi defaults for CX22 login latency). No custom protocol class — fastapi-users' `PasswordHelper` already implements `PasswordHelperProtocol` and pwdlib handles auto-rehash on verify.
 
 **8. `feat(backend): add jwt strategies and auth transports`**
 
