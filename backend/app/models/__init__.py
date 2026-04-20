@@ -1,3 +1,3 @@
-from app.models.charging_station import ChargingStation
+from app.models.user import User
 
-__all__ = ["ChargingStation"]
+__all__ = ["User"]

@@ -10,6 +10,22 @@ jobs:
   backend:
     name: Backend (Python + uv)
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: change_me_db_password
+          POSTGRES_DB: app_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app_user -d app_db_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db_test
     defaults:
       run:
         working-directory: backend
@@ -21,20 +37,16 @@ jobs:
           python-version: '3.12'
       - name: Install backend dependencies
         run: uv sync --locked --all-groups
-      - name: Lint (ruff)
-        run: uv run ruff check app
+      - name: Lint (ruff check)
+        run: uv run ruff check app tests
+      - name: Format check (ruff format)
+        run: uv run ruff format --check app tests
       - name: Type check (mypy)
-        run: uv run mypy app
-      - name: Syntax check
-        run: uv run python -m compileall app
+        run: uv run mypy app tests
+      - name: Generate ephemeral test secret for JWT signing
+        run: echo "SECRET_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
       - name: Run backend tests
-        run: |
-          set +e
-          uv run pytest -q
-          code=$?
-          if [ "$code" -ne 0 ] && [ "$code" -ne 5 ]; then
-            exit "$code"
-          fi
+        run: uv run pytest
 
   frontend:
     name: Frontend (React + pnpm)
