@@ -56,3 +56,7 @@ Per [../PLAN.md](../PLAN.md), these are intentionally simulated — the thesis c
 **Metrics and alerting.** Prometheus + Grafana, or a hosted equivalent. At thesis scale (single VPS, no real users) there is nothing to alert on. Trigger: first external users, or any SLO commitment.
 
 **Horizontal scaling.** The stateless session JWT scales horizontally trivially; any future in-memory state (app-level rate limiter, in-process caches) would need Redis. The `DATABASE_URL` pool is already sized for concurrent workers. Trigger: load measurements saturating a single Uvicorn worker.
+
+## Developer experience
+
+**Extract reusable skill: FastAPI-users auth for SPAs/PWAs.** [auth-decisions.md](auth-decisions.md), the slice 1 code, and the test fixtures together form a niche-but-complete pattern — single HttpOnly cookie (no refresh tokens for same-origin PWAs), pwdlib-backed Argon2 at OWASP minimums, citext email with `TYPE_CHECKING` override, alembic-driven test schema with transactional rollback, library-native error-code contract. Worth packaging as a Claude Code skill if ever starting another FastAPI project so the decisions don't have to be re-derived. Trigger: starting a second FastAPI project, or finding a credible skill-sharing platform worth uploading to. Estimated effort once triggered: 3–5 hours to extract, test the skill against a throwaway project, and refine.
