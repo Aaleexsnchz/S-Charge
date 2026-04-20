@@ -80,6 +80,36 @@ Routers should be **thin**: parse input, call a service, return. Business logic 
 uv run ruff check app && uv run ruff format --check app && uv run mypy app
 ```
 
+## Auth architecture
+
+Full rationale in [../docs/auth-decisions.md](../docs/auth-decisions.md); slice 1 task plan in [../docs/phase-1.md](../docs/phase-1.md); scope-deferred items in [../docs/future-work.md](../docs/future-work.md).
+
+**Mechanism.** Single JWT (HS256, 14-day lifetime, audience `tfm:session`) in an HttpOnly cookie — `HttpOnly; Secure; SameSite=Lax`, path `/`. No refresh tokens (PWA-specific rationale in auth-decisions §6). Library: `fastapi-users` + `pwdlib` for Argon2id hashing at OWASP minimums.
+
+**File map.**
+
+```text
+app/
+├── models/user.py             User model (citext email, name, picture_url)
+├── schemas/auth.py            UserRead / UserCreate / UserUpdate + email normaliser
+├── services/user_manager.py   UserManager.validate_password + audit hooks;
+│                              FastAPIUsers instance + current_user dependency
+├── utils/
+│   ├── auth_backend.py        CookieTransport + JWTStrategy + AuthenticationBackend
+│   ├── security.py            password_helper (Argon2id OWASP params via pwdlib)
+│   └── audit.py               audit(event, **fields) — JSON to stdout
+├── routers/
+│   ├── auth.py                /api/auth/{register,login,logout}
+│   └── users.py               /api/users/me + admin CRUD
+└── dependencies.py            get_db, get_user_db
+```
+
+**In scope (slice 1).** Register, login, logout, `/users/me` via fastapi-users routers. Length-only password policy (≥12 chars). Audit events for `register` and `login_ok`.
+
+**Out of scope (documented in `future-work.md`).** Rate limiting (deferred to Nginx `limit_req` in phase 6), `login_fail` / `logout` audit (no native hooks), refresh tokens, per-account lockout, HIBP password check, DB-backed session revocation.
+
+**Tests.** `tests/test_auth_happy.py` walks register → login → `/users/me` → logout → `/users/me` fails. `tests/test_auth_negative.py` covers duplicate email, bad credentials, short password, missing / malformed cookie.
+
 ## Commands
 
 ```bash
