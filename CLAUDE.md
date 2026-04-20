@@ -48,3 +48,17 @@ Payments, commission payouts, and real-time occupation for private points are si
 - Prefer small focused commits over large batches.
 - Plan before building: agree on approach before writing code for non-trivial work.
 - Responsive UI is mandatory (mobile-first, tested on real iPhone + Android). PWA installability is a hard requirement.
+
+## Documentation discipline
+
+At the end of each slice (or when an edit would otherwise leave a doc stale), update these in the same commit as the code change:
+
+- **[README.md](README.md)** — status table, any new major component, changed quick-start
+- **[PLAN.md](PLAN.md)** — tick off completed checkboxes; adjust estimates if they shifted materially
+- **[docs/future-work.md](docs/future-work.md)** — add newly-deferred items; remove ones we actually built
+- **[backend/CLAUDE.md](backend/CLAUDE.md)** / **[frontend/CLAUDE.md](frontend/CLAUDE.md)** — update the file map or "architecture" section when a cross-cutting system lands (auth, ETL, simulation)
+
+Write-once docs (don't touch unless a decision genuinely changes):
+
+- **[docs/auth-decisions.md](docs/auth-decisions.md)** and future ADR-style docs — append new decisions with a date rather than editing in place (see the doc's own preamble)
+- **[docs/phase-N.md](docs/)** — the slice spec is frozen once the slice ships; differences from the spec should be noted in the final commit message, not by rewriting history
