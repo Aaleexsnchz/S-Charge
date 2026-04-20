@@ -77,7 +77,7 @@ Routers should be **thin**: parse input, call a service, return. Business logic 
 - Run before commit:
 
 ```bash
-uv run ruff check app && uv run ruff format --check app && uv run mypy app
+uv run ruff check app tests && uv run ruff format --check app tests && uv run mypy app tests
 ```
 
 ## Auth architecture
@@ -118,8 +118,9 @@ uv run uvicorn app.main:app --reload   # run locally (needs DATABASE_URL overrid
 uv run alembic revision --autogenerate -m "msg"
 uv run alembic upgrade head
 uv run pytest
-uv run ruff check app
-uv run mypy app
+uv run ruff check app tests
+uv run ruff format --check app tests
+uv run mypy app tests
 ```
 
 When running in Docker (the default), see root [DOCKER.md](../DOCKER.md) — `.py` edits auto-reload; `pyproject.toml` changes need a rebuild.
