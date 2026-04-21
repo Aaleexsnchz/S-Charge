@@ -38,26 +38,29 @@ Add as needed: `components/`, `hooks/`, `api/`, `types/`, `utils/`. Prefer featu
 
 ### UI
 
-- **MUI is the only UI library.** No Tailwind, no Chakra, no Radix. If something is missing, build it with MUI primitives + `sx`.
+- **MUI is the only UI library.** No Tailwind, no Chakra, no Radix. If something is missing, build it with MUI primitives + `sx`. Decision and rejected alternatives in [../docs/frontend-decisions.md](../docs/frontend-decisions.md) §7.
 - **Styling via `sx` prop** for component-local styles; theme tokens for anything shared (colors, spacing, breakpoints).
 - **Responsive is mandatory.** Mobile-first. Test at 360px, 768px, 1280px. Never hardcode pixel widths on layout containers.
 - Exactly **one viewport meta tag** in `index.html`: `<meta name="viewport" content="width=device-width, initial-scale=1" />`.
-- Icons: `@mui/icons-material` only.
+- Icons: `@mui/icons-material` only. Use **per-icon imports** (`import FooIcon from '@mui/icons-material/Foo'`) — the barrel import breaks tree-shaking and pulls megabytes of unused icons.
+- **Toasts:** `notistack` (`SnackbarProvider` at root, inside `ThemeProvider`). `useSnackbar()` from components; React Router actions return `{ toast }` and a page-level hook dispatches; imperative `enqueueSnackbar` is reserved for cross-cutting places like the `openapi-fetch` middleware that surfaces 401s. See decisions §12.
 
 ### Routing
 
-- React Router **v7** (not v6). Use the modern data-router APIs (`createBrowserRouter`, `loader`, `action`) where they help; fall back to element routes when they don't.
+- React Router **v7** (not v6). Data-router APIs are first-class in this project: `createBrowserRouter`, a root `loader` that owns auth state, `action` for auth and form mutations, `redirect()` from loaders and actions, and `lazy: () => import(...)` for route-level code splitting (decisions §4). Element-only routes remain valid for screens without data or mutation needs.
 
 ### State and data
 
-- Server state: fetch via `fetch` + a small typed API layer in `src/api/`. Introduce TanStack Query only if caching/dedup becomes painful.
-- Client state: `useState` + context. Don't reach for Zustand/Redux until it's clearly needed.
-- Never store derived values in state.
+- **Server state:** typed `openapi-fetch` client in `src/api/client.ts`; schema generated via `pnpm gen:api` from the backend's `/openapi.json`. From Phase 2 onward, wrapped with TanStack Query for caching, dedup, and refetch. See decisions §10 and §11.
+- **Auth state:** React Router v7 root `loader` + `useRouteLoaderData('root')`. No client-side store, no Zustand, no bespoke context, no `localStorage`. Login / register / logout flow through React Router `action`s that return `redirect(...)`; revalidation is automatic. See decisions §9.
+- **Form state:** React Router `<Form method="post">` + `action` + `useActionData` for simple forms (<5 fields, no cross-field rules). `react-hook-form` + Zod from Phase 4 onward for simulation, recommendation, private-point and booking forms. See decisions §8.
+- **Other client state:** `useState` + derived-during-render. Never store derived values in state.
 
 ### Env
 
 - Only `VITE_*` variables are exposed to the browser — and **everything prefixed `VITE_` is public** (bundled into the build). Never put secrets in `frontend/.env`.
-- Config consumed via `import.meta.env.VITE_API_URL`.
+- **API base URL is not an env var.** Dev uses Vite's `server.proxy` to forward `/api/*` to the backend container; prod uses Nginx. The frontend always calls same-origin `/api/*` so the session cookie stays first-party.
+- Map tile key (from Phase 2): `VITE_MAPTILER_KEY`. Public by design; lock it to the app's origins in the MapTiler dashboard. See decisions §2.
 
 ### Testing
 
