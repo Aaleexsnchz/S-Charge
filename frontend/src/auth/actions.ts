@@ -11,7 +11,7 @@ const AUTH_ERROR_COPY: Record<string, string> = {
 
 const GENERIC_ERROR = 'Error del servidor, inténtalo de nuevo'
 
-function errorCodeFromDetail(detail: unknown): string | null {
+export function errorCodeFromDetail(detail: unknown): string | null {
   if (typeof detail === 'string') return detail
   if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
     const code = (detail as Record<string, unknown>).code
@@ -20,7 +20,7 @@ function errorCodeFromDetail(detail: unknown): string | null {
   return null
 }
 
-function messageFor(detail: unknown): string {
+export function messageFor(detail: unknown): string {
   const code = errorCodeFromDetail(detail)
   if (code) {
     const msg = AUTH_ERROR_COPY[code]
