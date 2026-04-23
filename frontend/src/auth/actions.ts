@@ -9,6 +9,10 @@ const AUTH_ERROR_COPY: Record<string, string> = {
   REGISTER_INVALID_PASSWORD: 'La contraseña debe tener al menos 12 caracteres',
 }
 
+const FIELD_ERROR_COPY: Record<string, string> = {
+  email: 'La dirección de correo introducida no es válida',
+}
+
 const GENERIC_ERROR = 'Error del servidor, inténtalo de nuevo'
 
 export function errorCodeFromDetail(detail: unknown): string | null {
@@ -20,7 +24,26 @@ export function errorCodeFromDetail(detail: unknown): string | null {
   return null
 }
 
+export function fieldErrorFromValidationArray(
+  detail: unknown,
+): string | null {
+  if (!Array.isArray(detail)) return null
+  for (const item of detail) {
+    if (!item || typeof item !== 'object') continue
+    const loc = (item as Record<string, unknown>).loc
+    if (!Array.isArray(loc) || loc.length === 0) continue
+    const field = loc[loc.length - 1]
+    if (typeof field !== 'string') continue
+    const msg = FIELD_ERROR_COPY[field]
+    if (msg) return msg
+  }
+  return null
+}
+
 export function messageFor(detail: unknown): string {
+  const fieldMessage = fieldErrorFromValidationArray(detail)
+  if (fieldMessage) return fieldMessage
+
   const code = errorCodeFromDetail(detail)
   if (code) {
     const msg = AUTH_ERROR_COPY[code]
@@ -29,11 +52,8 @@ export function messageFor(detail: unknown): string {
   return GENERIC_ERROR
 }
 
-async function submitLogin(
-  username: string,
-  password: string,
-): Promise<Response> {
-  const { response } = await apiClient.POST('/api/auth/login', {
+function submitLogin(username: string, password: string) {
+  return apiClient.POST('/api/auth/login', {
     body: {
       username,
       password,
@@ -42,8 +62,10 @@ async function submitLogin(
     },
     bodySerializer: (body) =>
       new URLSearchParams(body as Record<string, string>),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
   })
-  return response
 }
 
 export async function loginAction({
@@ -53,14 +75,11 @@ export async function loginAction({
   const username = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
 
-  const response = await submitLogin(username, password)
+  const { error, response } = await submitLogin(username, password)
   if (response.ok) return redirect('/profile')
 
-  if (response.status === 400) {
-    const body = (await response.json().catch(() => null)) as
-      | { detail?: unknown }
-      | null
-    return { error: messageFor(body?.detail) }
+  if ((response.status === 400 || response.status === 422) && error) {
+    return { error: messageFor(error.detail) }
   }
   return { error: GENERIC_ERROR }
 }
@@ -79,11 +98,11 @@ export async function registerAction({
   })
 
   if (response.ok) {
-    const loginResponse = await submitLogin(email, password)
-    return redirect(loginResponse.ok ? '/profile' : '/login')
+    const loginResult = await submitLogin(email, password)
+    return redirect(loginResult.response.ok ? '/profile' : '/login')
   }
 
-  if (response.status === 400 && error) {
+  if ((response.status === 400 || response.status === 422) && error) {
     return { error: messageFor(error.detail) }
   }
   return { error: GENERIC_ERROR }

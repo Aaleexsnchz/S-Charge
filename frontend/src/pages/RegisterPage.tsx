@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Alert,
   Button,
@@ -19,18 +20,25 @@ export function RegisterPage() {
   const navigation = useNavigation()
   const submitting = navigation.state === 'submitting'
 
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const canSubmit = email.trim() !== '' && password.length >= 12
+
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
         Crear cuenta
       </Typography>
-      <Form method="post">
+      <Form method="post" noValidate>
         <Stack spacing={2}>
           <TextField
             name="name"
             type="text"
             label="Nombre (opcional)"
             autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             fullWidth
           />
           <TextField
@@ -38,7 +46,8 @@ export function RegisterPage() {
             type="email"
             label="Email"
             autoComplete="email"
-            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             fullWidth
           />
           <TextField
@@ -47,9 +56,9 @@ export function RegisterPage() {
             label="Contraseña"
             autoComplete="new-password"
             helperText="Mínimo 12 caracteres"
-            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             fullWidth
-            inputProps={{ minLength: 12 }}
           />
           {actionData?.error && (
             <Alert severity="error">{actionData.error}</Alert>
@@ -57,7 +66,7 @@ export function RegisterPage() {
           <Button
             type="submit"
             variant="contained"
-            disabled={submitting}
+            disabled={submitting || !canSubmit}
             fullWidth
           >
             {submitting ? 'Creando cuenta…' : 'Crear cuenta'}

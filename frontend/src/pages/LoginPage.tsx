@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Alert,
   Button,
@@ -19,19 +20,24 @@ export function LoginPage() {
   const navigation = useNavigation()
   const submitting = navigation.state === 'submitting'
 
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const canSubmit = email.trim() !== '' && password !== ''
+
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
         Iniciar sesión
       </Typography>
-      <Form method="post">
+      <Form method="post" noValidate>
         <Stack spacing={2}>
           <TextField
             name="email"
             type="email"
             label="Email"
             autoComplete="email"
-            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             fullWidth
           />
           <TextField
@@ -39,9 +45,9 @@ export function LoginPage() {
             type="password"
             label="Contraseña"
             autoComplete="current-password"
-            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             fullWidth
-            inputProps={{ minLength: 12 }}
           />
           {actionData?.error && (
             <Alert severity="error">{actionData.error}</Alert>
@@ -49,7 +55,7 @@ export function LoginPage() {
           <Button
             type="submit"
             variant="contained"
-            disabled={submitting}
+            disabled={submitting || !canSubmit}
             fullWidth
           >
             {submitting ? 'Iniciando sesión…' : 'Iniciar sesión'}

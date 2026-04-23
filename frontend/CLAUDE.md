@@ -52,6 +52,7 @@ Add as needed: `components/`, `hooks/`, `api/`, `types/`, `utils/`. Prefer featu
 ### State and data
 
 - **Server state:** typed `openapi-fetch` client in `src/api/client.ts`; schema generated via `pnpm gen:api` from the backend's `/openapi.json`. From Phase 2 onward, wrapped with TanStack Query for caching, dedup, and refetch. See decisions §10 and §11.
+- **openapi-fetch body-stream gotcha.** `apiClient.POST(...)` returns `{ data, error, response }`. The library has already consumed the response body to populate `data` / `error`, so calling `response.json()` / `response.text()` downstream throws (body is a one-shot stream). Destructure `{ data, error, response }` at the call site and use them — don't pass only `response` around and try to re-parse.
 - **Auth state:** React Router v7 root `loader` + `useRouteLoaderData('root')`. No client-side store, no Zustand, no bespoke context, no `localStorage`. Login / register / logout flow through React Router `action`s that return `redirect(...)`; revalidation is automatic. See decisions §9.
 - **Form state:** React Router `<Form method="post">` + `action` + `useActionData` for simple forms (<5 fields, no cross-field rules). `react-hook-form` + Zod from Phase 4 onward for simulation, recommendation, private-point and booking forms. See decisions §8.
 - **Other client state:** `useState` + derived-during-render. Never store derived values in state.
