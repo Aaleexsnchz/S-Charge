@@ -1,36 +1,47 @@
-import { createBrowserRouter } from 'react-router'
+import { Outlet, createBrowserRouter } from 'react-router'
+import { loginAction, logoutAction, registerAction } from './auth/actions'
+import { rootLoader } from './auth/loaders'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { RootHydrateFallback } from './components/RootHydrateFallback'
+import { AuthLayout } from './layouts/AuthLayout'
 import { RootLayout } from './layouts/RootLayout'
 import { HomePage } from './pages/HomePage'
-import { MapPage } from './pages/MapPage'
+import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
-import { StationDetailPage } from './pages/StationDetailPage'
-import { StationsPage } from './pages/StationsPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { RegisterPage } from './pages/RegisterPage'
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <RootLayout />,
+    id: 'root',
+    loader: rootLoader,
+    HydrateFallback: RootHydrateFallback,
+    element: <Outlet />,
     children: [
       {
-        index: true,
-        element: <HomePage />,
+        element: <AuthLayout />,
+        children: [
+          { path: 'login', element: <LoginPage />, action: loginAction },
+          {
+            path: 'register',
+            element: <RegisterPage />,
+            action: registerAction,
+          },
+        ],
       },
       {
-        path: 'stations',
-        element: <StationsPage />,
+        element: (
+          <ProtectedRoute>
+            <RootLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'logout', action: logoutAction },
+        ],
       },
-      {
-        path: 'stations/:stationId',
-        element: <StationDetailPage />,
-      },
-      {
-        path: 'map',
-        element: <MapPage />,
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />,
-      },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

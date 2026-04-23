@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
+import { SnackbarProvider } from 'notistack'
 import './index.css'
 import { router } from './router'
 import { CssBaseline, ThemeProvider } from '@mui/material';
@@ -18,7 +19,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <RouterProvider router={router} />
+      <SnackbarProvider
+        maxSnack={3}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        autoHideDuration={4000}
+      >
+        <RouterProvider router={router} />
+      </SnackbarProvider>
     </ThemeProvider>
   </StrictMode>,
 )

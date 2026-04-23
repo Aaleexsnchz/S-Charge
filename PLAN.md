@@ -24,7 +24,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React + TypeScript + Vite, MUI, Recharts, Leaflet |
+| Frontend | React + TypeScript + Vite, MUI, ECharts, MapLibre GL + self-hosted Protomaps (MapTiler fallback) |
 | PWA | Vite PWA plugin (installable, offline shell) |
 | Backend | Python + FastAPI |
 | Database | PostgreSQL |
@@ -174,11 +174,21 @@ Private point CRUD, bookings, public/private toggle, owner dashboard.
 
 Responsive QA, error states, deploy, tests.
 
+**Deployment target — decide at the start of this phase:**
+
+| Option | Compute | Database | Est. cost | Trade-off |
+| --- | --- | --- | --- | --- |
+| **A. Hetzner VPS (CX22)** | Self-managed Nginx + Docker Compose | Postgres in the compose stack | ~€65/yr | Full control; more to defend as "infra work"; ~5–10h extra ops (Nginx, TLS renewal, backups cron) |
+| **B. Fly.io + Neon** | `fly deploy` per service (`fly.toml` ~20 lines each) | Neon managed Postgres | ~€0–180/yr (free tiers cover a thesis demo) | Less ops time → more hours for Phase 4/7; two vendor dashboards; free-tier idle limits are a defense-day risk to plan for |
+
+Same `Dockerfile` and Alembic migrations either way — the choice only affects the last mile. If switching away from Hetzner, update `docs/auth-decisions.md` (or add an ADR) with a one-paragraph rationale so the paper trail stays clean.
+
 - [ ] All pages tested on real phone
 - [ ] Every API call has loading/error/empty states
 - [ ] Backend tests pass with ≥70% coverage on `services/`
-- [ ] Deployed to Hetzner at real HTTPS domain
-- [ ] SSL auto-renewal verified
+- [ ] Deployment target chosen (A or B) and rationale recorded in an ADR
+- [ ] Deployed at real HTTPS domain
+- [ ] SSL auto-renewal verified (Hetzner) / managed certs confirmed (Fly)
 - [ ] PWA installable from production on iOS + Android
 - [ ] Env vars documented, secrets out of git
 - [ ] At least one external user registers + uses the app

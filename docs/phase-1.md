@@ -28,7 +28,7 @@ Decisions and rationale are recorded in [auth-decisions.md](auth-decisions.md). 
 
 ### Task plan
 
-Ordered commits, each small and self-contained. After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constraint; the sequence below is the recommended walk. Strict dependency chain: 1 → 2 → 5 → 6 → 10 → 11 → 12 → 13/14.
+Ordered commits, each small and self-contained. After task 1 is merged, tasks 2–4 / 7 / 8 / 9 have no mutual ordering constraint; the sequence below is the recommended walk. Strict dependency chain — backend: 1 → 2 → 5 → 6 → 10 → 11 → 12 → 13/14; frontend: 15 → {16, 17} → 18.
 
 #### Backend
 
@@ -90,21 +90,23 @@ Ordered commits, each small and self-contained. After task 1 is merged, tasks 2�
 
 #### Frontend
 
-- [ ] **15. `feat(frontend): add api client with auth store`**
-  - Files: `frontend/src/api/client.ts`, `frontend/src/auth/AuthStore.ts`
-  - Deliverable: fetch wrapper with `credentials: 'include'` so the HttpOnly session cookie is sent automatically; on 401 clears the auth store and redirects to `/login`. No client-side token handling — the cookie is the session. Zustand store holds only the `user` object (fetched from `GET /api/users/me`) and exposes `login`, `register`, `logout`, `bootstrap`. `grep -r localStorage frontend/src/api frontend/src/auth` returns no matches.
+Architecture note: this slice's frontend tasks have been rewritten (2026-04-21) to match [frontend-decisions.md](frontend-decisions.md) §§9–12 — loader-based auth via React Router v7 (no Zustand / no context), typed API client via `openapi-typescript` + `openapi-fetch`, Vite dev proxy for same-origin `/api/*`, and `notistack` as the toast surface. UI copy is Spanish (§13).
 
-- [ ] **16. `feat(frontend): add protected route and bootstrap`**
-  - Files: `frontend/src/components/ProtectedRoute.tsx`, `frontend/src/main.tsx`
-  - Deliverable: `ProtectedRoute` renders children when `user` is set, shows a loading state while `bootstrap` is pending, redirects to `/login` otherwise. App root invokes `AuthStore.bootstrap()` once on mount.
+- [x] **15. `feat(frontend): typed api client, auth loaders and actions, toast provider`**
+  - Files: `frontend/package.json`, `frontend/pnpm-lock.yaml`, `frontend/vite.config.ts`, `frontend/.env`, `frontend/.env.example`, `frontend/src/api/client.ts`, `frontend/src/api/schema.d.ts` (generated), `frontend/src/api/types.ts`, `frontend/src/auth/loaders.ts`, `frontend/src/auth/actions.ts`, `frontend/src/main.tsx`
+  - Deliverable: `openapi-typescript` (dev) + `openapi-fetch` + `notistack` installed and locked via pnpm. `package.json` gains `"gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts"`; the generated `schema.d.ts` is committed. `apiClient` is a typed `openapi-fetch` wrapper with `credentials: 'include'` and `baseUrl: ''` (same-origin). `rootLoader` calls `apiClient.GET('/api/users/me')` and returns `{ user: data ?? null }` — 401 is an expected pre-login state, not an error. `loginAction`, `registerAction`, `logoutAction` each return either `{ error }` (Spanish copy mapped from the backend's `detail` enum — see slice acceptance) or `redirect(...)` on success. `notistack` `SnackbarProvider` wired in `main.tsx` inside `ThemeProvider` with `maxSnack={3}`, `anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}`. [vite.config.ts](../frontend/vite.config.ts) gains `server.proxy: { '/api': 'http://backend:8000' }` so the dev server serves `/api/*` same-origin; `VITE_API_URL` removed from `.env` / `.env.example` as now-unused. Verification: no client-side auth store exists — `grep -r "localStorage" frontend/src` returns no matches, `grep -rE "AuthStore|Zustand|createContext" frontend/src/auth` returns nothing.
 
-- [ ] **17. `feat(frontend): add login and register pages`**
-  - Files: `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/RegisterPage.tsx`
-  - Deliverable: MUI forms for each. Error mapping: 400 with `detail == "LOGIN_BAD_CREDENTIALS"` → "Invalid email or password"; 400 with `detail == "REGISTER_USER_ALREADY_EXISTS"` → "Email already registered"; 400 with `detail.code == "REGISTER_INVALID_PASSWORD"` → the `detail.reason` message; 401 → generic "Please sign in again"; 429 → generic "Too many attempts, try later" (activates only if/when Nginx rate-limiting is enabled in phase 6). Successful submit routes to `/profile`.
+- [x] **16. `feat(frontend): protected route wrapper`**
+  - Files: `frontend/src/components/ProtectedRoute.tsx`
+  - Deliverable: wrapper reads `useRouteLoaderData('root')`; when `user` is null returns `<Navigate to="/login" replace />`, otherwise renders `children`. No loading state (the root loader resolves before descendants render), no effect hooks, no store access.
 
-- [ ] **18. `feat(frontend): wire auth routes`**
+- [x] **17. `feat(frontend): auth layout, login / register / profile pages`**
+  - Files: `frontend/src/layouts/AuthLayout.tsx`, `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/RegisterPage.tsx`, `frontend/src/pages/ProfilePage.tsx`
+  - Deliverable: `AuthLayout` is a centred `<Container maxWidth="xs">` with no topbar; it mirrors `ProtectedRoute` — if `useRouteLoaderData('root')` shows an authenticated user, it renders `<Navigate to="/profile" replace />`, otherwise it wraps `<Outlet />`. `LoginPage` / `RegisterPage` use React Router `<Form method="post">` with MUI `<TextField>` (`type="email"`, `type="password"`, `required`, `inputProps={{ minLength: 12 }}` on the password field). Pending state via `useNavigation().state === 'submitting'` (no local `isSubmitting`). Inline field errors via MUI `<Alert severity="error">` driven by `useActionData()`. Error copy is Spanish and maps the backend's `detail` enum: `LOGIN_BAD_CREDENTIALS` → "Email o contraseña inválidos"; `REGISTER_USER_ALREADY_EXISTS` → "Este email ya está registrado"; `REGISTER_INVALID_PASSWORD` → "La contraseña debe tener al menos 12 caracteres"; 429 (future, Nginx-gated) → "Demasiados intentos, inténtalo más tarde". `ProfilePage` reads the user via `useRouteLoaderData('root')` and renders name + email + a logout button — a `<Form method="post" action="/logout">` wrapping an MUI `<Button>`.
+
+- [x] **18. `feat(frontend): wire auth routes and root loader`**
   - Files: `frontend/src/router.tsx`
-  - Deliverable: `/login`, `/register`, `/profile` routes; `/profile` wrapped in `ProtectedRoute` and renders the `user` from the store.
+  - Deliverable: root route has `id: 'root'`, `loader: rootLoader`, element `<Outlet />`. Two child branches — (a) `<AuthLayout />` containing `/login` (action: `loginAction`) and `/register` (action: `registerAction`); (b) `<ProtectedRoute><RootLayout /></ProtectedRoute>` containing `/` (`HomePage`), `/profile` (`ProfilePage`), and an action-only `/logout` route (action: `logoutAction`, no element). `*` → `<NotFoundPage />` sits outside both branches. Manual verification: `/profile` while anonymous redirects to `/login`; `/login` while authenticated redirects to `/profile`; successful login lands on `/profile`; logout button returns to `/login`.
 
 #### Docs
 
