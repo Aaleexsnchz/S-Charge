@@ -1,9 +1,11 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 from urllib.parse import urlparse, urlunparse
 
 import asyncpg
+import pytest
 import pytest_asyncio
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
@@ -78,6 +80,27 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         finally:
             await session.close()
             await transaction.rollback()
+
+
+@pytest.fixture(autouse=True)
+def _mock_outbound_emails() -> Iterator[None]:
+    """Auto-mock outbound email sends so tests never hit Resend.
+
+    Tests that need to assert on or capture the verification / reset token
+    should add their own fixture that re-patches the same targets and yields
+    the mock instance — that patch will sit on top of this one and win.
+    """
+    with (
+        patch(
+            "app.services.user_manager.send_verification_email",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.services.user_manager.send_reset_password_email",
+            new_callable=AsyncMock,
+        ),
+    ):
+        yield
 
 
 @pytest_asyncio.fixture(loop_scope="session")

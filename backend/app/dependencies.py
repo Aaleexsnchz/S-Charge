@@ -6,7 +6,7 @@ from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import SessionLocal
-from app.models.user import User
+from app.models.user import OAuthAccount, User
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
@@ -21,4 +21,4 @@ async def get_db() -> AsyncIterator[AsyncSession]:
 async def get_user_db(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AsyncIterator[SQLAlchemyUserDatabase]:
-    yield SQLAlchemyUserDatabase(session, User)
+    yield SQLAlchemyUserDatabase(session, User, OAuthAccount)

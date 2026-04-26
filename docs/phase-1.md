@@ -122,17 +122,17 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 **Acceptance:** clicking "Sign in with Google" on the login page returns the user to the app authenticated, receiving the same single HttpOnly session cookie that email/password login issues. First-time Google users are auto-provisioned with a row in `users` (no password) and a row in `oauth_account`. Returning users match by `(oauth_name, account_id)`. An existing email/password user whose Google email matches can link Google without creating a duplicate account (via fastapi-users' `associate_by_email=True`). OAuth `state` mismatches return 400. All OAuth endpoints are under `/api/auth/google/*`.
 
+**Known limitation — addressed in Slice 3.** `associate_by_email=True` combined with unverified password registration opens a pre-registration shell attack: an attacker registers a password account with the victim's email, waits for the victim to sign in with Google, and the accounts auto-link — the attacker can then use the password they chose. Slice 3 closes this by gating password login on email verification (`requires_verification=True`) and marking Google-issued accounts as verified by default (`is_verified_by_default=True`). Until Slice 3 ships, this demo-only auth flow is not safe against a targeted attacker.
+
 ### Task plan
 
 #### Backend
 
-- [ ] **1. `chore(backend): add httpx-oauth dependency`**
-  - Files: `backend/pyproject.toml`, `backend/uv.lock`
-  - Deliverable: `httpx-oauth` declared and locked. `uv sync --locked` passes inside the backend container. fastapi-users is already installed with the `[oauth]` extra so no additional fastapi-users dependency is needed.
+- [x] **1. ~~`chore(backend): add httpx-oauth dependency`~~** — no-op on 2026-04-24: slice 1's `fastapi-users[oauth]` extra already installs `httpx-oauth 0.16.1`. Verified via `docker compose exec backend uv pip list`. No files touched, no commit.
 
 - [ ] **2. `feat(backend): add oauth account model and user relationship`**
-  - Files: `backend/app/models/oauth_account.py`, `backend/app/models/user.py` (extend), `backend/app/models/__init__.py`
-  - Deliverable: `OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID)` in its own module. `User` extended with `oauth_accounts: Mapped[list[OAuthAccount]] = relationship(lazy="joined")` so OAuth rows are loaded eagerly with the user. Both classes re-exported from `models/__init__.py`.
+  - Files: `backend/app/models/user.py` (extend), `backend/app/models/__init__.py`, `backend/app/dependencies.py` (extend)
+  - Deliverable: `OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID)` added to `models/user.py` (same aggregate as `User`, per [backend/CLAUDE.md](../backend/CLAUDE.md)'s "one file per aggregate") with a `user_id` override that points the foreign key at `users.id` — fastapi-users' mixin hardcodes `ForeignKey("user.id")` which doesn't match our pluralised table name. `User` extended with `oauth_accounts: Mapped[list[OAuthAccount]] = relationship(lazy="joined")` so OAuth rows are loaded eagerly with the user. `OAuthAccount` exported from `models/__init__.py`. `get_user_db` in `app/dependencies.py` now passes `OAuthAccount` as the third arg to `SQLAlchemyUserDatabase(session, User, OAuthAccount)` so `user_manager.oauth_callback` can upsert rows — `FastAPIUsers[...]` itself doesn't need extra args.
 
 - [ ] **3. `feat(backend): oauth account migration`**
   - Files: `backend/alembic/versions/xxxx_oauth_account.py`
@@ -140,11 +140,16 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 - [ ] **4. `feat(backend): add google oauth settings`**
   - Files: `backend/app/config.py`, `backend/.env.example`, `backend/.env`
-  - Deliverable: new settings — `google_client_id`, `google_client_secret`, `google_redirect_uri` (defaults to `http://localhost:8000/api/auth/google/callback` for local dev). `.env.example` documents the expected values and the Google Cloud Console origin.
+  - Deliverable: new settings — `google_client_id`, `google_client_secret`, `google_redirect_uri` (defaults to `http://localhost:5173/api/auth/google/callback` — the Vite dev origin, so the session cookie lands on `:5173` where the SPA runs; pointing Google directly at `:8000` would set the cookie on the wrong origin and break subsequent same-origin `/api/*` calls from `:5173`). `.env.example` documents the expected values and the Google Cloud Console "Authorised redirect URIs" entry.
 
-- [ ] **5. `feat(backend): add google oauth router with associate_by_email`**
-  - Files: `backend/app/routers/auth.py` (extend), `backend/app/services/user_manager.py` (extend — pass `oauth_accounts` to `FastAPIUsers` so the built-in OAuth router is available)
-  - Deliverable: `GoogleOAuth2(settings.google_client_id, settings.google_client_secret)` instance. Mount `fastapi_users.get_oauth_router(google_client, auth_backend, settings.secret_key, redirect_url=settings.google_redirect_uri, associate_by_email=True)` under `/auth/google` — after main.py's `/api` prefix this becomes `/api/auth/google/{authorize,callback}`. `associate_by_email=True` lets an existing email/password user whose Google email matches link Google without creating a duplicate row.
+- [ ] **5. `feat(backend): add google oauth router with redirect transport`**
+  - Files: `backend/app/utils/auth_backend.py` (extend), `backend/app/routers/auth.py` (extend), `backend/app/services/user_manager.py` (extend — pass `[auth_backend]` plus the `oauth_client` and `oauth_accounts` schema to `FastAPIUsers` so `get_oauth_router` is available), `backend/app/main.py` (extend — exception handler)
+  - Deliverable:
+    1. **`CookieRedirectTransport(CookieTransport)`** in `auth_backend.py` overrides `get_login_response` to return `303 See Other → /profile` while still attaching the session cookie via `_set_login_cookie`. Rationale is captured in a short docstring: fastapi-users' stock `CookieTransport` returns `204 No Content`, which leaves a top-level browser navigation (Google → our callback) on a blank page; a server-side 303 avoids that without needing a popup-based frontend flow (relevant because slice 4 makes this a PWA where popup UX is weakest on iOS installed apps).
+    2. **`oauth_backend = AuthenticationBackend(name="oauth-cookie", transport=CookieRedirectTransport(...), get_strategy=get_jwt_strategy)`** composed alongside the existing `auth_backend`. Same JWT strategy, same cookie name / flags — sessions set by either backend are read by the same `current_user` dependency. `oauth_backend` is **not** registered with `FastAPIUsers([...])`; it's used only to satisfy `get_oauth_router`'s `backend` parameter.
+    3. **Google client**: `google_client = GoogleOAuth2(settings.google_client_id, settings.google_client_secret)`.
+    4. **Router mount**: `fastapi_users.get_oauth_router(google_client, oauth_backend, settings.secret_key, redirect_url=settings.google_redirect_uri, associate_by_email=True)` under `/auth/google` (after main.py's `/api` prefix: `/api/auth/google/{authorize,callback}`). `associate_by_email=True` lets an existing email/password user whose Google email matches link Google without creating a duplicate row.
+    5. **Error redirect**: an exception handler registered on the FastAPI app maps `HTTPException`s raised by the callback (`OAUTH_INVALID_STATE`, `OAUTH_USER_ALREADY_EXISTS`, `OAUTH_NOT_AVAILABLE_EMAIL`, `ACCESS_TOKEN_DECODE_ERROR`, `ACCESS_TOKEN_ALREADY_EXPIRED`, `LOGIN_BAD_CREDENTIALS`) — scoped to requests under `/api/auth/google/*` only — to `303 → /login?error=oauth_failed`, so the browser always lands back in the SPA instead of on a raw JSON error page. Email/password error responses are untouched.
 
 - [ ] **6. `feat(backend): tag login_ok audit with oauth provider`**
   - Files: `backend/app/services/user_manager.py` (extend `on_after_login`)
@@ -156,23 +161,110 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 #### Frontend
 
-- [ ] **8. `feat(frontend): sign in with google button`**
+- [x] **8. `feat(frontend): sign in with google button`**
   - Files: `frontend/src/pages/LoginPage.tsx` (extend), `frontend/src/pages/RegisterPage.tsx` (extend)
-  - Deliverable: MUI button on both pages that navigates to `/api/auth/google/authorize` (full-page navigation — the backend returns a 302 to Google's consent URL). Styled per the Google Brand Guidelines (logo + "Sign in with Google" text).
+  - Deliverable: MUI button on both pages styled per Google brand guidelines (G logo + "Iniciar sesión con Google"). `/authorize` returns JSON `{ authorization_url }` (plus the CSRF cookie the library uses for state validation), not a redirect — so the click handler is: `const { data } = await apiClient.GET('/api/auth/google/authorize')` → `window.location.href = data.authorization_url`. On success, Google → backend callback → 303 to `/profile` → root loader re-runs and renders the authenticated shell. On failure, the backend 303s to `/login?error=oauth_failed`; `LoginPage` reads `searchParams.get('error')` on mount and shows a notistack toast ("No se pudo iniciar sesión con Google. Inténtalo de nuevo."), then clears the param via `setSearchParams({})` so a reload doesn't re-fire the toast.
 
-- [ ] **9. `feat(frontend): oauth callback page`**
-  - Files: `frontend/src/pages/OAuthCallbackPage.tsx`, `frontend/src/router.tsx` (extend)
-  - Deliverable: page at `/auth/callback` (frontend route, not backend) that calls `AuthStore.bootstrap()` to pick up the session cookie that was set server-side during the Google callback, then redirects to `/profile` on success or `/login` on failure with an error toast.
+- [x] **9. ~~`feat(frontend): oauth callback page`~~** — removed on 2026-04-24. Task 5's `CookieRedirectTransport` already 303s the browser from `/api/auth/google/callback` directly to `/profile`, at which point the root loader rehydrates from the session cookie. No client-side callback page is needed; the slice 1 refactor to loader-based auth also removed `AuthStore.bootstrap()` which the original task referenced.
 
 #### Docs
 
-- [ ] **10. `docs: google oauth setup`**
+- [x] **10. `docs: google oauth setup`**
   - Files: [README.md](../README.md) (extend), `backend/.env.example` (already done in task 4)
-  - Deliverable: new "Google OAuth setup" subsection in the root README covering Cloud Console steps (create OAuth consent screen; create OAuth 2.0 Client ID; authorized JavaScript origin `http://localhost:5173`; authorized redirect URI `http://localhost:8000/api/auth/google/callback`), plus where each value goes in `backend/.env`. Linked from the main Quickstart so new contributors find it naturally.
+  - Deliverable: new "Google OAuth setup" subsection in the root README covering Cloud Console steps (create OAuth consent screen; create OAuth 2.0 Client ID; authorised JavaScript origin `http://localhost:5173`; authorised redirect URI `http://localhost:5173/api/auth/google/callback` — matching the Vite-proxied same-origin flow, see task 4), plus where each value goes in `backend/.env`. Linked from the main Quickstart so new contributors find it naturally.
 
 ---
 
-## Slice 3 — PWA installable
+## Slice 3 — Email verification and password reset
+
+**Motivation.** Slice 2 ships OAuth with `associate_by_email=True`, which (by itself) is vulnerable to the pre-registration shell attack noted there. The fix is email verification on password registration + auto-verification for OAuth users. Password reset is bundled in the same slice because OAuth-first users (who never set a password) need it to bootstrap the email/password path on their own account — fastapi-users' `oauth_callback` generates a random password hash and discards the plaintext, so the user never learns it.
+
+**Acceptance:**
+
+- Registering with email/password creates the user with `is_verified=False`, sends a verification email, and returns 201 — but subsequent `POST /api/auth/login` is rejected with `LOGIN_USER_NOT_VERIFIED` until the link is clicked.
+- Clicking the verification link lands the browser on the SPA's verify page, which calls `POST /api/auth/verify?token=...`, flips `is_verified=True`, and shows a success toast.
+- Registering with Google OAuth auto-provisions the user with `is_verified=True` (no email sent).
+- A verified user who forgets their password can request a reset email and set a new password via the token in the email.
+- An OAuth-first user can use the same reset flow to set an email/password on their account (the reset email arrives because their email is already verified).
+- Duplicate-email registration returns the same `400 REGISTER_USER_ALREADY_EXISTS` response as today — no enumeration.
+- Email sends failing in local dev don't crash the flow (log the error, keep the registration — Resend's sandbox domain is used for dev, see task 2).
+
+**Locked decisions** (to be appended to [auth-decisions.md](auth-decisions.md))
+
+- Email provider: **Resend** via the `resend` Python SDK. 100 emails/day free, simple API, supports a sandbox domain for local dev without DNS setup. Chosen over SMTP to avoid dealing with SPF/DKIM during phase 1; those come back when we own the production domain in phase 6.
+- Verification token: fastapi-users default (JWT, 1h lifetime, signed with `secret_key`).
+- Reset token: fastapi-users default (JWT, 1h lifetime, signed with `secret_key`).
+- Password login is gated via `requires_verification=True` on the auth router.
+- OAuth is auto-verified via `is_verified_by_default=True` on the OAuth router.
+- No separate email-verification state table — fastapi-users' `is_verified` boolean on `users` is sufficient for slice scope. Tokens are stateless JWTs (no server-side revocation); acceptable for the 1h lifetime.
+
+### Task plan
+
+#### Backend
+
+- [x] **1. `chore(backend): add resend dependency`**
+  - Files: `backend/pyproject.toml`, `backend/uv.lock`
+  - Deliverable: `resend` declared and locked. `uv sync --locked` passes.
+
+- [x] **2. `feat(backend): add email settings`**
+  - Files: `backend/app/config.py`, `backend/.env.example`, `backend/.env`
+  - Deliverable: new settings — `resend_api_key` (empty default so import-time doesn't fail), `mail_from` (e.g., `noreply@tfm.example.com`; for dev, Resend's `onboarding@resend.dev` sandbox works), `app_base_url` (e.g., `http://localhost:5173`; the reset/verify emails need the absolute frontend URL).
+
+- [x] **3. `feat(backend): email helper service`**
+  - Files: `backend/app/services/email.py`, `backend/tests/test_services_email.py`
+  - Deliverable: `send_verification_email(to, token)` and `send_reset_password_email(to, token)`. Both build an absolute URL (`settings.app_base_url + "/verify?token=" + token`, likewise for reset) and call `resend.Emails.send(...)`. Plain-text emails for slice scope; HTML polish deferred. Send failures are logged via the audit helper (new events `email_send_ok` / `email_send_failed`) and **do not raise** — a transient Resend outage shouldn't crash a registration. Tests mock the Resend SDK.
+
+- [x] **4. `feat(backend): wire user_manager verification and reset hooks`**
+  - Files: `backend/app/services/user_manager.py` (extend)
+  - Deliverable: `on_after_register` continues to audit, then calls `self.request_verify(user, request)` so fastapi-users issues a token and invokes `on_after_request_verify`. `on_after_request_verify` calls `send_verification_email`. `on_after_forgot_password` calls `send_reset_password_email`. `on_after_verify` and `on_after_reset_password` audit `verify_ok` and `reset_ok` respectively. All hooks accept `request` for IP/UA auditing.
+
+- [x] **5. `feat(backend): mount verify + reset routers, gate login, verify oauth by default`**
+  - Files: `backend/app/routers/auth.py` (extend)
+  - Deliverable: mount `fastapi_users.get_verify_router(UserRead)` and `fastapi_users.get_reset_password_router()` under `/auth`. Change `get_auth_router(auth_backend)` → `get_auth_router(auth_backend, requires_verification=True)` so unverified password users get `400 LOGIN_USER_NOT_VERIFIED` instead of a session cookie. Change the Google OAuth mount to pass `is_verified_by_default=True` so Google-sourced accounts skip verification.
+
+- [x] **6. `test(backend): verification and reset flows`**
+  - Files: `backend/tests/test_auth_verify.py`, `backend/tests/test_auth_reset.py`, `backend/tests/test_auth_negative.py` (extend)
+  - Deliverable:
+    - Verify flow: register → `POST /api/auth/login` fails `LOGIN_USER_NOT_VERIFIED` → extract token from the mocked Resend call → `POST /api/auth/verify {token}` returns 200 → login now succeeds.
+    - Reset flow: for a verified user, `POST /api/auth/forgot-password {email}` returns 202 regardless of whether the email exists (no enumeration) → extract token from mocked send → `POST /api/auth/reset-password {token, password}` → login with new password.
+    - OAuth verify-by-default: mocked Google callback creates a user with `is_verified=True` (DB assertion).
+    - Negative: expired / tampered verify token returns 400; reset with short password returns 400 `RESET_PASSWORD_INVALID_PASSWORD`.
+
+#### Frontend
+
+- [x] **7. `feat(frontend): "revisa tu email" screen after register`**
+  - Files: `frontend/src/pages/CheckEmailPage.tsx`, `frontend/src/auth/actions.ts` (`registerAction` update), `frontend/src/router.tsx`
+  - Deliverable: `registerAction` now redirects to `/verificar-email-pendiente` (Spanish, per frontend-decisions §13) on 201 instead of logging the user in. The page reads the email from URL state / session storage and shows "Te hemos enviado un enlace a {email}" with a "Reenviar correo" button that POSTs `/api/auth/request-verify-token`.
+
+- [x] **8. `feat(frontend): verification landing page`**
+  - Files: `frontend/src/pages/VerifyEmailPage.tsx`, router wire
+  - Deliverable: `/verificar-email?token=...` POSTs to `/api/auth/verify` on mount (one-shot, so using `useEffect` with a ref-based guard to avoid React 18 strict-mode double-invoke). On success: success toast + redirect to `/login`. On failure: error toast + redirect to `/login?error=verify_failed`.
+
+- [x] **9. `feat(frontend): forgot-password form`**
+  - Files: `frontend/src/pages/ForgotPasswordPage.tsx`, link from LoginPage
+  - Deliverable: `/olvide-contrasena` form with email field. Calls `/api/auth/forgot-password`. Regardless of backend response (202 either way), always shows "Si existe una cuenta con ese email, recibirás un enlace" to avoid enumeration.
+
+- [x] **10. `feat(frontend): reset password form`**
+  - Files: `frontend/src/pages/ResetPasswordPage.tsx`, router wire
+  - Deliverable: `/restablecer-contrasena?token=...` with new-password field (`minLength=12` client-side). Calls `/api/auth/reset-password`. On success: toast "Contraseña actualizada" + redirect to `/login`. On 400 with `RESET_PASSWORD_BAD_TOKEN`: "Enlace inválido o expirado" with a "Solicitar otro" link.
+
+- [x] **11. `feat(frontend): handle LOGIN_USER_NOT_VERIFIED on login`**
+  - Files: `frontend/src/pages/LoginPage.tsx` (extend), `frontend/src/auth/actions.ts` (`loginAction` update)
+  - Deliverable: when `loginAction` sees `LOGIN_USER_NOT_VERIFIED`, return a typed error that LoginPage renders as "Verifica tu email antes de iniciar sesión. ¿Reenviar?" with a button that POSTs `/api/auth/request-verify-token` for the entered email. The button rate-limiting is delegated to Nginx (phase 6) — frontend doesn't add its own.
+
+#### Docs
+
+- [x] **12. `docs: record email verification decisions`**
+  - Files: [docs/auth-decisions.md](auth-decisions.md), [docs/future-work.md](future-work.md)
+  - Deliverable: append a dated section to `auth-decisions.md` covering: provider choice (Resend), rationale vs SMTP, `requires_verification=True` + `is_verified_by_default=True` decision, token lifetimes, and the slice 2 → slice 3 handoff. *(Note: there was no existing "email verification" entry in `future-work.md` to remove; instead, this commit adds a "Cleanup of stale unverified accounts" follow-up that surfaced during slice 3.)*
+
+- [x] **13. `docs: update README with email provider setup`**
+  - Files: [README.md](../README.md)
+  - Deliverable: new "Email provider setup" subsection covering Resend account creation, API-key env var, sandbox-domain note (for dev without a verified domain), and production setup (verify your domain in Resend, add SPF/DKIM DNS records) to be run in phase 6.
+
+---
+
+## Slice 4 — PWA installable
 
 **Acceptance:** in Chrome desktop/Android, the "Install app" prompt appears on the running app. On iOS Safari, "Add to Home Screen" produces an icon that launches the app full-screen with the correct theme color.
 
@@ -204,7 +296,7 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 ---
 
-## Slice 4 — README onboarding in ≤5 commands
+## Slice 5 — README onboarding in ≤5 commands
 
 **Acceptance:** a fresh clone of the repo produces a working stack following ≤5 shell commands from the root [README.md](../README.md). The Google OAuth setup has its own linked subsection.
 
@@ -223,7 +315,8 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 ## Suggested order
 
-1. **Slice 1 first** — it's the backbone; Slice 2 builds on its schema, `AuthStore`, and router structure
-2. **Slice 2** — adds the `oauth_account` table and reuses the single-cookie auth backend plus the Slice 1 `AuthStore`
-3. **Slice 3 in parallel with Slice 2** if blocked (independent of backend)
-4. **Slice 4 last** — by then the real commands and Google OAuth setup are stable
+1. **Slice 1 first** — it's the backbone; everything else builds on its schema, auth backend, and router structure.
+2. **Slice 2** — adds the `oauth_account` table and reuses the single-cookie auth backend. Ships with a documented security gap (pre-registration shell attack) that Slice 3 closes.
+3. **Slice 3** — email verification + password reset. Closes Slice 2's gap and completes the auth flow. Must land before any production deploy.
+4. **Slice 4 in parallel with Slice 2 or 3** if needed (PWA work is independent of backend auth changes).
+5. **Slice 5 last** — by then the real commands, Google OAuth setup, and email provider setup are stable enough to document without drift.

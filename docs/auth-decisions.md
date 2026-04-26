@@ -295,6 +295,39 @@ A 429 response is emitted by Nginx directly when the limit is exceeded.
 
 ---
 
+## 13. Email verification and password reset (Slice 3, 2026-04-27)
+
+**Decision.** Password registrations are unverified by default and gated from logging in (`requires_verification=True` on the auth router). Verification and password-reset emails are sent through [Resend](https://resend.com) via the `resend` Python SDK. Tokens are fastapi-users defaults — JWTs signed with the existing `secret_key`, 1h lifetime. Google OAuth users are auto-verified (`is_verified_by_default=True` on the OAuth router) since Google has already proven control of the address.
+
+**Rationale.**
+
+- *Closes the slice 2 → slice 3 handoff.* Slice 2 mounts the Google OAuth router with `associate_by_email=True`, which alone is vulnerable to a pre-registration shell attack: an attacker registers a password account with the victim's email, waits for the victim to sign in with Google, and the accounts auto-link — the attacker now has a working password on the victim's account. Gating password login on verification turns that attack into a no-op (the attacker never reaches the login step, because the verification link goes to the victim's inbox); auto-verifying OAuth users keeps `associate_by_email` ergonomically correct for the legitimate "I already had a password account, now I'm linking Google" path.
+- *Resend over SMTP.* SMTP at this stage means dealing with SPF/DKIM/DMARC for a domain we don't yet own (production domain lands in phase 6). Resend offers a sandbox sender (`onboarding@resend.dev`) that delivers without DNS setup, a free 100/day tier sufficient for a thesis demo, and a Python SDK that's a one-line replacement when we cut over to a verified domain in phase 6. The transactional-email-as-a-service pattern is the same one used by Loops, Postmark, SendGrid; choice of Resend is driven by free-tier limits and dev-friendliness, not lock-in (the helper module isolates the SDK call so swapping providers is a half-hour edit).
+- *Token lifetime — 1h.* fastapi-users' default. Long enough that a user finishing a coffee break still completes the flow; short enough that a leaked link expires before it's useful. No revocation on the token itself — they're stateless JWTs, so a leaked link is valid for the full hour. Acceptable: the alternative (a server-side `verification_tokens` table with a `revoked_at` column) is the same kind of work as DB-backed session revocation, deferred for the same reasons (see decision §6 and [future-work.md](future-work.md)). One-hour blast radius on a token that requires inbox access is a reasonable trade-off.
+- *No separate `email_verified_at` timestamp column.* fastapi-users' inherited `is_verified` boolean on `users` is sufficient for slice scope. If audit ever needs "when was this email verified", we'll either backfill via the existing `verify_ok` audit event or add the column then; adding it now is YAGNI.
+- *Send failures don't crash the flow.* The email helper catches Resend SDK exceptions and emits an `email_send_failed` audit event, then returns. Rationale: a transient Resend outage during a registration would otherwise 500 the request, leaving the user with an account they can't verify and no way to retry without manual DB cleanup. Better: register succeeds, the user can request a fresh verification email later via the resend button.
+
+**Implementation.** Slice 3.
+
+- Email helper: `backend/app/services/email.py` builds absolute URLs (`settings.app_base_url + "/verify-email?token=…"` and `…/reset-password?token=…`) and calls `resend.Emails.send`.
+- User-manager hooks: `on_after_register` calls `self.request_verify(user, request)`; `on_after_request_verify` and `on_after_forgot_password` dispatch the relevant email; `on_after_verify` and `on_after_reset_password` audit `verify_ok` / `reset_ok`.
+- Routers: `fastapi_users.get_verify_router(UserRead)` and `get_reset_password_router()` mounted under `/auth`. The auth router is now `get_auth_router(auth_backend, requires_verification=True)`. The Google OAuth router gains `is_verified_by_default=True`.
+- Frontend: registration redirects to `/check-email`; `/verify-email?token=…` POSTs the token on mount; `/forgot-password` and `/reset-password?token=…` are full forms; login surfaces `LOGIN_USER_NOT_VERIFIED` as a "Reenviar correo" call-to-action.
+
+**Rejected alternatives.**
+
+- *Magic-link login (passwordless).* Replaces password+verify with a single email-link login. UX win, but doesn't compose with the existing slice 1 password path and would require rewriting the OAuth-link semantics from scratch. Out of slice scope.
+- *Separate `verification_tokens` / `password_reset_tokens` tables with server-side revocation.* Worth doing in production, deferred for the same reasons as DB-backed session revocation. Tracked in [future-work.md](future-work.md).
+- *SMTP with a transactional sender (Mailgun, AWS SES).* Same job as Resend with more setup. Worth re-evaluating in phase 6 when the production domain exists; until then, Resend's sandbox is the fastest path to "emails work in dev".
+
+**References.**
+
+- fastapi-users documentation, *Verification* and *Password reset*
+- OWASP ASVS v4.0.3 §V2.7 (out-of-band verification)
+- Resend documentation, *Sending emails* + sandbox domain notes
+
+---
+
 ## Summary: Slice 1 vs future work
 
 | # | Decision | Slice 1 | Future work |

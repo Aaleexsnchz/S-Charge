@@ -63,3 +63,29 @@ async def test_me_with_malformed_cookie(client: AsyncClient) -> None:
     client.cookies.set("session", "not-a-valid-jwt")
     resp = await client.get("/api/users/me")
     assert resp.status_code == 401
+
+
+async def test_login_unverified_user_blocked(client: AsyncClient) -> None:
+    await _register(client, EMAIL, PASSWORD)
+
+    resp = await client.post(
+        "/api/auth/login",
+        data={"username": EMAIL, "password": PASSWORD},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "LOGIN_USER_NOT_VERIFIED"
+
+
+async def test_verify_with_tampered_token(client: AsyncClient) -> None:
+    resp = await client.post("/api/auth/verify", json={"token": "not-a-valid-jwt"})
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "VERIFY_USER_BAD_TOKEN"
+
+
+async def test_reset_with_tampered_token(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/auth/reset-password",
+        json={"token": "not-a-valid-jwt", "password": "long-enough-password-123"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "RESET_PASSWORD_BAD_TOKEN"

@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     session_token_expire_days: int = 14
     session_cookie_secure: bool = True
 
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:5173/api/auth/google/callback"
+
+    resend_api_key: str = ""
+    mail_from: str = "onboarding@resend.dev"
+    app_base_url: str = "http://localhost:5173"
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",

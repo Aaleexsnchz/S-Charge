@@ -9,7 +9,7 @@ The academic contribution lives in phases 3–4 (data integration, session simul
 | Phase | Status |
 |---|---|
 | 0 — Tooling setup | ✅ done |
-| 1 — Foundation (auth, schema, core UI) | 🚧 slice 1 backend done; frontend pending |
+| 1 — Foundation (auth, schema, core UI) | 🚧 slices 1–3 done; slices 4–5 pending |
 | 2 — REVE + Map | ⏳ not started |
 | 3 — ACN import + analytics | ⏳ not started |
 | 4 — Simulation + algorithm | ⏳ not started |
@@ -39,11 +39,56 @@ Services:
 
 See [DOCKER.md](DOCKER.md) for when to rebuild vs. recreate the containers after a change.
 
+To enable **Google sign-in** on `/login`, follow the [Google OAuth setup](#google-oauth-setup) section below. To deliver verification and password-reset emails, follow the [Email provider setup](#email-provider-setup) section.
+
+### Google OAuth setup
+
+The backend supports Google sign-in side by side with email/password; both flows land on the same HttpOnly session cookie. To enable it locally, create an OAuth 2.0 Client in Google Cloud Console and paste the credentials into `backend/.env`.
+
+1. Open [APIs & Services → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent). Set **User type: External** (Internal restricts sign-in to a Google Workspace org and rejects personal Gmail with `403 org_internal`). Fill in App name, support email, and developer contact. While the app is in **Testing**, add every Google account you'll use as a **Test user**, otherwise consent is denied.
+2. Enable the **People API** for the same project: <https://console.cloud.google.com/apis/library/people.googleapis.com>. The Python `httpx-oauth` Google client fetches the user profile from `people.googleapis.com`, not the legacy `/oauth2/v3/userinfo` endpoint, so without this the OAuth callback fails with `GetProfileError → GetIdEmailError` after Google has already issued the access token.
+3. Go to **APIs & Services → Credentials** and click **Create credentials → OAuth client ID**. Application type: **Web application**.
+4. Fill in:
+   - **Authorised JavaScript origins:** `http://localhost:5173`
+   - **Authorised redirect URIs:** `http://localhost:5173/api/auth/google/callback`
+5. Copy the generated **Client ID** and **Client Secret** into `backend/.env`:
+
+   ```env
+   GOOGLE_CLIENT_ID=<paste>
+   GOOGLE_CLIENT_SECRET=<paste>
+   GOOGLE_REDIRECT_URI=http://localhost:5173/api/auth/google/callback
+   ```
+
+6. Recreate the backend so it reads the new env vars: `docker compose up -d --force-recreate backend`. (`docker compose restart` is **not** sufficient — Compose snapshots env vars at container creation, so a restart keeps the old empty values and Google rejects the authorize request with `Missing required parameter: client_id`.)
+
+"Iniciar sesión con Google" on `/login` will now bounce through Google and return you to the app authenticated. The redirect URI points at the Vite dev server (`:5173`), not the backend directly (`:8000`); Vite proxies `/api/*` to the backend so the session cookie lands on the same origin as the SPA. Phase 6 will swap these localhost URLs for the production domain.
+
+**Browser note for testing.** Run the OAuth flow from a regular browser tab. Google's "secure browsers" policy returns `403 disallowed_useragent` when the user-agent looks like an embedded webview — including Edge/Chrome DevTools' device-emulation toolbar (e.g. iPhone 12 Pro), in-IDE preview panels, and mobile in-app browsers. Toggle device emulation off for the consent step, then re-enable it for layout testing once you're authenticated.
+
+### Email provider setup
+
+The backend sends verification and password-reset emails through [Resend](https://resend.com). Without an API key, registration still succeeds but the helper logs `email_send_failed` instead of delivering — fine for UI sanity-checking, not enough to exercise the verify or reset success paths. Decision rationale: [docs/auth-decisions §13](docs/auth-decisions.md#13-email-verification-and-password-reset-slice-3-2026-04-27).
+
+1. Create an account at <https://resend.com> and copy a key from **API Keys**. Free tier is 100 emails/day, sufficient for the thesis demo.
+2. Add the credentials to `backend/.env`:
+
+   ```env
+   RESEND_API_KEY=<paste>
+   MAIL_FROM=onboarding@resend.dev
+   APP_BASE_URL=http://localhost:5173
+   ```
+
+3. Recreate the backend so it reads the new env vars: `docker compose up -d --force-recreate backend`. (`docker compose restart` is **not** sufficient — see the OAuth section above for the same gotcha.)
+
+**Sandbox sender.** `onboarding@resend.dev` works without DNS setup but, in test mode, Resend only delivers to the email address that owns the Resend account. Register through the UI with that same email to receive the verification link.
+
+**Production setup (phase 6).** Once the production domain exists, verify it in Resend's **Domains** dashboard, add the SPF/DKIM/DMARC records they provide to your DNS, and switch `MAIL_FROM` to a sender on that domain. Inbox placement (especially Gmail) depends on those records — without DKIM, transactional mail tends to land in spam.
+
 ## Tech stack
 
 **Backend.** FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, fastapi-users for authentication, pwdlib + argon2-cffi for password hashing. Package manager: `uv`. Lint/typecheck: `ruff` + `mypy`.
 
-**Frontend.** React + Vite + TypeScript, MUI, React Router. Zustand for client state. PWA installability via `vite-plugin-pwa`.
+**Frontend.** React + Vite + TypeScript, MUI, React Router v7 (data-router APIs: loaders, actions, lazy routes), `openapi-typescript` + `openapi-fetch` for the typed API client, `notistack` for toasts. Auth state lives in a root loader — no client-side store. TanStack Query lands in phase 2 for non-auth server state. PWA installability via `vite-plugin-pwa` (phase 1 slice 4). Decisions: [docs/frontend-decisions.md](docs/frontend-decisions.md). Package manager: `pnpm`.
 
 **Database.** PostgreSQL 16 with the `citext` extension (case-insensitive email lookup).
 

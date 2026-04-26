@@ -10,11 +10,29 @@ from fastapi_users.exceptions import InvalidPasswordException
 from app.config import settings
 from app.dependencies import get_user_db
 from app.models.user import User
+from app.services.email import send_reset_password_email, send_verification_email
 from app.utils.audit import audit
 from app.utils.auth_backend import auth_backend
 from app.utils.security import password_helper
 
 MIN_PASSWORD_LENGTH = 12
+PASSWORD_PROVIDER = "password"
+
+
+def _detect_provider(request: Request | None) -> str:
+    """Derive the login provider from the matched fastapi-users route name.
+
+    fastapi-users names its OAuth callback route `oauth:{client.name}.{backend.name}.callback`
+    (see fastapi_users/router/oauth.py). The email/password login route has no such prefix,
+    so a missing or non-oauth route name means password login.
+    """
+    if request is None:
+        return PASSWORD_PROVIDER
+    route = request.scope.get("route")
+    route_name = getattr(route, "name", "") or ""
+    if not route_name.startswith("oauth:"):
+        return PASSWORD_PROVIDER
+    return route_name.removeprefix("oauth:").split(".", 1)[0]
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
@@ -35,6 +53,8 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             ip=request.client.host if request and request.client else None,
             user_agent=request.headers.get("user-agent") if request else None,
         )
+        if not user.is_verified:
+            await self.request_verify(user, request)
 
     async def on_after_login(
         self,
@@ -44,6 +64,33 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
     ) -> None:
         audit(
             "login_ok",
+            user_id=str(user.id),
+            provider=_detect_provider(request),
+            ip=request.client.host if request and request.client else None,
+            user_agent=request.headers.get("user-agent") if request else None,
+        )
+
+    async def on_after_request_verify(
+        self, user: User, token: str, request: Request | None = None
+    ) -> None:
+        await send_verification_email(user.email, token)
+
+    async def on_after_verify(self, user: User, request: Request | None = None) -> None:
+        audit(
+            "verify_ok",
+            user_id=str(user.id),
+            ip=request.client.host if request and request.client else None,
+            user_agent=request.headers.get("user-agent") if request else None,
+        )
+
+    async def on_after_forgot_password(
+        self, user: User, token: str, request: Request | None = None
+    ) -> None:
+        await send_reset_password_email(user.email, token)
+
+    async def on_after_reset_password(self, user: User, request: Request | None = None) -> None:
+        audit(
+            "reset_ok",
             user_id=str(user.id),
             ip=request.client.host if request and request.client else None,
             user_agent=request.headers.get("user-agent") if request else None,

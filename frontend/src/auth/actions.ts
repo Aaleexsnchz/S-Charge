@@ -3,6 +3,16 @@ import { apiClient } from '../api/client'
 
 export type AuthActionError = { error: string }
 
+export type LoginUnverified = { unverifiedEmail: string }
+
+export type LoginActionData = AuthActionError | LoginUnverified
+
+export type ForgotPasswordActionData = { submitted: true }
+
+export type ResetPasswordActionData =
+  | { error: string; expiredToken?: boolean }
+  | { success: true }
+
 const AUTH_ERROR_COPY: Record<string, string> = {
   LOGIN_BAD_CREDENTIALS: 'Email o contraseña inválidos',
   REGISTER_USER_ALREADY_EXISTS: 'Este email ya está registrado',
@@ -70,7 +80,7 @@ function submitLogin(username: string, password: string) {
 
 export async function loginAction({
   request,
-}: ActionFunctionArgs): Promise<AuthActionError | Response> {
+}: ActionFunctionArgs): Promise<LoginActionData | Response> {
   const formData = await request.formData()
   const username = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
@@ -79,6 +89,9 @@ export async function loginAction({
   if (response.ok) return redirect('/profile')
 
   if ((response.status === 400 || response.status === 422) && error) {
+    if (errorCodeFromDetail(error.detail) === 'LOGIN_USER_NOT_VERIFIED') {
+      return { unverifiedEmail: username }
+    }
     return { error: messageFor(error.detail) }
   }
   return { error: GENERIC_ERROR }
@@ -98,8 +111,8 @@ export async function registerAction({
   })
 
   if (response.ok) {
-    const loginResult = await submitLogin(email, password)
-    return redirect(loginResult.response.ok ? '/profile' : '/login')
+    const params = new URLSearchParams({ email })
+    return redirect(`/check-email?${params.toString()}`)
   }
 
   if ((response.status === 400 || response.status === 422) && error) {
@@ -111,4 +124,39 @@ export async function registerAction({
 export async function logoutAction(): Promise<Response> {
   await apiClient.POST('/api/auth/logout')
   return redirect('/login')
+}
+
+export async function forgotPasswordAction({
+  request,
+}: ActionFunctionArgs): Promise<ForgotPasswordActionData> {
+  const formData = await request.formData()
+  const email = String(formData.get('email') ?? '')
+  await apiClient.POST('/api/auth/forgot-password', { body: { email } })
+  return { submitted: true }
+}
+
+export async function resetPasswordAction({
+  request,
+}: ActionFunctionArgs): Promise<ResetPasswordActionData> {
+  const formData = await request.formData()
+  const token = String(formData.get('token') ?? '')
+  const password = String(formData.get('password') ?? '')
+
+  const { error, response } = await apiClient.POST(
+    '/api/auth/reset-password',
+    { body: { token, password } },
+  )
+  if (response.ok) return { success: true }
+
+  if ((response.status === 400 || response.status === 422) && error) {
+    const code = errorCodeFromDetail(error.detail)
+    if (code === 'RESET_PASSWORD_BAD_TOKEN') {
+      return { error: 'Enlace inválido o expirado', expiredToken: true }
+    }
+    if (code === 'RESET_PASSWORD_INVALID_PASSWORD') {
+      return { error: 'La contraseña debe tener al menos 12 caracteres' }
+    }
+    return { error: messageFor(error.detail) }
+  }
+  return { error: GENERIC_ERROR }
 }
