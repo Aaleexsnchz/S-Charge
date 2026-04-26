@@ -130,19 +130,19 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 - [x] **1. ~~`chore(backend): add httpx-oauth dependency`~~** — no-op on 2026-04-24: slice 1's `fastapi-users[oauth]` extra already installs `httpx-oauth 0.16.1`. Verified via `docker compose exec backend uv pip list`. No files touched, no commit.
 
-- [ ] **2. `feat(backend): add oauth account model and user relationship`**
+- [x] **2. `feat(backend): add oauth account model and user relationship`**
   - Files: `backend/app/models/user.py` (extend), `backend/app/models/__init__.py`, `backend/app/dependencies.py` (extend)
   - Deliverable: `OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID)` added to `models/user.py` (same aggregate as `User`, per [backend/CLAUDE.md](../backend/CLAUDE.md)'s "one file per aggregate") with a `user_id` override that points the foreign key at `users.id` — fastapi-users' mixin hardcodes `ForeignKey("user.id")` which doesn't match our pluralised table name. `User` extended with `oauth_accounts: Mapped[list[OAuthAccount]] = relationship(lazy="joined")` so OAuth rows are loaded eagerly with the user. `OAuthAccount` exported from `models/__init__.py`. `get_user_db` in `app/dependencies.py` now passes `OAuthAccount` as the third arg to `SQLAlchemyUserDatabase(session, User, OAuthAccount)` so `user_manager.oauth_callback` can upsert rows — `FastAPIUsers[...]` itself doesn't need extra args.
 
-- [ ] **3. `feat(backend): oauth account migration`**
+- [x] **3. `feat(backend): oauth account migration`**
   - Files: `backend/alembic/versions/xxxx_oauth_account.py`
   - Deliverable: migration creates `oauth_account` table with `(oauth_name, account_id)` unique constraint and a foreign key to `users.id` (on delete cascade). `alembic upgrade head` clean on a fresh DB; `alembic downgrade -1` reverts cleanly without touching `users`.
 
-- [ ] **4. `feat(backend): add google oauth settings`**
+- [x] **4. `feat(backend): add google oauth settings`**
   - Files: `backend/app/config.py`, `backend/.env.example`, `backend/.env`
   - Deliverable: new settings — `google_client_id`, `google_client_secret`, `google_redirect_uri` (defaults to `http://localhost:5173/api/auth/google/callback` — the Vite dev origin, so the session cookie lands on `:5173` where the SPA runs; pointing Google directly at `:8000` would set the cookie on the wrong origin and break subsequent same-origin `/api/*` calls from `:5173`). `.env.example` documents the expected values and the Google Cloud Console "Authorised redirect URIs" entry.
 
-- [ ] **5. `feat(backend): add google oauth router with redirect transport`**
+- [x] **5. `feat(backend): add google oauth router with redirect transport`**
   - Files: `backend/app/utils/auth_backend.py` (extend), `backend/app/routers/auth.py` (extend), `backend/app/services/user_manager.py` (extend — pass `[auth_backend]` plus the `oauth_client` and `oauth_accounts` schema to `FastAPIUsers` so `get_oauth_router` is available), `backend/app/main.py` (extend — exception handler)
   - Deliverable:
     1. **`CookieRedirectTransport(CookieTransport)`** in `auth_backend.py` overrides `get_login_response` to return `303 See Other → /profile` while still attaching the session cookie via `_set_login_cookie`. Rationale is captured in a short docstring: fastapi-users' stock `CookieTransport` returns `204 No Content`, which leaves a top-level browser navigation (Google → our callback) on a blank page; a server-side 303 avoids that without needing a popup-based frontend flow (relevant because slice 4 makes this a PWA where popup UX is weakest on iOS installed apps).
@@ -151,11 +151,11 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
     4. **Router mount**: `fastapi_users.get_oauth_router(google_client, oauth_backend, settings.secret_key, redirect_url=settings.google_redirect_uri, associate_by_email=True)` under `/auth/google` (after main.py's `/api` prefix: `/api/auth/google/{authorize,callback}`). `associate_by_email=True` lets an existing email/password user whose Google email matches link Google without creating a duplicate row.
     5. **Error redirect**: an exception handler registered on the FastAPI app maps `HTTPException`s raised by the callback (`OAUTH_INVALID_STATE`, `OAUTH_USER_ALREADY_EXISTS`, `OAUTH_NOT_AVAILABLE_EMAIL`, `ACCESS_TOKEN_DECODE_ERROR`, `ACCESS_TOKEN_ALREADY_EXPIRED`, `LOGIN_BAD_CREDENTIALS`) — scoped to requests under `/api/auth/google/*` only — to `303 → /login?error=oauth_failed`, so the browser always lands back in the SPA instead of on a raw JSON error page. Email/password error responses are untouched.
 
-- [ ] **6. `feat(backend): tag login_ok audit with oauth provider`**
+- [x] **6. `feat(backend): tag login_ok audit with oauth provider`**
   - Files: `backend/app/services/user_manager.py` (extend `on_after_login`)
   - Deliverable: when `on_after_login` is invoked from an OAuth flow, include `provider="google"` (or equivalent) in the `login_ok` audit event. When invoked from email/password, the field is absent or `"password"`. Keeps the event taxonomy flat (still just `register` + `login_ok` per auth-decisions §10) but lets future analysis filter by provider.
 
-- [ ] **7. `test(backend): google oauth flows`**
+- [x] **7. `test(backend): google oauth flows`**
   - Files: `backend/tests/test_auth_google.py`
   - Deliverable: mocked-Google tests covering (a) first-time user — row appears in `users` and `oauth_account`, session cookie set; (b) returning user — existing `oauth_account` matched, no duplicate user; (c) email-link — existing email/password user linked to new Google account via `associate_by_email`; (d) state mismatch → 400.
 
@@ -274,7 +274,7 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 - [ ] **1. `chore(frontend): add pwa dependencies`**
   - Files: `frontend/package.json`, `frontend/pnpm-lock.yaml`
-  - Deliverable: `vite-plugin-pwa` and `workbox-window` installed and locked.
+  - Deliverable: `vite-plugin-pwa` installed and locked. *(`workbox-window` originally listed here was dropped on 2026-04-27: it's only useful with `registerType: 'prompt'`, where the app shows a "new version available — refresh?" banner. With `autoUpdate` the SW activates silently and `workbox-window` would be dead code.)*
 
 - [ ] **2. `feat(frontend): configure pwa manifest and service worker`**
   - Files: [vite.config.ts](../frontend/vite.config.ts), `frontend/src/main.tsx`
@@ -306,7 +306,7 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 - [x] **1. `docs: write root readme`** — completed as part of the slice 1 documentation pass (covered in commit `3f8b4da`). Includes one-paragraph project summary, status table, quickstart, tech stack, monorepo layout, key decisions, and docs index. Links to [PLAN.md](../PLAN.md), [CONTRIBUTING.md](../CONTRIBUTING.md), [DOCKER.md](../DOCKER.md).
 
-- [ ] **2. `docs: add google oauth setup subsection to readme`** — depends on Slice 2 completion; covered by Slice 2 task 10. Listed here for completeness.
+- [x] **2. `docs: add google oauth setup subsection to readme`** — covered by Slice 2 task 10. Listed here for completeness.
 
 - [ ] **3. Sanity-check onboarding on a fresh clone**
   - Clone the repo to a temporary directory, follow the README Quickstart verbatim, confirm `http://localhost:5173` shows the working app after ≤5 commands. Fix any drift.
