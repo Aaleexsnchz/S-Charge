@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
 import { SnackbarProvider } from 'notistack'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import { router } from './router'
 import { CssBaseline, ThemeProvider } from '@mui/material';
@@ -14,6 +15,7 @@ import '@fontsource/inter/700.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 
+registerSW({ immediate: true })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

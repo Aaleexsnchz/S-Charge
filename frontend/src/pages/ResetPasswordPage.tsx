@@ -70,7 +70,7 @@ export function ResetPasswordPage() {
             label="Nueva contraseña"
             autoComplete="new-password"
             helperText="Mínimo 12 caracteres"
-            inputProps={{ minLength: 12 }}
+            slotProps={{ htmlInput: { minLength: 12 } }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             fullWidth

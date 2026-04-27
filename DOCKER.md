@@ -8,7 +8,7 @@ Always run commands from the project root (`/home/aaleexsnchz/tfm`).
 | --- | --- |
 | Source code only | Nothing (auto-reloaded) |
 | `docker-compose.yml` env vars or `.env` file | `docker compose up -d --force-recreate <service>` |
-| `package.json` / `pyproject.toml` / `Dockerfile` | `docker compose build <service> && docker compose up -d --force-recreate <service>` |
+| `package.json` / `pyproject.toml` / `Dockerfile` | `docker compose build <service> && docker compose up -d --force-recreate -V <service>` |
 
 ---
 
@@ -21,7 +21,7 @@ Always run commands from the project root (`/home/aaleexsnchz/tfm`).
 cd frontend && pnpm add <package>
 
 # 2. Rebuild image + recreate container (fresh musl-compiled node_modules)
-docker compose build frontend && docker compose up -d --force-recreate frontend
+docker compose build frontend && docker compose up -d --force-recreate -V frontend
 ```
 
 **Edit source files (`.tsx`, `.ts`, `.css`):** Nothing needed — bind mount + HMR handles it automatically.
@@ -39,7 +39,7 @@ docker compose build frontend && docker compose up -d --force-recreate frontend
 cd backend && uv add <package>
 
 # 2. Rebuild image + recreate container
-docker compose build backend && docker compose up -d --force-recreate backend
+docker compose build backend && docker compose up -d --force-recreate -V backend
 ```
 
 **Edit source files (`.py`):** Nothing needed — `--reload` watches `/app/app` automatically.
@@ -67,6 +67,11 @@ No rebuild needed — env vars are injected at container start, not at build tim
 
 ---
 
-## Why `--force-recreate` matters (frontend)
+## Why `--force-recreate -V` matters (frontend)
 
-The frontend container uses an anonymous Docker volume to hold `node_modules` compiled for Alpine Linux (musl). Without `--force-recreate`, Docker reuses the old container and its stale volume, which can cause native binding errors or a `ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND` restart loop. Force-recreating ensures the volume is repopulated from the freshly built image.
+The frontend container uses an anonymous Docker volume to hold `node_modules` compiled for Alpine Linux (musl). On a dependency change you need both flags:
+
+- `--force-recreate` discards the old container so the new image is used.
+- `-V` (`--renew-anon-volumes`) discards the old anonymous `node_modules` volume so the freshly built image's `node_modules` becomes the source of truth.
+
+Without `-V`, Docker Compose keeps the old anon volume across recreates, leaving the container with stale `node_modules` from the previous image. Symptoms include `Cannot find package '...' imported from /app/node_modules/...` errors at dev-server startup and `ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND` restart loops.

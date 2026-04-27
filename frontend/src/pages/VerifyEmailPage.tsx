@@ -38,7 +38,7 @@ export function VerifyEmailPage() {
   }, [token, navigate, enqueueSnackbar])
 
   return (
-    <Stack spacing={3} alignItems="center">
+    <Stack spacing={3} sx={{ alignItems: 'center' }}>
       <CircularProgress />
       <Typography variant="body1">Verificando tu email…</Typography>
     </Stack>

@@ -272,27 +272,27 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 #### Frontend
 
-- [ ] **1. `chore(frontend): add pwa dependencies`**
+- [x] **1. `chore(frontend): add pwa dependencies`**
   - Files: `frontend/package.json`, `frontend/pnpm-lock.yaml`
-  - Deliverable: `vite-plugin-pwa` installed and locked. *(`workbox-window` originally listed here was dropped on 2026-04-27: it's only useful with `registerType: 'prompt'`, where the app shows a "new version available — refresh?" banner. With `autoUpdate` the SW activates silently and `workbox-window` would be dead code.)*
+  - Deliverable: `vite-plugin-pwa` and `workbox-window` installed and locked. *(I initially claimed on 2026-04-27 that `workbox-window` was only needed with `registerType: 'prompt'` and could be dropped with `autoUpdate`. That was wrong: `vite-plugin-pwa`'s `virtual:pwa-register` module imports `workbox-window` at build time regardless of strategy, and pnpm's strict-mode peer-dep handling requires it to be a direct dep so Rolldown can resolve it. The build error `Rolldown failed to resolve import "workbox-window" from "/@vite-plugin-pwa/virtual:pwa-register"` is the symptom.)*
 
 - [ ] **2. `feat(frontend): configure pwa manifest and service worker`**
   - Files: [vite.config.ts](../frontend/vite.config.ts), `frontend/src/main.tsx`
   - Deliverable: `vite-plugin-pwa` configured with manifest fields (`name`, `short_name`, `description`, `theme_color`, `background_color`, `display: standalone`, `start_url: /`). Service worker registered in `main.tsx` with auto-update strategy.
 
-- [ ] **3. `chore(frontend): add pwa icons`**
-  - Files: `frontend/public/icon-192.png`, `frontend/public/icon-512.png`, `frontend/public/icon-maskable-512.png`, `frontend/public/apple-touch-icon.png`
-  - Deliverable: all four icons generated from a single source SVG. Maskable version follows the safe-zone spec.
+- [x] **3. `chore(frontend): add pwa icons`**
+  - Files: `frontend/public/logo.svg` (source), `frontend/public/pwa-64x64.png`, `frontend/public/pwa-192x192.png`, `frontend/public/pwa-512x512.png`, `frontend/public/maskable-icon-512x512.png`, `frontend/public/apple-touch-icon-180x180.png`, `frontend/public/favicon.ico`
+  - Deliverable: icons generated from a single SVG source via `@vite-pwa/assets-generator` (official sibling tool of vite-plugin-pwa) with the `minimal-2023` preset. Maskable version follows the safe-zone spec automatically. Filenames follow the preset's convention (`pwa-{size}.png`, `maskable-icon-{size}.png`, `apple-touch-icon-{size}.png`) rather than the `icon-{size}.png` names originally listed — the preset's names are the official convention and align with examples in the vite-plugin-pwa ecosystem.
 
-- [ ] **4. `feat(frontend): pwa meta tags`**
+- [x] **4. `feat(frontend): pwa meta tags`**
   - Files: [index.html](../frontend/index.html)
-  - Deliverable: `<meta name="theme-color">`, `<link rel="apple-touch-icon">`, and the manifest link tag (injected by vite-plugin-pwa or added manually).
+  - Deliverable: `<meta name="theme-color" content="#7FE7C4">`, `<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">`, and the manifest link tag (auto-injected by `vite-plugin-pwa` at build time — verified in `dist/index.html`). Also updated the SVG favicon link to `/logo.svg` (was the Vite-scaffold default) and aligned `<title>` with the manifest's `name` ("S-Charge"). Removed unreferenced scaffold leftovers `favicon.svg` and `icons.svg`.
 
 ### Verification
 
-- [ ] Chrome DevTools → Application → Manifest: no warnings
-- [ ] Chrome Android: install prompt appears
-- [ ] iOS Safari: "Add to Home Screen" launches standalone with the correct theme color
+- [x] Chrome DevTools → Application → Manifest: no warnings (verified locally; required `devOptions.enabled: true` so the dev server injects the manifest link)
+- [ ] Chrome Android: install prompt appears *(deferred to phase 6 polish — no Android device handy during slice work)*
+- [x] iOS Safari: "Add to Home Screen" launches standalone with the correct theme color (verified on iOS via ngrok HTTPS tunnel; PWA also surfaced the OAuth-link-of-unverified bug now fixed in commit `3844cd4`)
 
 ---
 
