@@ -149,6 +149,7 @@ async def test_oauth_links_to_existing_password_user(
     )
     assert len(users) == 1
     assert str(users[0].id) == existing_id
+    assert users[0].is_verified is True
 
     oauth_rows = (
         (await db_session.execute(select(OAuthAccount).filter_by(user_id=users[0].id)))
@@ -156,6 +157,15 @@ async def test_oauth_links_to_existing_password_user(
         .all()
     )
     assert len(oauth_rows) == 1
+
+    fresh_client.cookies.clear()
+    login_resp = await fresh_client.post(
+        "/api/auth/login",
+        data={"username": GOOGLE_EMAIL, "password": EXISTING_PASSWORD},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert login_resp.status_code == 400
+    assert login_resp.json()["detail"] == "LOGIN_BAD_CREDENTIALS"
 
 
 async def test_oauth_state_mismatch_redirects_to_login_error(

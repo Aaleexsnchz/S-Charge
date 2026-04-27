@@ -96,6 +96,43 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             user_agent=request.headers.get("user-agent") if request else None,
         )
 
+    async def oauth_callback(
+        self,
+        oauth_name: str,
+        access_token: str,
+        account_id: str,
+        account_email: str,
+        expires_at: int | None = None,
+        refresh_token: str | None = None,
+        request: Request | None = None,
+        *,
+        associate_by_email: bool = False,
+        is_verified_by_default: bool = False,
+    ) -> User:
+        user = await super().oauth_callback(
+            oauth_name,
+            access_token,
+            account_id,
+            account_email,
+            expires_at,
+            refresh_token,
+            request,
+            associate_by_email=associate_by_email,
+            is_verified_by_default=is_verified_by_default,
+        )
+        if not user.is_verified:
+            new_hash = self.password_helper.hash(self.password_helper.generate())
+            user = await self.user_db.update(
+                user, {"is_verified": True, "hashed_password": new_hash}
+            )
+            audit(
+                "oauth_link_reset_password",
+                user_id=str(user.id),
+                email=user.email,
+                oauth_name=oauth_name,
+            )
+        return user
+
 
 async def get_user_manager(
     user_db: Annotated[SQLAlchemyUserDatabase, Depends(get_user_db)],

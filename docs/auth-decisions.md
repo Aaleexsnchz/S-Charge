@@ -328,6 +328,38 @@ A 429 response is emitted by Nginx directly when the limit is exceeded.
 
 ---
 
+## 14. OAuth-link of unverified password account replaces the existing hash (2026-04-27)
+
+**Decision.** When `oauth_callback` links a Google sign-in to an existing email/password row whose `is_verified` is still false, override `UserManager.oauth_callback` to (a) flip `is_verified` to true and (b) replace the existing `hashed_password` with a fresh hash of a discarded random secret. The legitimate user can use `/forgot-password` to set a new password if they want password login alongside Google.
+
+**Rationale.** Decision §13 closed the slice 2 pre-registration shell attack by gating password login on `requires_verification=True`. While testing slice 4 on iOS, a corollary surfaced: that fix prevented attacker-set passwords from working but also blocked the *legitimate* user from logging out, because `requires_verification` applies to the entire auth router (login, logout) and an OAuth-linked-but-unverified row stayed unverified — `associate_by_email=True` doesn't auto-verify the linked row. Naively flipping `is_verified=true` after the link would re-open the slice 2 attack: the attacker's chosen password would now satisfy both halves of the gate. Wiping the password hash at the same moment closes both holes — Google's confirmed control of the email is honoured, and the attacker's pre-set credential is destroyed in the same transaction.
+
+This is the Auth0 / Clerk pattern ("merge a verified provider into an unverified credentials account, drop the credentials").
+
+**Implementation.** `UserManager.oauth_callback` calls `super().oauth_callback(...)` to do the lookup-or-create dance, then if the returned user is still unverified, calls `self.user_db.update(user, {"is_verified": True, "hashed_password": <fresh random hash>})` and emits an `oauth_link_reset_password` audit event. The fresh hash is `password_helper.hash(password_helper.generate())` — the plaintext is generated, hashed, and immediately discarded. Identical pattern to fastapi-users' own logic for OAuth-only user creation.
+
+The `if not user.is_verified` guard distinguishes the three branches without special-casing:
+
+| `oauth_callback` branch | Returned `user.is_verified` | Override fires? |
+|---|---|---|
+| Returning user (matched by `oauth_account` row) | preserved (true, from earlier link) | no |
+| New user (no email match) with `is_verified_by_default=True` | true | no |
+| `associate_by_email` matched an unverified password row | preserved (false) | yes |
+
+**Rejected alternatives.**
+
+- *Drop `requires_verification=True` from logout only.* fastapi-users mounts login + logout under one `get_auth_router(...)` call; splitting is a fork of their router. Misses the deeper issue (the linked account silently has an attacker-controlled password).
+- *Flip `is_verified=true` without wiping the password.* Re-opens the slice 2 pre-registration shell attack.
+- *Refuse to link an unverified row.* Either rejects the legitimate Google sign-in entirely, or forces a re-registration flow — both worse UX. The `unique` constraint on email also makes "create a fresh row" infeasible without first deleting the old one, which has its own risks.
+
+**References.**
+
+- fastapi-users documentation, *Customising oauth_callback* on `BaseUserManager`
+- Auth0 docs, *Linking user accounts* (drop credentials when merging verified provider into unverified credentials account)
+- OWASP ASVS v4.0.3 §V2.4 (credential storage), §V3.4 (account binding)
+
+---
+
 ## Summary: Slice 1 vs future work
 
 | # | Decision | Slice 1 | Future work |
