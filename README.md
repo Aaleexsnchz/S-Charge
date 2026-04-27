@@ -9,7 +9,7 @@ The academic contribution lives in phases 3–4 (data integration, session simul
 | Phase | Status |
 |---|---|
 | 0 — Tooling setup | ✅ done |
-| 1 — Foundation (auth, schema, core UI) | 🚧 slices 1–4 done; slice 5 pending |
+| 1 — Foundation (auth, schema, core UI) | ✅ done |
 | 2 — REVE + Map | ⏳ not started |
 | 3 — ACN import + analytics | ⏳ not started |
 | 4 — Simulation + algorithm | ⏳ not started |

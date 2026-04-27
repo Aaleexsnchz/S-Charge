@@ -276,7 +276,7 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
   - Files: `frontend/package.json`, `frontend/pnpm-lock.yaml`
   - Deliverable: `vite-plugin-pwa` and `workbox-window` installed and locked. *(I initially claimed on 2026-04-27 that `workbox-window` was only needed with `registerType: 'prompt'` and could be dropped with `autoUpdate`. That was wrong: `vite-plugin-pwa`'s `virtual:pwa-register` module imports `workbox-window` at build time regardless of strategy, and pnpm's strict-mode peer-dep handling requires it to be a direct dep so Rolldown can resolve it. The build error `Rolldown failed to resolve import "workbox-window" from "/@vite-plugin-pwa/virtual:pwa-register"` is the symptom.)*
 
-- [ ] **2. `feat(frontend): configure pwa manifest and service worker`**
+- [x] **2. `feat(frontend): configure pwa manifest and service worker`**
   - Files: [vite.config.ts](../frontend/vite.config.ts), `frontend/src/main.tsx`
   - Deliverable: `vite-plugin-pwa` configured with manifest fields (`name`, `short_name`, `description`, `theme_color`, `background_color`, `display: standalone`, `start_url: /`). Service worker registered in `main.tsx` with auto-update strategy.
 
@@ -308,7 +308,7 @@ Cross-ref: decision §12 in [auth-decisions.md](auth-decisions.md) (`oauth_accou
 
 - [x] **2. `docs: add google oauth setup subsection to readme`** — covered by Slice 2 task 10. Listed here for completeness.
 
-- [ ] **3. Sanity-check onboarding on a fresh clone**
+- [x] **3. Sanity-check onboarding on a fresh clone**
   - Clone the repo to a temporary directory, follow the README Quickstart verbatim, confirm `http://localhost:5173` shows the working app after ≤5 commands. Fix any drift.
 
 ---
