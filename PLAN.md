@@ -12,7 +12,7 @@ Master's thesis (IoT) project: a **PWA** for managing EV charging. Combines the 
 
 | Source | Role | Provides |
 | --- | --- | --- |
-| **REVE API** | Real-world map layer | Live CPO locations, status, price, connectors |
+| **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres; tariffs refreshed daily; live availability is simulated, not relayed. |
 | **ACN-Data** | Analytics + simulation backbone | Real historical sessions, charging profiles |
 | **User-generated** | Platform contribution | Private charging points with public/private toggle |
 
@@ -39,24 +39,33 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 ## Architecture
 
 ```text
-    PWA Frontend (React + Vite)
-           │ HTTPS/REST
-           ▼
-    FastAPI Backend
-           │
-     ┌─────┼──────────┐
-     ▼     ▼          ▼
-  PostgreSQL  REVE API    ACN-Data
-  (users,     (live,      (bulk imported
-   private    cached      once, queried
-   points,    ~5 min)     via SQL)
-   bookings)
+    one-shot ETL                          runtime
+  ┌───────────────────┐                ┌──────────────────────┐
+  │ scripts/          │  writes once   │  PWA Frontend        │
+  │   seed_reve.py    │ ────────────►  │  (React + Vite)      │
+  │   import_acn.py   │                │         │ HTTPS       │
+  └───────────────────┘                │         ▼             │
+            │                          │  FastAPI Backend      │
+            ▼                          │   reads / writes      │
+       PostgreSQL  ◄────────────────── │   • charging_points   │
+       (charging_points,               │   • connectors        │
+        connectors, tariffs,           │   • tariffs           │
+        evse_status, users,            │   • acn_sessions      │
+        bookings, acn_*)               │   • users / bookings  │
+                                       └──────────────────────┘
+                                                 │
+                                                 │ daily 04:00 Madrid
+                                                 ▼
+                              APScheduler in lifespan refreshes tariffs
+                              from REVE (1 call/day, well under 5/hr cap)
 ```
 
-- REVE: live-fetched with cache
-- ACN: bulk-imported once via ETL
-- User-contributed points: stored in PostgreSQL alongside imported data
-- Nginx reverse-proxies both frontend and backend from the same VPS
+- **REVE: seeded into Postgres via one-shot ETL.** REVE's public API caps at 5 requests/hour, which makes a live-mirror architecture impractical and academically dubious (we'd be relaying CPO commercial data without an agreement). We bootstrap the catalogue (`/locations`, `/cpos`, `/connectors/tariffs`, `/evses/operational_status`) once into Postgres and own the data going forward. Tariffs refresh once a day via APScheduler — the only scheduled REVE call.
+- **Live availability is simulated**, not relayed from REVE — driven by ACN-Data utilisation distributions in Phase 4. Phase 2 surfaces the seed-time `accessibility` value as the static stub.
+- **ACN: bulk-imported once via ETL** — same pattern as REVE seed.
+- **User-contributed points**: stored in `charging_points` alongside REVE-seeded points, distinguished by a `source` column.
+- **OCPI 2.2.1-aligned schema** (`party_id`, `evse_id`, IEC 62196 connector standards) — future commercial CPO agreements plug in by extending the `source` enum and adding a per-source ingest job; no schema migration required. See [docs/future-work.md](docs/future-work.md).
+- Nginx reverse-proxies both frontend and backend from the same VPS.
 
 ---
 
@@ -81,6 +90,8 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 | Commission payout | Tracked as number only |
 | Real-time private point occupation | Derived from bookings |
 | REVE write access | Read-only |
+| REVE real-time availability | Not relayed live (the public API caps at 5/hr and we have no commercial agreement). Phase 2 surfaces the seed-time `accessibility` field as a static stub; Phase 4 replaces it with ACN-derived simulated occupancy. |
+| REVE tariffs | Snapshot at seed time, refreshed once daily via APScheduler at 04:00 Europe/Madrid. Detail page displays the last-refresh timestamp. |
 
 ---
 
@@ -108,11 +119,11 @@ Total: **~195–260h** over 12 weeks (~16–22h/week).
 
 Per-package Claude Code skills and conventions, before any feature work starts. Each package gets its own `CLAUDE.md` so Claude Code loads the right context when editing each side of the stack.
 
-- [ ] Root `CLAUDE.md` written (project orientation, links to PLAN.md, CONTRIBUTING.md, DOCKER.md)
-- [ ] `npx autoskills` run from `frontend/` — generated `frontend/CLAUDE.md` reviewed, trimmed of generic filler
-- [ ] `backend/CLAUDE.md` hand-written (FastAPI layout, uv commands, Ruff/MyPy, Alembic workflow, Pydantic patterns)
-- [ ] Installed skills committed (`.claude/` directory)
-- [ ] Commit: `chore: add per-package CLAUDE.md and install frontend skills`
+- [x] Root `CLAUDE.md` written (project orientation, links to PLAN.md, CONTRIBUTING.md, DOCKER.md)
+- [x] `npx autoskills` run from `frontend/` — generated `frontend/CLAUDE.md` reviewed, trimmed of generic filler
+- [x] `backend/CLAUDE.md` hand-written (FastAPI layout, uv commands, Ruff/MyPy, Alembic workflow, Pydantic patterns)
+- [x] Installed skills committed (`.claude/` directory)
+- [x] Commit: `chore: add per-package CLAUDE.md and install frontend skills`
 
 ### Phase 1 — Foundation (22–28h) ✅ done
 
@@ -126,16 +137,19 @@ Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/pa
 - [x] PWA installable: Chrome shows "Install app" prompt, iOS Safari "Add to Home Screen" launches standalone
 - [x] README documents setup in ≤5 commands (plus linked Google OAuth + Resend setup subsections)
 
-### Phase 2 — REVE + Map (25–30h)
+### Phase 2 — REVE seed + Map (25–30h)
 
-REVE API client with cache, MapLibre GL map (MapTiler tiles), filters, point detail.
+REVE seeded into Postgres via one-shot ETL, daily APScheduler refresh of tariffs only, MapLibre GL map (MapTiler tiles), filters, point detail. Live availability is a static stub from the seed snapshot until Phase 4 wires ACN-driven simulation. Slice-by-slice plan: [docs/phase-2.md](docs/phase-2.md).
 
-- [ ] `/api/points` returns REVE data, cached
-- [ ] Map renders real Spanish points, color-coded
-- [ ] Filters (availability, connector, price) update markers
-- [ ] Detail panel shows operator, price, connectors, address
-- [ ] "Navigate" opens Google Maps
-- [ ] Usable on mobile viewport
+- [ ] `scripts/seed_reve.py` bootstraps `charging_points`, `connectors`, `tariffs`, `evse_status` from REVE in ≤5 calls
+- [ ] APScheduler refreshes `/connectors/tariffs` once daily at 04:00 Europe/Madrid; audit-logged on success/failure
+- [ ] `/api/points` returns charging points from Postgres (REVE-seeded + user-contributed once Phase 5 lands)
+- [ ] Map renders real Spanish points, colour-coded by static availability
+- [ ] Filters (availability, connector type, price band) update markers
+- [ ] Detail panel shows operator, price, connectors, address, last refresh timestamp
+- [ ] "Navegar" opens Google Maps
+- [ ] Phase 2 Lighthouse audit recorded under `docs/lighthouse-YYYY-MM-DD.md`
+- [ ] Tested on real iPhone + Android (per Risk Watch — *Mobile bugs found late*)
 
 ### Phase 3 — ACN Import + Analytics (30–40h)
 
@@ -213,7 +227,7 @@ Document, diagram, defend.
 | --- | --- |
 | Phase 4 slips | Budget buffer; algorithm can start simple (greedy) and iterate |
 | Mobile bugs found late | Test on phone during Phase 2, not Phase 6 |
-| REVE API limits or changes | Cache aggressively (in-memory TTL); persist last-good snapshot to disk for graceful degradation when REVE 5xx |
+| REVE deprecates or restricts the public API | Architecture treats REVE as a one-shot seed; runtime serves from the Postgres mirror. Re-seed before any disruption. Deployed app keeps working from the snapshot indefinitely. |
 | Thesis writing crunch | Start drafting architecture + data chapters in parallel with Phase 3 |
 
 ---

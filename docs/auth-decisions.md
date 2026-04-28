@@ -341,7 +341,7 @@ This is the Auth0 / Clerk pattern ("merge a verified provider into an unverified
 The `if not user.is_verified` guard distinguishes the three branches without special-casing:
 
 | `oauth_callback` branch | Returned `user.is_verified` | Override fires? |
-|---|---|---|
+| --- | --- | --- |
 | Returning user (matched by `oauth_account` row) | preserved (true, from earlier link) | no |
 | New user (no email match) with `is_verified_by_default=True` | true | no |
 | `associate_by_email` matched an unverified password row | preserved (false) | yes |
@@ -363,7 +363,7 @@ The `if not user.is_verified` guard distinguishes the three branches without spe
 ## Summary: Slice 1 vs future work
 
 | # | Decision | Slice 1 | Future work |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | UUID v4 PK | ✓ | — |
 | 2 | `citext` email | ✓ | — |
 | 3 | Argon2id hashing | ✓ | — |

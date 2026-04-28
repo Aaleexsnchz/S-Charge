@@ -37,6 +37,20 @@ An iOS/Android version would shift the auth model rather than replace it — the
 
 Trigger: concrete ask from supervisor or stakeholder, or an explicit post-thesis expansion. Estimated backend effort: 2–3 days (second backend + refresh endpoint); mobile effort is the usual per-platform work on top.
 
+## Live CPO integration (replacing the REVE seed)
+
+Phase 2 seeds Spanish charging-network data from REVE's public API once and treats it as a static snapshot — the 5-requests-per-hour cap on the REVE external API makes a live mirror impractical, and relaying CPO commercial data without an agreement is academically dubious for a publicly-deployed thesis demo. The thesis ships with that limitation flagged honestly in [PLAN.md](../PLAN.md)'s *Mocked / Simplified* table.
+
+The schema is already aligned with **OCPI 2.2.1** (the European Open Charge Point Interface standard) — `party_id`, `evse_id`, IEC 62196 connector standards. Adding a real-time data source is therefore a config change, not a schema migration: extend the `charging_points.source` enum (currently `reve_seed` | `user`) with a per-CPO value (e.g. `cpo_iberdrola`, `cpo_endesax`, `cpo_ionity`) and add a per-source ingest job. The map, filters, detail page, and tariff display all consume the same DB columns regardless of source.
+
+Possible production data sources, ranked by likely accessibility:
+
+- **REVE commercial API tier.** If REVE offers a paid plan with a higher rate limit, the existing seed script becomes a periodic delta-sync job (the spec already supports `date_from`, `only_dynamic_info`, pagination — see [docs/phase-2.md](phase-2.md)).
+- **Direct OCPI agreements with individual CPOs** (Iberdrola, Endesa X, IONITY, Repsol, etc.). Each CPO that publishes an OCPI-compatible endpoint can be onboarded with a credential block + a per-source ingest job, no schema change.
+- **EU Data Act §7 charging-point data sharing**, once national implementation lands in Spain. The Data Act mandates real-time charging-point availability sharing for commercial CPOs above a threshold; once enforcement is operational, this becomes the obvious primary source.
+
+Trigger: a thesis-defense follow-up project, a real-deployment ask from the supervisor, or a research collaboration that needs live data. Estimated backend effort once a source is identified: 1–2 days for the per-source ingest job, plus the operational overhead of credentials and rate-limit handling per CPO.
+
 ## Programmatic API for non-browser clients
 
 **API-key bearer backend.** Researchers or scripts querying the simulation output (phases 3–4) via curl can't use the session cookie. A `/api/v1/` namespace with its own bearer-token `AuthenticationBackend` and an API-key management UI would fill that gap without touching the PWA auth. Trigger: first external programmatic query, or reproducibility tooling requested by a paper reviewer.
