@@ -109,7 +109,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         associate_by_email: bool = False,
         is_verified_by_default: bool = False,
     ) -> User:
-        user = await super().oauth_callback(
+        user = await super().oauth_callback(  # type: ignore[attr-defined]
             oauth_name,
             access_token,
             account_id,
