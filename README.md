@@ -90,7 +90,7 @@ The backend sends verification and password-reset emails through [Resend](https:
 
 **Frontend.** React + Vite + TypeScript, MUI, React Router v7 (data-router APIs: loaders, actions, lazy routes), `openapi-typescript` + `openapi-fetch` for the typed API client, `notistack` for toasts. Auth state lives in a root loader — no client-side store. TanStack Query lands in phase 2 for non-auth server state. PWA installability via `vite-plugin-pwa` (phase 1 slice 4). Decisions: [docs/frontend-decisions.md](docs/frontend-decisions.md). Package manager: `pnpm`.
 
-**Database.** PostgreSQL 16 with the `citext` extension (case-insensitive email lookup).
+**Database.** PostgreSQL 17 with the `citext` extension (case-insensitive email lookup).
 
 **Deployment.** Single Hetzner VPS (CX22), Nginx + Let's Encrypt. Deliberately rejected: Kubernetes, Vercel, Supabase — all overkill for thesis scope.
 
