@@ -4,7 +4,7 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 2. Same structure as [phase-1.md]
 
 ## Architecture summary
 
-REVE's public API (`https://www.mapareve.es/api/external/v1`) caps at **5 requests per hour** and exposes OCPI 2.2.1-formatted data we have no commercial agreement to redistribute live. Phase 2 therefore treats REVE as a **one-shot seed source**:
+REVE's public API (`https://www.mapareve.es/api/external/v1`, frozen Swagger 2.0 snapshot at [reve-api-spec.json](reve-api-spec.json)) caps at **5 requests per hour** and exposes OCPI 2.2.1-formatted data we have no commercial agreement to redistribute live. Phase 2 therefore treats REVE as a **one-shot seed source**:
 
 - A single ETL run (`scripts/seed_reve.py`) populates `cpos`, `charging_points`, `evses`, `connectors`, and `tariffs` from `/cpos`, `/locations`, `/evses/operational_status`, and `/connectors/tariffs` — typically 4–6 REVE calls including pagination.
 - An **APScheduler in-process** job refreshes `/connectors/tariffs` once daily at 04:00 Europe/Madrid (≈0.04 calls/hr — well under the 5/hr cap). Locations and CPOs are re-seeded manually as needed.
