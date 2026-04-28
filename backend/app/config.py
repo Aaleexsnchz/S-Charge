@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     mail_from: str = "onboarding@resend.dev"
     app_base_url: str = "http://localhost:5173"
 
+    reve_api_key: str = ""
+    reve_api_base_url: str = "https://www.mapareve.es/api/external/v1"
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
