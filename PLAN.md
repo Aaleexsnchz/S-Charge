@@ -90,7 +90,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 | Commission payout | Tracked as number only |
 | Real-time private point occupation | Derived from bookings |
 | REVE write access | Read-only |
-| REVE real-time availability | Not relayed live (the public API caps at 5/hr and we have no commercial agreement). Phase 2 surfaces the seed-time `accessibility` field as a static stub; Phase 4 replaces it with ACN-derived simulated occupancy. |
+| REVE real-time availability | Not relayed live (5/hr public-API cap, no commercial agreement). REVE's bulk `/evses/operational_status` endpoint returns only a boolean per EVSE — the OCPI rich enum (`AVAILABLE`/`CHARGING`/`BLOCKED`/`RESERVED`/etc.) lives only on the per-EVSE single-fetch endpoint and is unaffordable at 600+ EVSEs. Phase 2 surfaces the boolean rolled up per charging point as `aggregate_status` (operational / partial / inoperative / unknown). Phase 4 layers ACN-derived simulated occupancy for the richer states. |
 | REVE tariffs | Snapshot at seed time, refreshed once daily via APScheduler at 04:00 Europe/Madrid. Detail page displays the last-refresh timestamp. |
 
 ---

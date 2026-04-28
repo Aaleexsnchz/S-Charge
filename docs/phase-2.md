@@ -6,10 +6,10 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 2. Same structure as [phase-1.md]
 
 REVE's public API (`https://www.mapareve.es/api/external/v1`) caps at **5 requests per hour** and exposes OCPI 2.2.1-formatted data we have no commercial agreement to redistribute live. Phase 2 therefore treats REVE as a **one-shot seed source**:
 
-- A single ETL run (`scripts/seed_reve.py`) populates `charging_points`, `connectors`, `tariffs`, and `evse_status` from `/locations`, `/cpos`, `/connectors/tariffs`, and `/evses/operational_status` — typically 4–6 REVE calls including pagination.
+- A single ETL run (`scripts/seed_reve.py`) populates `cpos`, `charging_points`, `evses`, `connectors`, and `tariffs` from `/cpos`, `/locations`, `/evses/operational_status`, and `/connectors/tariffs` — typically 4–6 REVE calls including pagination.
 - An **APScheduler in-process** job refreshes `/connectors/tariffs` once daily at 04:00 Europe/Madrid (≈0.04 calls/hr — well under the 5/hr cap). Locations and CPOs are re-seeded manually as needed.
 - The frontend never talks to REVE. It calls `/api/points` (and `/api/points/{id}`), which read from the local Postgres mirror.
-- Live availability is **simulated**, not relayed — Phase 2 surfaces the seed-time `accessibility` value as a static stub. Phase 4 replaces it with ACN-derived occupancy distributions.
+- Live availability is **simulated**, not relayed — Phase 2 surfaces the boolean `is_operational` flag from REVE's `/evses/operational_status` (rolled up per charging point as `aggregate_status`: operational / partial / inoperative / unknown). Phase 4 replaces this binary rollup with ACN-derived occupancy distributions for richer states (charging / reserved / blocked / etc.).
 - The schema mirrors OCPI 2.2.1 fields (`party_id`, `evse_id`, IEC 62196 connector standards) so future commercial CPO agreements integrate without schema migration. See [future-work.md](future-work.md) → *Live CPO integration*.
 
 Frontend decisions cited throughout this doc are locked in [frontend-decisions.md](frontend-decisions.md) — MapLibre GL + react-map-gl (§1), MapTiler tiles (§2), TanStack Query introduced here (§11), route-split `/map` chunk (§4).
@@ -28,17 +28,36 @@ Frontend decisions cited throughout this doc are locked in [frontend-decisions.m
 
 The biggest slice; everything else builds on its DB schema and the typed `/api/points` contract.
 
-**Acceptance:** with `REVE_API_KEY` set, running `docker compose exec backend uv run python -m scripts.seed_reve` from a fresh DB populates `charging_points`, `connectors`, `tariffs`, and `evse_status` from real REVE data; `GET /api/points` returns those points as JSON; the daily tariff job is registered in the FastAPI lifespan and visible in `/api/health` (or equivalent introspection). The seed is idempotent — re-running upserts without duplicating rows.
+**Acceptance:** with `REVE_API_KEY` set, running `docker compose exec backend uv run python -m scripts.seed_reve` from a fresh DB populates `cpos`, `charging_points`, `evses`, `connectors`, and `tariffs` from real REVE data in 4–5 API calls (well within the 5/hr cap); `GET /api/points` returns those points as JSON joined with connectors and tariffs; the daily tariff refresh job is registered in the FastAPI lifespan. The seed is idempotent — re-running upserts without duplicating rows.
 
 **Locked decisions** (rationale captured here so future drift has a paper trail)
 
 - **Scheduler:** `apscheduler` with `AsyncIOScheduler`, started in the FastAPI lifespan. No Celery, no Redis, no host cron, no `pg_cron`. One scheduled job (daily tariff refresh). Library-backed for non-core work; rejected alternatives (Celery+Redis: extra infra; host cron: couples to deploy host; `pg_cron`: extension to maintain) all add operational surface for no benefit at thesis scale.
-- **Single `charging_points` table** with a `source` enum (`reve_seed` | `user`) — not separate `reve_locations` / `private_points` tables. Phase 5 user-contributed points reuse the same schema. Connectors and tariffs hang off `charging_points` via FK.
-- **Coordinates stored as numeric** (`Numeric(9, 6)` for lat, `Numeric(10, 6)` for lng). REVE returns them as strings — we cast at ingest. Numeric beats float for exactness; geographic operations stay in application code (we don't need PostGIS for Phase 2's simple pin-on-map).
-- **OCPI 2.2.1 alignment** — `party_id`, `evse_id`, `connector.standard` (IEC_62196_T2_COMBO etc.), `connector.format` (CABLE/SOCKET), `connector.power_type` (DC/AC_1_PHASE/AC_3_PHASE), `connector.max_electric_power` (watts), `last_updated`. Field names match the OCPI spec verbatim where possible.
-- **Idempotent upsert by source ID.** ETL keys on `(source, source_id)` for `charging_points`, where `source_id` is REVE's location UUID. Re-running `seed_reve` updates existing rows, doesn't insert duplicates.
+- **Five tables** mirroring REVE's OCPI 2.2.1 nesting: `cpos`, `charging_points`, `evses`, `connectors`, `tariffs`. EVSE = one physical stall (one car at a time); connectors = sockets on that stall — preserving this distinction matters for Phase 4's per-stall occupancy simulation and for the "future commercial CPO integration plugs into the existing schema" claim in [future-work.md](future-work.md).
+- **`charging_points` is dual-source.** A `source` enum (`reve_seed` | `user`) lets Phase 5 user-contributed points share the same table. `cpos.party_id` is FK-linked from `charging_points.party_id` (nullable for `source='user'`). ETL ordering: `cpos` before `locations`.
+- **Tariff linkage is per-connector.** `/connectors/tariffs` returns `{evse_id, connector_id, tariffs}` rows — REVE flattens OCPI's `tariff_ids[]` array model. We model this as `connectors.tariff_id` UUID NULL FK → `tariffs.id`.
+- **`/locations.evses[].accessibility` is wheelchair accessibility, NOT operational status** (the spec literally says *"Accesible o no, para personas con discapacidad"*). Stored on `evses.wheelchair_accessibility` — useful for a future "solo accesibles" filter; not on the Phase 2 critical path.
+- **EVSE operational signal is a boolean** from `/evses/operational_status` — `is_operational` true/false plus `last_operational_status_updated`. The OCPI rich-enum status (`AVAILABLE` / `CHARGING` / `BLOCKED` / `RESERVED` / `OUTOFORDER` / `INOPERATIVE` / `PLANNED` / `REMOVED` / `UNKNOWN`) is only available via `/evses/{evse_id}/status` — a per-EVSE single-fetch endpoint, unaffordable at 600+ EVSEs on a 5/hr budget. Phase 2 surfaces the boolean; Phase 4 layers ACN-derived occupancy on top for the rich state we'd otherwise want.
+- **OCPI 2.2.1 alignment** — `party_id`, `evse_id` (e.g. `ES*IOY*E420805`, OCPI-globally-unique), `connector.standard` (IEC_62196_T2_COMBO etc. — stored as text, not enum, since OCPI versions evolve), `connector.format` (CABLE/SOCKET), `connector.power_type` (DC/AC_1_PHASE/AC_3_PHASE), `connector.max_electric_power` (watts). Field names match the OCPI spec verbatim where possible.
+- **Coordinates stored as numeric** (`Numeric(9, 6)` for latitude, `Numeric(10, 6)` for longitude). REVE returns them as strings — we cast at ingest. Numeric beats float for exactness; geographic operations stay in application code (we don't need PostGIS for Phase 2's pin-on-map).
+- **Tariff display extraction.** REVE simplifies OCPI's `elements[]` and `price_components[]` arrays to single objects. The ingest extracts `price_per_kwh` from `elements.price_components.price` where `type === 'ENERGY'` and `vat_percentage` from `elements.price_components.vat`, casting both string fields to numeric. Full payload preserved in `tariffs.raw_data` JSONB so any downstream display logic (peak/off-peak, restrictions) can fall back to source data without re-querying REVE.
+- **Idempotent upsert by `(source, source_id)`** for `charging_points`, by `source_id` (UNIQUE) for `cpos`/`evses`/`connectors`/`tariffs`. Postgres-native upsert via SQLAlchemy `dialects.postgresql.insert(...).on_conflict_do_update(...)`.
 - **Soft-delete on disappearance.** Rows REVE no longer returns get `archived_at` set, not `DELETE`d — keeps historical references valid (e.g., a Phase 5 booking against a now-archived station).
-- **API key never logged.** `httpx` client is constructed once with the header, `repr` is overridden if needed, audit events log `source=reve` not the key.
+- **API key never logged.** `httpx` client constructed once with the header; audit events log `source=reve` and the endpoint path, never the key.
+
+### Schema reference
+
+Column lists below match the REVE OpenAPI spec (Swagger 2.0) verbatim where it specifies a field, with required/nullable annotations from the spec.
+
+`cpos` — `id` UUID PK (ours), `source_id` text NOT NULL, `party_id` text UNIQUE NOT NULL, `cif` text NOT NULL, `name` text NOT NULL, `address` text NOT NULL, `city` text NOT NULL, `city_code` text NOT NULL (INE municipality), `postal_code` text NOT NULL, `region` text NULL (INE province), `state` text NULL (INE autonomous community), `country` text NOT NULL (ISO 3166-1 alpha-2), `phone` text NULL, `website` text NULL, `confirmed_at` timestamp tz NULL (RIPREE registration), `raw_data` JSONB, `source_last_updated_at` timestamp tz NOT NULL, `created_at`, `updated_at`. UNIQUE `(source_id)`, UNIQUE `(party_id)`.
+
+`charging_points` — `id` UUID PK (ours), `source` enum (`reve_seed` | `user`) NOT NULL, `source_id` text NOT NULL, `name` text NULL (spec says not required — fallback render: `"${cpo_name} (${city})"`), `cpo_name` text NULL (denormalised for hot map render), `party_id` text NULL FK→cpos.party_id (NULL for `source='user'`), `version` text NULL (OCPI version per spec — V211/V22/V221), `address` text NOT NULL, `city` text NOT NULL, `postal_code` text NULL, `region` text NULL, `state` text NULL (autonomous community — added per spec), `country_code` text NOT NULL (ISO 3166-1 alpha-2 — keeping alpha-2 only; spec's separate alpha-3 `country` field is dropped as redundant), `latitude` numeric(9,6) NOT NULL, `longitude` numeric(10,6) NOT NULL, `parking_type` text NULL (enum per spec; useful for filters), `facilities` JSONB NULL (array of facility enums per spec), `time_zone` text NOT NULL, `opening_24_7` boolean NOT NULL, `opening_hours` JSONB NULL (regular_hours[] when not 24/7), `charging_when_closed` boolean NULL, `directions` JSONB NULL, `owner_user_id` UUID NULL FK→users (Phase 5), `description` text NULL (Phase 5), `source_last_updated_at` timestamp tz NOT NULL, `archived_at` timestamp tz NULL, `created_at`, `updated_at`. UNIQUE `(source, source_id)`. Indexes on `(archived_at, latitude, longitude)`, `(party_id)`, `(owner_user_id)`.
+
+`evses` — `id` UUID PK (ours), `charging_point_id` UUID FK→charging_points ON DELETE CASCADE NOT NULL, `source_id` text NOT NULL, `evse_id` text NULL (OCPI EVSE_ID — spec says not required; lookup uses our internal `id`), `physical_reference` text NULL, `floor_level` text NULL (added per spec — garage floor), `capabilities` JSONB NULL, `wheelchair_accessibility` text NULL (from `/locations.evses[].accessibility` — disability-access info, NOT operational status), `is_operational` boolean NULL (from `/evses/operational_status.operational_status`), `operational_status_updated_at` timestamp tz NULL, `source_last_updated_at` timestamp tz NOT NULL. UNIQUE `(charging_point_id, source_id)`. Index on `(evse_id)` where not null.
+
+`connectors` — `id` UUID PK (ours), `evse_id` UUID FK→evses ON DELETE CASCADE NOT NULL, `source_id` text NOT NULL, `standard` text NOT NULL (large enum per spec — stored as text since OCPI versions evolve), `format` text NOT NULL (CABLE/SOCKET), `power_type` text NOT NULL, `max_electric_power` integer NULL (watts — spec marks not required), `max_voltage` integer NOT NULL, `max_amperage` integer NOT NULL, `tariff_id` UUID NULL FK→tariffs, `source_last_updated_at` timestamp tz NOT NULL. UNIQUE `(evse_id, source_id)`.
+
+`tariffs` — `id` UUID PK (ours), `source_id` text UNIQUE NOT NULL, `currency` text NOT NULL (ISO 4217), `valid_from` timestamp tz NULL, `valid_to` timestamp tz NULL, `price_per_kwh` numeric(8,4) NULL (extracted from `elements.price_components.price` where `type='ENERGY'`; cast string→numeric at ingest), `price_component_type` text NULL (`ENERGY` / `FLAT` / `PARKING_TIME` / `TIME` — captured for honesty even though we display only ENERGY), `vat_percentage` numeric(5,2) NULL, `step_size` integer NULL, `raw_data` JSONB NOT NULL (full tariff incl. restrictions), `source_last_updated_at` timestamp tz NOT NULL, `last_refreshed_at` timestamp tz NOT NULL.
 
 ### Task plan
 
@@ -48,25 +67,25 @@ The biggest slice; everything else builds on its DB schema and the typed `/api/p
   - Files: `backend/pyproject.toml`, `backend/uv.lock`
   - Deliverable: `apscheduler` declared and locked. (`httpx` is already a transitive dep of `httpx-oauth`; we depend on it directly here.) `uv sync --locked` passes inside the backend container.
 
-- [ ] **2. `feat(backend): charging point models`**
-  - Files: `backend/app/models/charging_point.py`, `backend/app/models/__init__.py`
-  - Deliverable: SQLAlchemy 2.0 declarative models — `ChargingPoint` (id UUID PK, source enum, source_id text, name, address, city, postal_code, region, country, lat, lng, party_id, cpo_name, time_zone, opening_24_7 bool, last_updated_at, archived_at nullable), `Connector` (FK to charging_point, evse_id, source_id, standard, format, power_type, max_electric_power, max_voltage, max_amperage), `Tariff` (FK to connector, currency, price_per_kwh, type, last_refreshed_at), `EvseStatus` (one row per EVSE, accessibility text, source_updated_at). Source enum: `reve_seed`, `user`.
+- [ ] **2. `feat(backend): reve mirror models`**
+  - Files: `backend/app/models/cpo.py`, `backend/app/models/charging_point.py` (covers `ChargingPoint`, `Evse`, `Connector` per the "one file per aggregate" rule), `backend/app/models/tariff.py`, `backend/app/models/__init__.py`
+  - Deliverable: SQLAlchemy 2.0 declarative models for the five tables in [Schema reference](#schema-reference). FK chain: `charging_points.party_id → cpos.party_id`, `evses.charging_point_id → charging_points.id`, `connectors.evse_id → evses.id`, `connectors.tariff_id → tariffs.id`. Relationships eagerly load connectors+tariffs+evses for a single charging-point detail query (`selectinload`); `/api/points` list query joins through `joinedload` on the same chain. Source enum: `reve_seed`, `user`.
 
-- [ ] **3. `feat(backend): charging point migration`**
-  - Files: `backend/alembic/versions/xxxx_charging_points.py`
-  - Deliverable: migration creates the four tables + indexes (`(source, source_id)` unique on charging_points; spatial-ish `(lat, lng)` covering index for bbox queries). `alembic upgrade head` clean on a fresh DB; `alembic downgrade -1` reverts.
+- [ ] **3. `feat(backend): reve mirror migration`**
+  - Files: `backend/alembic/versions/xxxx_reve_mirror.py`
+  - Deliverable: migration creates the five tables + indexes (`UNIQUE (source, source_id)` on charging_points; `UNIQUE party_id` on cpos; `UNIQUE evse_id` on evses; `UNIQUE (evse_id, source_id)` on connectors; `(latitude, longitude)` on charging_points for bbox queries; `(party_id)` on charging_points for CPO joins). Tables created in FK-dependency order: `cpos` → `tariffs` → `charging_points` → `evses` → `connectors`. `alembic upgrade head` clean on a fresh DB; `alembic downgrade -1` reverts cleanly.
 
 - [ ] **4. `feat(backend): reve api client`**
   - Files: `backend/app/integrations/reve.py`, `backend/tests/test_integrations_reve.py`
-  - Deliverable: async `RevedClient` wrapping `httpx.AsyncClient` — `x-api-key` header from settings, `base_url` from settings, async `get(path, params=None)` with retry on `429` (exponential backoff capped at one retry — we cannot afford to hammer a 5/hr endpoint), pagination helper `get_paginated(path, params=None) -> AsyncIterator[dict]` consuming `page` / `limit`, and a typed `Pydantic` response wrapper per endpoint. Unit tests stub `httpx` via `pytest_httpx`. The client never logs the key.
+  - Deliverable: async `ReveClient` wrapping `httpx.AsyncClient` — `x-api-key` header from settings, `base_url` from settings, async `get(path, params=None)` with retry on `429` (exponential backoff capped at one retry — we cannot afford to hammer a 5/hr endpoint), pagination helper `get_paginated(path, params=None) -> AsyncIterator[dict]` consuming `page` / `limit`. Unit tests stub `httpx` via `pytest_httpx`. The client never logs the key.
 
 - [ ] **5. `feat(backend): reve etl module`**
   - Files: `backend/app/etl/reve.py`, `backend/tests/test_etl_reve.py`
-  - Deliverable: four idempotent ingest functions — `import_locations(client, db, *, date_from=None)`, `import_cpos(...)`, `import_tariffs(...)`, `import_evse_status(...)`. Each uses `INSERT ... ON CONFLICT DO UPDATE` (Postgres-native upsert via SQLAlchemy `dialects.postgresql.insert`) keyed on `(source, source_id)`. Coordinates cast from string to `Numeric` at ingest. Rows missing from a full refresh get `archived_at=now()`. Tests cover (a) initial bootstrap from mocked REVE responses, (b) no-op re-run, (c) row removed upstream → `archived_at` set.
+  - Deliverable: four idempotent ingest functions, in execution order — `import_cpos(client, db, *, date_from=None)`, `import_locations(client, db, *, date_from=None)` (writes `charging_points` + `evses` + `connectors` atomically per location, capturing `wheelchair_accessibility` from `evse.accessibility`, `parking_type`, `facilities`, `floor_level`), `import_evse_operational_status(client, db, *, date_from=None)` (updates `evses.is_operational` + `operational_status_updated_at` from the boolean `operational_status` field), `import_tariffs(client, db, *, date_from=None)` (upserts `tariffs` and sets `connectors.tariff_id` per `(evse_id, connector_id)` row in the response). Each uses `INSERT ... ON CONFLICT DO UPDATE`. Coordinates cast from string to `Numeric`; tariff `price` and `vat` strings cast to numeric; `Decimal`-typed `restrictions.{min,max}_*` fields preserved in `raw_data` only. Rows missing from a full refresh get `archived_at=now()`. Tests cover (a) initial bootstrap from mocked REVE responses, (b) no-op re-run, (c) row removed upstream → `archived_at` set, (d) tariff linkage written correctly to connectors, (e) `Location.name` null → fallback synthesis at the API layer (not at ingest — we preserve the null).
 
 - [ ] **6. `feat(backend): seed_reve cli script`**
   - Files: `backend/scripts/seed_reve.py`, `backend/scripts/__init__.py`
-  - Deliverable: `python -m scripts.seed_reve` runs all four imports in order with `logging.INFO` per stage, prints REVE-call accounting at the end (e.g., `"REVE calls used: 5/5 (page sizes: locations=100, cpos=20, tariffs=…, status=…)"`). Exits non-zero on any failure. README quickstart updated separately in Slice 4.
+  - Deliverable: `python -m scripts.seed_reve` runs the four imports in order (cpos → locations → evse_operational_status → tariffs) with `logging.INFO` per stage, prints REVE-call accounting at the end (e.g., `"REVE calls used: 4 (cpos: 1, locations: 1, evse_status: 1, tariffs: 1)"`). Exits non-zero on any failure. README quickstart updated in Slice 4.
 
 - [ ] **7. `feat(backend): apscheduler in fastapi lifespan`**
   - Files: `backend/app/utils/scheduler.py`, `backend/app/main.py`
@@ -74,19 +93,19 @@ The biggest slice; everything else builds on its DB schema and the typed `/api/p
 
 - [ ] **8. `feat(backend): daily tariff refresh job`**
   - Files: `backend/app/utils/scheduler.py` (extend), `backend/app/etl/reve.py` (extend if needed), `backend/tests/test_scheduler.py`
-  - Deliverable: registered cron trigger — `hour=4, minute=0, timezone="Europe/Madrid"`, `id="reve_tariff_refresh"`. The job opens an `AsyncSession`, reads `tariffs.last_refreshed_at` max as `date_from`, calls `import_tariffs(client, db, date_from=...)`, emits `audit("reve_tariff_refresh_ok", count=...)` or `audit("reve_tariff_refresh_failed", error=...)`. Misfire grace: 1h. No retries on failure (next day picks it up). Test invokes the job directly with a frozen clock and mocked REVE.
+  - Deliverable: registered cron trigger — `hour=4, minute=0, timezone="Europe/Madrid"`, `id="reve_tariff_refresh"`. The job opens an `AsyncSession`, reads `MAX(tariffs.last_refreshed_at)` as `date_from`, calls `import_tariffs(client, db, date_from=...)`, emits `audit("reve_tariff_refresh_ok", count=...)` or `audit("reve_tariff_refresh_failed", error=...)`. Misfire grace: 1h. No retries on failure (next day picks it up). Test invokes the job directly with a frozen clock and mocked REVE.
 
 - [ ] **9. `feat(backend): /api/points endpoint`**
   - Files: `backend/app/routers/points.py`, `backend/app/schemas/points.py`, `backend/app/main.py` (router include)
-  - Deliverable: `GET /api/points` returns the active (non-archived) charging points with their connectors + tariffs joined. Optional query params: `bbox` (`min_lng,min_lat,max_lng,max_lat`), `connector_standard`, `max_price_per_kwh`. Returns a flat array (no pagination for ~100 rows). Pydantic response models live in `schemas/points.py`. Performance budget: <100 ms for the full unfiltered query (indexed on `(source, archived_at)`).
+  - Deliverable: `GET /api/points` returns active (non-archived) charging points with `evses[].connectors[].tariff` joined. Optional query params: `bbox` (`min_lng,min_lat,max_lng,max_lat`), `connector_standard` (single value or comma-list), `max_price_per_kwh`. Returns a flat array (no pagination for ~100 rows). Pydantic response models live in `schemas/points.py`. Performance budget: <100 ms for the full unfiltered query (indexed on `(archived_at, latitude, longitude)`).
 
 - [ ] **10. `feat(backend): /api/points/{id} endpoint`**
   - Files: `backend/app/routers/points.py` (extend), `backend/app/schemas/points.py` (extend)
-  - Deliverable: `GET /api/points/{id}` returns one charging point with full nested data — operator (party_id + cpo_name), connectors with tariffs and live `accessibility`, address, coordinates, opening hours, `last_updated_at`, `last_refreshed_at` (latest tariff refresh). 404 with `status_code/status_message` when not found or archived.
+  - Deliverable: `GET /api/points/{id}` returns one charging point with full nested data — `cpo` (party_id + name + cif + address from the `cpos` join), `evses[].connectors[].tariff`, address, coordinates, opening hours, `directions` (from JSONB), `source_last_updated_at`, latest `last_refreshed_at` across the point's tariffs. 404 with `{status_code, status_message}` when not found or archived (matching REVE's own 404 shape so the frontend handles both transparently).
 
 - [ ] **11. `test(backend): /api/points happy + filtered paths`**
   - Files: `backend/tests/test_points.py`
-  - Deliverable: tests insert fixture charging points (no real REVE call), exercise the endpoint without filters, with bbox, with connector filter, with price filter, and the 404 case for `/api/points/{id}`.
+  - Deliverable: tests insert fixture cpos/charging_points/evses/connectors/tariffs (no real REVE call), exercise the endpoint without filters, with bbox, with connector_standard filter, with max_price_per_kwh filter, and the 404 case for `/api/points/{id}`.
 
 #### Docs
 
@@ -139,12 +158,12 @@ The biggest slice; everything else builds on its DB schema and the typed `/api/p
 
 ## Slice 3 — Markers, clustering, bottom sheet
 
-**Acceptance:** `/map` renders all REVE-seeded points as colour-coded clustered markers; tapping a marker opens a 45 %-height MUI bottom sheet showing operator, address, connectors with power, tariff (€/kWh), accessibility chip, and two buttons — outlined "Detalles" and contained "Navegar". "Navegar" deep-links to Google Maps directions. Selecting another marker swaps the sheet content without remounting.
+**Acceptance:** `/map` renders all REVE-seeded points as colour-coded clustered markers (colour from `aggregate_status`); tapping a marker opens a 45 %-height MUI bottom sheet showing operator, address, connectors with power, tariff (€/kWh), an operational-status chip, and two buttons — outlined "Detalles" and contained "Navegar". "Navegar" deep-links to Google Maps directions. Selecting another marker swaps the sheet content without remounting.
 
 **Locked decisions**
 
 - **GeoJSON source with built-in clustering.** `<Source type="geojson" cluster={true} clusterRadius={40}>` plus three layers (clusters, cluster counts, unclustered points). No third-party clustering library.
-- **Marker colour coding from `accessibility`:** `DISPONIBLE` → `#4ADE80` (available green from [screens.md](screens.md)); `NODISPONIBLE` → `#FBBF24` (occupied amber); `RESERVADO` / unknown → `#9AA6B5` (muted). MapLibre paint expression on `circle-color`.
+- **Marker colour coding from per-charging-point operational rollup.** Computed at API time as the `aggregate_status` field on each charging point: all EVSEs `is_operational=true` → `operational` (`#4ADE80` available green per [screens.md](screens.md)); some true, some false → `partial` (`#FBBF24` amber); all false → `inoperative` (`#EF4444` red); all unknown → `unknown` (`#9AA6B5` muted). MapLibre paint expression on `circle-color` keys off this string. *Note: this is a binary-rollup signal, not an OCPI rich-enum signal — `is_operational` from `/evses/operational_status` is a boolean per spec. The richer "available vs charging vs reserved" colouring lands in Phase 4 via ACN-derived simulation.*
 - **Bottom sheet via MUI `<Drawer anchor="bottom">`** with `PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, height: '45vh' } }}`. Drag-to-dismiss is post-Phase-2 polish; tap-outside-to-close is enough for now.
 - **Selected-point state lives in `MapPage`**, not in URL. URL deep-linking to a specific point comes via Slice 4's `/points/:id` route. (This avoids fighting React Router with map-state-as-search-params.)
 - **Navegar URL:** `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` — the universal Google Maps Directions URL. Works on iOS, Android, and desktop. No platform-specific `geo:` URI fallback (extra complexity for marginal UX gain).
@@ -163,11 +182,11 @@ The biggest slice; everything else builds on its DB schema and the typed `/api/p
 
 - [ ] **3. `feat(frontend): geojson source + clustered marker layers`**
   - Files: `frontend/src/pages/MapPage.tsx` (extend), `frontend/src/map/layers.ts`
-  - Deliverable: `MapPage` builds a `FeatureCollection` from the points hook's data (`useMemo` keyed on the array reference), passes it to `<Source id="points" type="geojson" cluster={true} clusterRadius={40}>` with three `<Layer>` children: `clusters` (paint: stepped circle-color + circle-radius by `point_count`), `cluster-count` (symbol with `point_count_abbreviated`), `unclustered-point` (paint: circle-color from accessibility expression). On cluster click, `easeTo` zooms to `getClusterExpansionZoom`. On unclustered click, set selected-point id.
+  - Deliverable: `MapPage` builds a `FeatureCollection` from the points hook's data (`useMemo` keyed on the array reference), passes it to `<Source id="points" type="geojson" cluster={true} clusterRadius={40}>` with three `<Layer>` children: `clusters` (paint: stepped circle-color + circle-radius by `point_count`), `cluster-count` (symbol with `point_count_abbreviated`), `unclustered-point` (paint: `circle-color` from a MapLibre `match` expression on the feature's `aggregate_status` property — `operational`/`partial`/`inoperative`/`unknown`). On cluster click, `easeTo` zooms to `getClusterExpansionZoom`. On unclustered click, set selected-point id.
 
 - [ ] **4. `feat(frontend): point bottom sheet`**
   - Files: `frontend/src/components/PointBottomSheet.tsx`
-  - Deliverable: MUI `<Drawer anchor="bottom" open={selected !== null} onClose={() => setSelected(null)}>` rendering the selected point per [screens.md §3](screens.md): name (600), operator (secondary), accessibility chip, address row with copy-icon, connector chips (`CCS 150 kW`), large price (`€0.42 / kWh`, 600), button row — outlined "Detalles" + contained "Navegar". Spanish copy throughout (per [frontend-decisions §13](frontend-decisions.md)).
+  - Deliverable: MUI `<Drawer anchor="bottom" open={selected !== null} onClose={() => setSelected(null)}>` rendering the selected point per [screens.md §3](screens.md): name (or fallback `${cpo_name} (${city})` when REVE returned no name), operator (secondary), operational-status chip ("Operativo" / "Parcial" / "No operativo" / "Desconocido" — Spanish copy keyed off `aggregate_status`), address row with copy-icon, connector chips (`CCS 150 kW`), large price (`€0.42 / kWh`, 600), button row — outlined "Detalles" + contained "Navegar". Spanish copy throughout (per [frontend-decisions §13](frontend-decisions.md)).
 
 - [ ] **5. `feat(frontend): navegar deep-link`**
   - Files: `frontend/src/components/PointBottomSheet.tsx` (extend)
@@ -186,7 +205,7 @@ The biggest slice; everything else builds on its DB schema and the typed `/api/p
 **Locked decisions**
 
 - **Client-side filtering via MapLibre filter expressions** on the `unclustered-point` layer. We already fetch all points; re-querying the API on filter change wastes round-trips and breaks clustering. The chip bar mutates a `useState` filter object that compiles to a MapLibre `filter: ['all', ...]` expression each render.
-- **Filter chips:** `Disponible`, `Type 2`, `CCS`, `CHAdeMO`, `< €0.40/kWh`, `< €0.60/kWh`. "Puntos privados" chip is wired but disabled until Phase 5 (visible as a guide for future work).
+- **Filter chips:** `Operativos` (filters by `aggregate_status='operational'`), `Type 2`, `CCS`, `CHAdeMO`, `< €0.40/kWh`, `< €0.60/kWh`. "Puntos privados" chip is wired but disabled until Phase 5 (visible as a guide for future work). The label `Operativos` reflects the boolean signal we actually have — not the OCPI rich-enum "Disponible/Ocupado/Reservado" trio that requires per-EVSE polling.
 - **`/points/:id` is its own lazy route**, separate chunk from `/map`. Not a modal. Reasons: shareable URL, browser-back works naturally, doesn't fight the bottom sheet's mount/unmount.
 - **Lighthouse cadence:** Phase 2 baseline now, Phase 6 final. Audit recorded in `docs/lighthouse-YYYY-MM-DD.md` per [frontend-decisions §5](frontend-decisions.md). No CI integration.
 
