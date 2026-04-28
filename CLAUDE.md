@@ -30,21 +30,14 @@ docker compose up
 
 Starts Postgres, backend (FastAPI at `:8000`), and frontend (Vite at `:5173`). See `DOCKER.md` for when to rebuild vs. recreate.
 
-## Commit Conventions
+## Hard constraints (do not propose alternatives without an ADR)
 
-Conventional Commits, scoped to `backend`, `frontend`, `root`, or `infra`. One logical change per commit. Full rules in `CONTRIBUTING.md`.
-
-## Deployment Target
-
-Single Hetzner VPS (CX22) with Nginx + Let's Encrypt. **No Kubernetes, no Vercel, no Supabase** — deliberately rejected as overkill for thesis scope.
-
-## What Is Mocked
-
-Payments, commission payouts, and real-time occupation for private points are simulated. This is an intentional thesis decision documented in `PLAN.md` — do not try to build real payment integration.
+- Single Hetzner VPS + Nginx + Let's Encrypt. **No Kubernetes, no Vercel, no Supabase.**
+- Payments, commission payouts, and real-time occupation for private points are simulated — not real integrations. Thesis decision documented in [PLAN.md](PLAN.md).
 
 ## Working Style
 
-- Solo developer, Python + React proficient. Skip beginner explanations.
+- Solo developer, Python + React proficient.
 - Prefer small focused commits over large batches.
 - Plan before building: agree on approach before writing code for non-trivial work.
 - Responsive UI is mandatory (mobile-first, tested on real iPhone + Android). PWA installability is a hard requirement.
@@ -54,7 +47,7 @@ Payments, commission payouts, and real-time occupation for private points are si
 At the end of each slice (or when an edit would otherwise leave a doc stale), update these in the same commit as the code change:
 
 - **[README.md](README.md)** — status table, any new major component, changed quick-start
-- **[PLAN.md](PLAN.md)** — tick off completed checkboxes; adjust estimates if they shifted materially
+- **[PLAN.md](PLAN.md)** — tick off completed checkboxes, adjust estimates, **and rewrite phase prose when shipped reality diverges from the planned approach** (PLAN.md is living, not write-once)
 - **[docs/future-work.md](docs/future-work.md)** — add newly-deferred items; remove ones we actually built
 - **[backend/CLAUDE.md](backend/CLAUDE.md)** / **[frontend/CLAUDE.md](frontend/CLAUDE.md)** — update the file map or "architecture" section when a cross-cutting system lands (auth, ETL, simulation)
 

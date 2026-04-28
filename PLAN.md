@@ -24,7 +24,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React + TypeScript + Vite, MUI, ECharts, MapLibre GL + self-hosted Protomaps (MapTiler fallback) |
+| Frontend | React + TypeScript + Vite, MUI, ECharts, MapLibre GL + react-map-gl, MapTiler tiles (self-hosted Protomaps documented as Phase 6 fallback) |
 | PWA | Vite PWA plugin (installable, offline shell) |
 | Backend | Python + FastAPI |
 | Database | PostgreSQL |
@@ -32,7 +32,7 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 | Containers | Docker Compose |
 | Deployment | Hetzner VPS (CX22) + Nginx + Let's Encrypt |
 
-**Cost:** ~€65–70/year (VPS ~€4.50/month + domain ~€12/year). No Kubernetes, no Vercel, no Supabase.
+**Cost:** ~€65–70/year on Hetzner (VPS ~€4.50/month + domain ~€12/year), or ~€12–180/year on Fly.io + Neon (free tiers cover a thesis demo). Final choice is locked at the start of Phase 6 — see the table there. No Kubernetes, no Vercel, no Supabase.
 
 ---
 
@@ -114,20 +114,21 @@ Per-package Claude Code skills and conventions, before any feature work starts. 
 - [ ] Installed skills committed (`.claude/` directory)
 - [ ] Commit: `chore: add per-package CLAUDE.md and install frontend skills`
 
-### Phase 1 — Foundation (22–28h)
+### Phase 1 — Foundation (22–28h) ✅ done
 
-Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/password + Google OAuth) with Argon2id, in-memory access token + HttpOnly refresh cookie, per-IP rate limiting, and audit logging. React + MUI scaffold and PWA manifest. Decisions and rationale: [docs/auth-decisions.md](docs/auth-decisions.md).
+Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/password + Google OAuth) with Argon2id, **single HttpOnly session cookie** (no refresh token), **email verification + password reset via Resend**, and stdout JSON audit logging. React + MUI scaffold and PWA manifest. Rate limiting deferred to Nginx in Phase 6. Decisions and rationale: [docs/auth-decisions.md](docs/auth-decisions.md). Slice-by-slice plan: [docs/phase-1.md](docs/phase-1.md).
 
-- [ ] `docker compose up` starts full stack
-- [ ] `/docs` and `/health` reachable; Alembic migration runs clean
-- [ ] Email/password auth: register, login, protected `/auth/me`, refresh, logout, per-IP rate limiting, structured audit logging
-- [ ] Google OAuth login works end-to-end via `httpx-oauth`; first-time users auto-provisioned in the `oauth_account` table; existing email accounts can link Google without duplication
-- [ ] Chrome shows "Install app" prompt and add from Safari
-- [ ] README documents setup in ≤5 commands (including Google OAuth client setup)
+- [x] `docker compose up` starts full stack
+- [x] `/docs` and `/api/health` reachable; Alembic migration runs clean
+- [x] Email/password auth: register, login (gated on email verification), `/api/users/me`, logout, structured audit logging
+- [x] Email verification + password reset emails via Resend
+- [x] Google OAuth login works end-to-end via `httpx-oauth`; first-time users auto-provisioned in the `oauth_account` table; existing email accounts can link Google without duplication; OAuth users are verified by default
+- [x] PWA installable: Chrome shows "Install app" prompt, iOS Safari "Add to Home Screen" launches standalone
+- [x] README documents setup in ≤5 commands (plus linked Google OAuth + Resend setup subsections)
 
 ### Phase 2 — REVE + Map (25–30h)
 
-REVE API client with cache, Leaflet map, filters, point detail.
+REVE API client with cache, MapLibre GL map (MapTiler tiles), filters, point detail.
 
 - [ ] `/api/points` returns REVE data, cached
 - [ ] Map renders real Spanish points, color-coded
@@ -212,7 +213,7 @@ Document, diagram, defend.
 | --- | --- |
 | Phase 4 slips | Budget buffer; algorithm can start simple (greedy) and iterate |
 | Mobile bugs found late | Test on phone during Phase 2, not Phase 6 |
-| REVE API limits or changes | Cache aggressively; fallback to snapshot JSON if API fails |
+| REVE API limits or changes | Cache aggressively (in-memory TTL); persist last-good snapshot to disk for graceful degradation when REVE 5xx |
 | Thesis writing crunch | Start drafting architecture + data chapters in parallel with Phase 3 |
 
 ---

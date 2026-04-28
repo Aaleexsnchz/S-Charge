@@ -4,7 +4,7 @@ Background notes for the Phase 1 authentication slice (see [phase-1.md](phase-1.
 
 ## Implementation substrate
 
-Slice 1 is built on top of [fastapi-users](https://fastapi-users.github.io) with PostgreSQL + SQLAlchemy. The library handles the user model scaffolding, register/login/me endpoints, password hashing pipeline, JWT issuance, and (in Slice 2) the OAuth2 social-login flow via [httpx-oauth](https://github.com/frankie567/httpx-oauth). Custom code is added only where the library's defaults don't match the decisions below — chiefly for the refresh-cookie strategy, rate limiting, audit logging, and `citext` email storage. Reinventing the auth pipeline from primitives was considered and rejected as scope inappropriate for a thesis whose contribution lies elsewhere (data integration + simulation + algorithm work).
+Slice 1 is built on top of [fastapi-users](https://fastapi-users.github.io) with PostgreSQL + SQLAlchemy. The library handles the user model scaffolding, register/login/me endpoints, password hashing pipeline, JWT issuance, and (in Slice 2) the OAuth2 social-login flow via [httpx-oauth](https://github.com/frankie567/httpx-oauth). Custom code is added only where the library's defaults don't match the decisions below — chiefly for cookie-based session transport, audit logging, and `citext` email storage. (Rate limiting was scoped out of Slice 1 and lives in Nginx — see §7.) Reinventing the auth pipeline from primitives was considered and rejected as scope inappropriate for a thesis whose contribution lies elsewhere (data integration + simulation + algorithm work).
 
 These decisions are locked for Slice 1. Subsequent changes should be appended as new entries (with date and reason) rather than edited in place.
 
@@ -87,7 +87,7 @@ These decisions are locked for Slice 1. Subsequent changes should be appended as
 - *Short TTL (15 min).* Limits the blast radius of a leaked access token; pairs with the refresh cookie to give the user a long effective session without long-lived bearer credentials.
 - *Pinned algorithm + pinned audience.* Defends against the well-known JWT attack classes: `alg: none` (CVE-2015-9235 family) and key-confusion (using the public key as an HMAC secret). Defends against token-purpose confusion (presenting a refresh token where a bearer is expected).
 
-**Implementation.** Slice 1. Two `JWTStrategy` instances are configured in fastapi-users — one for the access token (15 min, header bearer) with `aud = "users:access"`, and one for the refresh token (14 d, HttpOnly cookie) with `aud = "users:refresh"`. The library refuses tokens whose audience does not match the expected backend.
+**Implementation.** Slice 1. A single `JWTStrategy` is configured in fastapi-users (HS256, 14-day lifetime, audience `tfm:session`) and composed with a `CookieTransport` into one `AuthenticationBackend`. The library refuses tokens whose audience does not match the expected backend. See §5 / §6 for why the dual access+refresh design described in earlier drafts of this section was reversed before implementation.
 
 **Rejected alternatives.** Opaque random session tokens with DB lookup per request (simpler revocation but adds DB load to every authenticated request); PASETO (cleaner crypto story than JWT but a much smaller ecosystem — thesis defensibility cuts both ways and JWT is more standard).
 
@@ -376,5 +376,7 @@ The `if not user.is_verified` guard distinguishes the three branches without spe
 | 10 | Audit logging | partial (stdlib JSON logs) | persisted `auth_events` table |
 | 11 | Length-only password policy | ✓ | HIBP k-anonymity check on set |
 | 12 | `oauth_account` join table | ✓ (Slice 2) | — |
+| 13 | Email verification + password reset (Resend, 1h JWT) | ✓ (Slice 3) | persisted token tables, magic-link login |
+| 14 | OAuth-link of unverified password row wipes the hash | ✓ (Slice 3 follow-up) | — |
 
 The deferred items are documented as future work in the thesis rather than absent — academic honesty about scope is a strength, not a weakness.

@@ -120,6 +120,7 @@ tfm/
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — branch naming, Conventional Commits format, workflow
 - **[DOCKER.md](DOCKER.md)** — when to rebuild, recreate, or do nothing after a change
 - **[docs/auth-decisions.md](docs/auth-decisions.md)** — security decision record (ADR-style, 12 sections)
+- **[docs/frontend-decisions.md](docs/frontend-decisions.md)** — frontend architecture decision record (13 sections)
 - **[docs/phase-1.md](docs/phase-1.md)** — slice-by-slice auth task plan
 - **[docs/future-work.md](docs/future-work.md)** — items deliberately out of thesis scope
 - **[docs/screens.md](docs/screens.md)** — UI screen specifications
