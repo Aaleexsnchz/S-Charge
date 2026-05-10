@@ -1,6 +1,6 @@
 import logging
 import uuid
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -16,6 +16,8 @@ from app.models.tariff import Tariff
 from app.utils.audit import audit
 
 logger = logging.getLogger(__name__)
+
+PAGE_SIZE = 100
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -38,23 +40,79 @@ def _ensure_list(value: Any) -> list[dict[str, Any]]:
     return [value]
 
 
+async def _paginate_with_budget(
+    client: ReveClient,
+    path: str,
+    base_params: dict[str, Any] | None,
+    process_item: Callable[[dict[str, Any]], Awaitable[None]],
+    *,
+    start_page: int,
+    max_pages: int | None,
+) -> tuple[int, int, bool]:
+    """Fetch consecutive pages of REVE data, calling ``process_item`` per row.
+
+    Returns ``(rows_processed, last_page_completed, exhausted)``. ``exhausted``
+    is ``True`` when REVE returned a short page (< PAGE_SIZE), signalling no
+    more data; the cursor in the caller can then stamp ``completed_at``.
+    """
+    rows = 0
+    last_page_completed = start_page - 1
+    exhausted = False
+    pages_fetched = 0
+    page = start_page
+
+    while True:
+        if max_pages is not None and pages_fetched >= max_pages:
+            break
+        page_params = {**(base_params or {}), "page": page, "limit": PAGE_SIZE}
+        items = await client.get(path, params=page_params)
+        for item in items:
+            await process_item(item)
+            rows += 1
+        last_page_completed = page
+        pages_fetched += 1
+        if len(items) < PAGE_SIZE:
+            exhausted = True
+            break
+        page += 1
+
+    return rows, last_page_completed, exhausted
+
+
+def _date_from_params(date_from: datetime | None) -> dict[str, Any] | None:
+    if date_from is None:
+        return None
+    return {"date_from": date_from.isoformat()}
+
+
 async def import_cpos(
     client: ReveClient,
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
-) -> int:
-    params: dict[str, Any] = {}
-    if date_from:
-        params["date_from"] = date_from.isoformat()
-
-    count = 0
-    async for raw in client.get_paginated("/cpos", params=params or None):
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
+    async def _process(raw: dict[str, Any]) -> None:
         await _upsert_cpo(db, raw)
-        count += 1
 
-    audit("reve_etl_cpos", count=count, date_from=params.get("date_from"))
-    return count
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/cpos",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    audit(
+        "reve_etl_cpos",
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    return rows, last_page, exhausted
 
 
 async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> None:
@@ -90,27 +148,29 @@ async def import_locations(
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
-) -> int:
-    params: dict[str, Any] = {}
-    if date_from:
-        params["date_from"] = date_from.isoformat()
-
-    is_full_refresh = date_from is None
-    seen_source_ids: list[str] = []
-
-    async for raw in client.get_paginated("/locations", params=params or None):
-        seen_source_ids.append(raw["id"])
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
+    async def _process(raw: dict[str, Any]) -> None:
         await _upsert_location(db, raw)
 
-    if is_full_refresh:
-        await _archive_missing_charging_points(db, seen_source_ids)
-
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/locations",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
     audit(
         "reve_etl_locations",
-        count=len(seen_source_ids),
-        date_from=params.get("date_from"),
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
     )
-    return len(seen_source_ids)
+    return rows, last_page, exhausted
 
 
 async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
@@ -211,33 +271,15 @@ async def _upsert_connector(
     await db.execute(stmt)
 
 
-async def _archive_missing_charging_points(
-    db: AsyncSession,
-    seen_source_ids: Iterable[str],
-) -> None:
-    seen = list(seen_source_ids)
-    stmt = (
-        update(ChargingPoint)
-        .where(ChargingPoint.source == ChargingPointSource.REVE_SEED)
-        .where(ChargingPoint.archived_at.is_(None))
-        .where(ChargingPoint.source_id.notin_(seen))
-        .values(archived_at=datetime.now(UTC))
-    )
-    await db.execute(stmt)
-
-
 async def import_evse_operational_status(
     client: ReveClient,
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
-) -> int:
-    params: dict[str, Any] = {}
-    if date_from:
-        params["date_from"] = date_from.isoformat()
-
-    count = 0
-    async for raw in client.get_paginated("/evses/operational_status", params=params or None):
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
+    async def _process(raw: dict[str, Any]) -> None:
         stmt = (
             update(Evse)
             .where(Evse.source_id == raw["id"])
@@ -247,14 +289,24 @@ async def import_evse_operational_status(
             )
         )
         await db.execute(stmt)
-        count += 1
 
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/evses/operational_status",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
     audit(
         "reve_etl_evse_operational_status",
-        count=count,
-        date_from=params.get("date_from"),
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
     )
-    return count
+    return rows, last_page, exhausted
 
 
 async def import_tariffs(
@@ -262,19 +314,31 @@ async def import_tariffs(
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
-) -> int:
-    params: dict[str, Any] = {}
-    if date_from:
-        params["date_from"] = date_from.isoformat()
-
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
     refreshed_at = datetime.now(UTC)
-    count = 0
-    async for raw in client.get_paginated("/connectors/tariffs", params=params or None):
-        await _upsert_connector_tariff(db, raw, refreshed_at)
-        count += 1
 
-    audit("reve_etl_tariffs", count=count, date_from=params.get("date_from"))
-    return count
+    async def _process(raw: dict[str, Any]) -> None:
+        await _upsert_connector_tariff(db, raw, refreshed_at)
+
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/connectors/tariffs",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    audit(
+        "reve_etl_tariffs",
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    return rows, last_page, exhausted
 
 
 async def _upsert_connector_tariff(

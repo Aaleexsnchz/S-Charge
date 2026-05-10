@@ -88,9 +88,11 @@ async def test_import_cpos_initial_bootstrap(
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
 
     async with reve_client as client:
-        count = await import_cpos(client, db_session)
+        rows, last_page, exhausted = await import_cpos(client, db_session)
 
-    assert count == 1
+    assert rows == 1
+    assert last_page == 1
+    assert exhausted is True
     cpo = (await db_session.execute(select(Cpo))).scalar_one()
     assert cpo.party_id == "ES*ABC"
     assert cpo.name == "Cargas Iberica"
@@ -114,6 +116,27 @@ async def test_import_cpos_idempotent(
     rows = (await db_session.execute(select(Cpo))).scalars().all()
     assert len(rows) == 1
     assert rows[0].name == "Cargas Iberica SA"
+
+
+async def test_import_cpos_resumes_from_start_page(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    page_1 = [_cpo(id=f"cpo-{i}", party_id=f"ES*P{i:03d}") for i in range(1, 101)]
+    page_2 = [_cpo(id="cpo-101", party_id="ES*P101")]
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=page_1)
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=2&limit=100", json=page_2)
+
+    async with reve_client as client:
+        rows1, last1, exhausted1 = await import_cpos(client, db_session, max_pages=1)
+        assert (rows1, last1, exhausted1) == (100, 1, False)
+
+        rows2, last2, exhausted2 = await import_cpos(
+            client, db_session, start_page=last1 + 1, max_pages=1
+        )
+        assert (rows2, last2, exhausted2) == (1, 2, True)
+
+    total = (await db_session.execute(select(func.count()).select_from(Cpo))).scalar_one()
+    assert total == 101
 
 
 async def test_import_locations_creates_full_chain(
@@ -144,30 +167,6 @@ async def test_import_locations_creates_full_chain(
     ).scalar_one()
     assert connector.standard == "IEC_62196_T2"
     assert connector.max_voltage == 400
-
-
-async def test_import_locations_archives_missing_on_full_refresh(
-    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
-) -> None:
-    first = _location(id="loc-1", name="Keep")
-    second = _location(id="loc-2", name="Drop")
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[first, second])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[first])
-
-    async with reve_client as client:
-        await import_cpos(client, db_session)
-        await import_locations(client, db_session)
-        await import_locations(client, db_session)
-
-    rows = (
-        (await db_session.execute(select(ChargingPoint).order_by(ChargingPoint.source_id)))
-        .scalars()
-        .all()
-    )
-    by_id = {cp.source_id: cp for cp in rows}
-    assert by_id["loc-1"].archived_at is None
-    assert by_id["loc-2"].archived_at is not None
 
 
 async def test_import_locations_preserves_null_name(
@@ -207,9 +206,10 @@ async def test_import_evse_operational_status_updates_existing(
     async with reve_client as client:
         await import_cpos(client, db_session)
         await import_locations(client, db_session)
-        count = await import_evse_operational_status(client, db_session)
+        rows, _, exhausted = await import_evse_operational_status(client, db_session)
 
-    assert count == 1
+    assert rows == 1
+    assert exhausted is True
     evse = (await db_session.execute(select(Evse))).scalar_one()
     assert evse.is_operational is True
     assert evse.operational_status_updated_at == datetime(2026, 4, 15, 10, 0, tzinfo=UTC)
@@ -247,9 +247,10 @@ async def test_import_tariffs_links_connector_and_extracts_price(
     async with reve_client as client:
         await import_cpos(client, db_session)
         await import_locations(client, db_session)
-        count = await import_tariffs(client, db_session)
+        rows, _, exhausted = await import_tariffs(client, db_session)
 
-    assert count == 1
+    assert rows == 1
+    assert exhausted is True
     tariff = (await db_session.execute(select(Tariff))).scalar_one()
     assert tariff.currency == "EUR"
     assert tariff.price_per_kwh == Decimal("0.4200")
