@@ -91,7 +91,8 @@ REVE provides the real network presence; ACN provides the behavioral data REVE l
 | Real-time private point occupation | Derived from bookings |
 | REVE write access | Read-only |
 | REVE real-time availability | Not relayed live (5/hr public-API cap, no commercial agreement). REVE's bulk `/evses/operational_status` endpoint returns only a boolean per EVSE — the OCPI rich enum (`AVAILABLE`/`CHARGING`/`BLOCKED`/`RESERVED`/etc.) lives only on the per-EVSE single-fetch endpoint and is unaffordable at 600+ EVSEs. Phase 2 surfaces the boolean rolled up per charging point as `aggregate_status` (operational / partial / inoperative / unknown). Phase 4 layers ACN-derived simulated occupancy for the richer states. |
-| REVE tariffs | Snapshot at seed time, refreshed once daily via APScheduler at 04:00 Europe/Madrid. Detail page displays the last-refresh timestamp. |
+| REVE tariffs | Snapshot at initial seed time, never refreshed automatically. Daily APScheduler refresh deferred to future-work — REVE's 5/hr public-API cap doesn't sustain a daily nationwide pull (~600 pages of `/connectors/tariffs` at full network scale). Manual `UPDATE` is the workaround until a commercial agreement lifts the cap. Detail page displays the seed timestamp. |
+| REVE seed cadence | Initial seed runs unattended via cron, ~5 calls/hour, **multi-day full-Spain bootstrap** (~12 days at observed network volume). A `reve_etl_cursor` table tracks per-endpoint pagination so each cron tick resumes where the previous left off; idempotent upserts make re-runs safe. After the seed completes, no further REVE calls are made. |
 
 ---
 
@@ -139,14 +140,13 @@ Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/pa
 
 ### Phase 2 — REVE seed + Map (25–30h)
 
-REVE seeded into Postgres via one-shot ETL, daily APScheduler refresh of tariffs only, MapLibre GL map (MapTiler tiles), filters, point detail. Live availability is a static stub from the seed snapshot until Phase 4 wires ACN-driven simulation. Slice-by-slice plan: [docs/phase-2.md](docs/phase-2.md).
+REVE seeded into Postgres via cursor-based ETL — `scripts/seed_reve.py` runs hourly via cron, fetching ~4 pages per tick under the 5 req/hr cap, with a `reve_etl_cursor` table tracking per-endpoint progress so the multi-day bootstrap survives interruptions and re-runs cleanly. **Daily tariff refresh deferred to future-work** — initial seed snapshots tariffs once and they remain static. MapLibre GL map (MapTiler tiles), filters, point detail. Live availability is a static stub from the seed snapshot until Phase 4 wires ACN-driven simulation. Slice-by-slice plan: [docs/phase-2.md](docs/phase-2.md).
 
-- [ ] `scripts/seed_reve.py` bootstraps `charging_points`, `connectors`, `tariffs`, `evse_status` from REVE in ≤5 calls
-- [ ] APScheduler refreshes `/connectors/tariffs` once daily at 04:00 Europe/Madrid; audit-logged on success/failure
+- [ ] `scripts/seed_reve.py` bootstraps `cpos`, `charging_points`, `evses`, `connectors`, `tariffs`, `evse_status` from REVE; budget-aware (≤4 calls per cron tick), resumes from cursor; full Spain initial seed completes in ~12 days unattended
 - [ ] `/api/points` returns charging points from Postgres (REVE-seeded + user-contributed once Phase 5 lands)
 - [ ] Map renders real Spanish points, colour-coded by static availability
 - [ ] Filters (availability, connector type, price band) update markers
-- [ ] Detail panel shows operator, price, connectors, address, last refresh timestamp
+- [ ] Detail panel shows operator, price, connectors, address, seed timestamp
 - [ ] "Navegar" opens Google Maps
 - [ ] Phase 2 Lighthouse audit recorded under `docs/lighthouse-YYYY-MM-DD.md`
 - [ ] Tested on real iPhone + Android (per Risk Watch — *Mobile bugs found late*)

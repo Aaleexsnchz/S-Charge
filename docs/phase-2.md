@@ -4,12 +4,12 @@ Task breakdown for [PLAN.md](../PLAN.md) Phase 2. Same structure as [phase-1.md]
 
 ## Architecture summary
 
-REVE's public API (`https://www.mapareve.es/api/external/v1`, frozen Swagger 2.0 snapshot at [reve-api-spec.json](reve-api-spec.json)) caps at **5 requests per hour** and exposes OCPI 2.2.1-formatted data we have no commercial agreement to redistribute live. Phase 2 therefore treats REVE as a **one-shot seed source**:
+REVE's public API (`https://www.mapareve.es/api/external/v1`, frozen Swagger 2.0 snapshot at [reve-api-spec.json](reve-api-spec.json)) caps at **5 requests per hour** and exposes OCPI 2.2.1-formatted data we have no commercial agreement to redistribute live. The first real `/cpos` call (2026-04-29) confirmed the public API exposes ≥100 CPOs nationwide — registry-scale, not demo-scale — so the four endpoints together require hundreds of paginated calls. Phase 2 therefore treats REVE as a **cursor-driven multi-day seed source**:
 
-- A single ETL run (`scripts/seed_reve.py`) populates `cpos`, `charging_points`, `evses`, `connectors`, and `tariffs` from `/cpos`, `/locations`, `/evses/operational_status`, and `/connectors/tariffs` — typically 4–6 REVE calls including pagination.
-- An **APScheduler in-process** job refreshes `/connectors/tariffs` once daily at 04:00 Europe/Madrid (≈0.04 calls/hr — well under the 5/hr cap). Locations and CPOs are re-seeded manually as needed.
+- `scripts/seed_reve.py` runs **hourly via cron** under the 5 req/hr cap. Each tick reads a `reve_etl_cursor` table to learn where the previous tick stopped, fetches up to ~4 pages across the four endpoints in priority order, then updates the cursor. The full nationwide initial seed (`/cpos`, `/locations`, `/connectors/tariffs`, `/evses/operational_status`) completes unattended in **~12 days**. Idempotent upserts make re-runs safe.
+- **No automated daily refresh.** Once an endpoint's cursor reaches `completed_at`, no further calls are made — the seed snapshot is what the app serves. Daily tariff and operational-status refresh is **deferred to future-work** (see [future-work.md](future-work.md)) since REVE's 5 req/hr cap doesn't sustain daily nationwide pulls. Manual `UPDATE` on the `tariffs` table is the workaround for stale prices in the meantime.
 - The frontend never talks to REVE. It calls `/api/points` (and `/api/points/{id}`), which read from the local Postgres mirror.
-- Live availability is **simulated**, not relayed — Phase 2 surfaces the boolean `is_operational` flag from REVE's `/evses/operational_status` (rolled up per charging point as `aggregate_status`: operational / partial / inoperative / unknown). Phase 4 replaces this binary rollup with ACN-derived occupancy distributions for richer states (charging / reserved / blocked / etc.).
+- Live availability is **simulated**, not relayed — Phase 2 surfaces the boolean `is_operational` flag from REVE's `/evses/operational_status` (rolled up per charging point as `aggregate_status`: operational / partial / inoperative / unknown). Phase 4 replaces this binary rollup with ACN-derived occupancy distributions for richer states (charging / reserved / blocked / etc.). Until a charging point's EVSEs are reached by the cursor, `aggregate_status='unknown'`.
 - The schema mirrors OCPI 2.2.1 fields (`party_id`, `evse_id`, IEC 62196 connector standards) so future commercial CPO agreements integrate without schema migration. See [future-work.md](future-work.md) → *Live CPO integration*.
 
 Frontend decisions cited throughout this doc are locked in [frontend-decisions.md](frontend-decisions.md) — MapLibre GL + react-map-gl (§1), MapTiler tiles (§2), TanStack Query introduced here (§11), route-split `/map` chunk (§4).
@@ -28,11 +28,20 @@ Frontend decisions cited throughout this doc are locked in [frontend-decisions.m
 
 The biggest slice; everything else builds on its DB schema and the typed `/api/points` contract.
 
-**Acceptance:** with `REVE_API_KEY` set, running `docker compose exec backend uv run python -m scripts.seed_reve` from a fresh DB populates `cpos`, `charging_points`, `evses`, `connectors`, and `tariffs` from real REVE data in 4–5 API calls (well within the 5/hr cap); `GET /api/points` returns those points as JSON joined with connectors and tariffs; the daily tariff refresh job is registered in the FastAPI lifespan. The seed is idempotent — re-running upserts without duplicating rows.
+**Acceptance:** with `REVE_API_KEY` set, running `docker compose exec backend uv run python -m scripts.seed_reve` from a fresh DB does the following per cron tick:
+
+- Reads `reve_etl_cursor` for the four REVE endpoints.
+- Fetches up to ~4 pages (default budget; one call held in reserve) in priority order: `/cpos` → `/locations` → `/connectors/tariffs` → `/evses/operational_status`.
+- Idempotently upserts into `cpos`, `charging_points`, `evses`, `connectors`, `tariffs`.
+- Updates the cursor (`next_page`, `last_attempted_at`, `completed_at` when an endpoint is exhausted).
+- On `429` or budget exhaustion, exits cleanly (exit code 0) with a one-line status. On other errors, exit code non-zero.
+
+A `--status` flag prints the cursor table without making any API call. `GET /api/points` returns whatever the cursor has populated so far — partial datasets render correctly.
 
 **Locked decisions** (rationale captured here so future drift has a paper trail)
 
-- **Scheduler:** `apscheduler` with `AsyncIOScheduler`, started in the FastAPI lifespan. No Celery, no Redis, no host cron, no `pg_cron`. One scheduled job (daily tariff refresh). Library-backed for non-core work; rejected alternatives (Celery+Redis: extra infra; host cron: couples to deploy host; `pg_cron`: extension to maintain) all add operational surface for no benefit at thesis scale.
+- **No in-process scheduler.** The original plan to run an `AsyncIOScheduler` in the FastAPI lifespan for daily tariff refresh is **dropped** (Tasks 7 + 8 → [future-work.md](future-work.md)). Justification: the 5 req/hr cap doesn't sustain a daily nationwide refresh of `/connectors/tariffs` (~600 pages), and the in-process scheduler doesn't survive `uvicorn --reload`-style restarts cleanly. Cursor-driven cron is the simpler primitive that meets thesis scope. The `apscheduler` dependency stays in `pyproject.toml` — minimal cost, leaves the door open for a future-work re-introduction.
+- **Cursor-driven ETL.** A `reve_etl_cursor` table tracks per-endpoint pagination progress (`next_page`, `completed_at`, `last_attempted_at`, `last_error`). Each cron tick reads it, advances it, persists it. Survives interruptions, machine restarts, schema migrations. Idempotent upserts mean re-running pages we've already fetched is safe (just wasted budget) — but the cursor avoids that waste in the normal path.
 - **Five tables** mirroring REVE's OCPI 2.2.1 nesting: `cpos`, `charging_points`, `evses`, `connectors`, `tariffs`. EVSE = one physical stall (one car at a time); connectors = sockets on that stall — preserving this distinction matters for Phase 4's per-stall occupancy simulation and for the "future commercial CPO integration plugs into the existing schema" claim in [future-work.md](future-work.md).
 - **`charging_points` is dual-source.** A `source` enum (`reve_seed` | `user`) lets Phase 5 user-contributed points share the same table. `cpos.party_id` is FK-linked from `charging_points.party_id` (nullable for `source='user'`). ETL ordering: `cpos` before `locations`.
 - **Tariff linkage is per-connector.** `/connectors/tariffs` returns `{evse_id, connector_id, tariffs}` rows — REVE flattens OCPI's `tariff_ids[]` array model. We model this as `connectors.tariff_id` UUID NULL FK → `tariffs.id`.
@@ -63,37 +72,39 @@ Column lists below match the REVE OpenAPI spec (Swagger 2.0) verbatim where it s
 
 #### Backend
 
-- [ ] **1. `chore(backend): add reve etl and scheduler deps`**
-  - Files: `backend/pyproject.toml`, `backend/uv.lock`
-  - Deliverable: `apscheduler` declared and locked. (`httpx` is already a transitive dep of `httpx-oauth`; we depend on it directly here.) `uv sync --locked` passes inside the backend container.
+- [x] **1. `chore(backend): add reve etl and scheduler deps`** — landed `d46fa3c`. `apscheduler` stays even though Tasks 7–8 are deferred (small dep, future-work hook).
 
-- [ ] **2. `feat(backend): reve mirror models`**
-  - Files: `backend/app/models/cpo.py`, `backend/app/models/charging_point.py` (covers `ChargingPoint`, `Evse`, `Connector` per the "one file per aggregate" rule), `backend/app/models/tariff.py`, `backend/app/models/__init__.py`
-  - Deliverable: SQLAlchemy 2.0 declarative models for the five tables in [Schema reference](#schema-reference). FK chain: `charging_points.party_id → cpos.party_id`, `evses.charging_point_id → charging_points.id`, `connectors.evse_id → evses.id`, `connectors.tariff_id → tariffs.id`. Relationships eagerly load connectors+tariffs+evses for a single charging-point detail query (`selectinload`); `/api/points` list query joins through `joinedload` on the same chain. Source enum: `reve_seed`, `user`.
+- [x] **2. `feat(backend): reve mirror models`** — landed `a53b784`.
 
-- [ ] **3. `feat(backend): reve mirror migration`**
-  - Files: `backend/alembic/versions/xxxx_reve_mirror.py`
-  - Deliverable: migration creates the five tables + indexes (`UNIQUE (source, source_id)` on charging_points; `UNIQUE party_id` on cpos; `UNIQUE evse_id` on evses; `UNIQUE (evse_id, source_id)` on connectors; `(latitude, longitude)` on charging_points for bbox queries; `(party_id)` on charging_points for CPO joins). Tables created in FK-dependency order: `cpos` → `tariffs` → `charging_points` → `evses` → `connectors`. `alembic upgrade head` clean on a fresh DB; `alembic downgrade -1` reverts cleanly.
+- [x] **3. `feat(backend): reve mirror migration`** — landed `29526e5`.
 
-- [ ] **4. `feat(backend): reve api client`**
-  - Files: `backend/app/integrations/reve.py`, `backend/tests/test_integrations_reve.py`
-  - Deliverable: async `ReveClient` wrapping `httpx.AsyncClient` — `x-api-key` header from settings, `base_url` from settings, async `get(path, params=None)` with retry on `429` (exponential backoff capped at one retry — we cannot afford to hammer a 5/hr endpoint), pagination helper `get_paginated(path, params=None) -> AsyncIterator[dict]` consuming `page` / `limit`. Unit tests stub `httpx` via `pytest_httpx`. The client never logs the key.
+- [x] **4. `feat(backend): reve async api client`** — landed `3baba6a`. Spec snapshot at `docs/reve-api-spec.json` (`fe375f5`) corrected the pagination default from `data_key="data"` to `None` (REVE returns bare arrays).
 
-- [ ] **5. `feat(backend): reve etl module`**
+- [x] **5. `feat(backend): reve etl module`** — landed `27b6290`. Four idempotent ingest functions with `INSERT ... ON CONFLICT DO UPDATE` upserts, OCPI-flattened-array handling via `_ensure_list`, `archived_at` clear-on-return for charging_points.
+
+- [ ] **6a. `feat(backend): reve_etl_cursor table + migration`**
+  - Files: `backend/alembic/versions/xxxx_reve_etl_cursor.py`
+  - Deliverable: new table `reve_etl_cursor (endpoint TEXT PRIMARY KEY, next_page INTEGER NOT NULL DEFAULT 1, completed_at TIMESTAMPTZ NULL, last_attempted_at TIMESTAMPTZ NULL, last_error TEXT NULL)`. Migration seeds 4 rows (`/cpos`, `/locations`, `/connectors/tariffs`, `/evses/operational_status`) with `next_page=1`, `completed_at=NULL`. `alembic upgrade head` + `downgrade -1` round-trip clean.
+
+- [ ] **6b. `feat(backend): cursor model + helpers`**
+  - Files: `backend/app/models/etl.py` (`ReveEtlCursor`), `backend/app/etl/cursor.py` (`read_cursor`, `record_progress`, `record_error`, `mark_completed`)
+  - Deliverable: ORM model + a small async helper module the orchestrator uses to load and update cursors. Pure `db.execute()` calls, no business logic.
+
+- [ ] **6c. `refactor(backend): etl functions accept start_page + max_pages`**
   - Files: `backend/app/etl/reve.py`, `backend/tests/test_etl_reve.py`
-  - Deliverable: four idempotent ingest functions, in execution order — `import_cpos(client, db, *, date_from=None)`, `import_locations(client, db, *, date_from=None)` (writes `charging_points` + `evses` + `connectors` atomically per location, capturing `wheelchair_accessibility` from `evse.accessibility`, `parking_type`, `facilities`, `floor_level`), `import_evse_operational_status(client, db, *, date_from=None)` (updates `evses.is_operational` + `operational_status_updated_at` from the boolean `operational_status` field), `import_tariffs(client, db, *, date_from=None)` (upserts `tariffs` and sets `connectors.tariff_id` per `(evse_id, connector_id)` row in the response). Each uses `INSERT ... ON CONFLICT DO UPDATE`. Coordinates cast from string to `Numeric`; tariff `price` and `vat` strings cast to numeric; `Decimal`-typed `restrictions.{min,max}_*` fields preserved in `raw_data` only. Rows missing from a full refresh get `archived_at=now()`. Tests cover (a) initial bootstrap from mocked REVE responses, (b) no-op re-run, (c) row removed upstream → `archived_at` set, (d) tariff linkage written correctly to connectors, (e) `Location.name` null → fallback synthesis at the API layer (not at ingest — we preserve the null).
+  - Deliverable: each of the four `import_*` functions takes `start_page: int = 1`, `max_pages: int | None = None` and returns `tuple[rows_processed: int, last_page_completed: int, exhausted: bool]`. Existing tests rewritten to the new return type; one new test exercises the cursor-resume case (run with `max_pages=1`, then again from `start_page=2`, verify both pages persisted).
 
-- [ ] **6. `feat(backend): seed_reve cli script`**
-  - Files: `backend/scripts/seed_reve.py`, `backend/scripts/__init__.py`
-  - Deliverable: `python -m scripts.seed_reve` runs the four imports in order (cpos → locations → evse_operational_status → tariffs) with `logging.INFO` per stage, prints REVE-call accounting at the end (e.g., `"REVE calls used: 4 (cpos: 1, locations: 1, evse_status: 1, tariffs: 1)"`). Exits non-zero on any failure. README quickstart updated in Slice 4.
+- [ ] **6d. `feat(backend): seed_reve cli orchestrator`**
+  - Files: `backend/scripts/seed_reve.py`, `backend/scripts/__init__.py`, `backend/tests/test_scripts_seed_reve.py`
+  - Deliverable: `python -m scripts.seed_reve` reads cursors, allocates a per-run budget (`REVE_BUDGET_PER_RUN=4` env, default 4), walks endpoints in priority order skipping any with `completed_at` set, fetches up to its quota, updates cursors after each page. On `429`: save cursor, exit 0 with `"rate-limited; resume next tick"`. On budget exhaustion: save cursor, exit 0 with progress summary. On runtime error: save cursor with `last_error`, exit 1. `--status` flag prints the cursor table and exits without API calls. Tests use `pytest-httpx` to drive a multi-tick scenario end-to-end.
 
-- [ ] **7. `feat(backend): apscheduler in fastapi lifespan`**
-  - Files: `backend/app/utils/scheduler.py`, `backend/app/main.py`
-  - Deliverable: `make_scheduler() -> AsyncIOScheduler` factory; lifespan starts and shuts down the scheduler. A `scheduler_enabled: bool = True` setting (default true, false in tests) gates registration so test runs don't accidentally schedule. The factory is testable in isolation.
+- [ ] **6e. `docs: README operational guide for the seed`**
+  - Files: `README.md` (or `docs/seeding.md` if it grows beyond a section)
+  - Deliverable: cron entry, `pg_dumpall` backup recipe, `--status` invocation, expected ~12-day completion at observed network volume.
 
-- [ ] **8. `feat(backend): daily tariff refresh job`**
-  - Files: `backend/app/utils/scheduler.py` (extend), `backend/app/etl/reve.py` (extend if needed), `backend/tests/test_scheduler.py`
-  - Deliverable: registered cron trigger — `hour=4, minute=0, timezone="Europe/Madrid"`, `id="reve_tariff_refresh"`. The job opens an `AsyncSession`, reads `MAX(tariffs.last_refreshed_at)` as `date_from`, calls `import_tariffs(client, db, date_from=...)`, emits `audit("reve_tariff_refresh_ok", count=...)` or `audit("reve_tariff_refresh_failed", error=...)`. Misfire grace: 1h. No retries on failure (next day picks it up). Test invokes the job directly with a frozen clock and mocked REVE.
+- [ ] ~~**7. `feat(backend): apscheduler in fastapi lifespan`**~~ — **deferred to future-work.** Reasoning in this slice's locked decisions above; entry in [future-work.md](future-work.md).
+
+- [ ] ~~**8. `feat(backend): daily tariff refresh job`**~~ — **deferred to future-work.** Same reasoning as Task 7.
 
 - [ ] **9. `feat(backend): /api/points endpoint`**
   - Files: `backend/app/routers/points.py`, `backend/app/schemas/points.py`, `backend/app/main.py` (router include)

@@ -51,6 +51,17 @@ Possible production data sources, ranked by likely accessibility:
 
 Trigger: a thesis-defense follow-up project, a real-deployment ask from the supervisor, or a research collaboration that needs live data. Estimated backend effort once a source is identified: 1–2 days for the per-source ingest job, plus the operational overhead of credentials and rate-limit handling per CPO.
 
+## Daily REVE refresh + admin tariff editor
+
+Phase 2 originally planned an in-process `AsyncIOScheduler` running a daily 04:00 Europe/Madrid job to refresh `/connectors/tariffs` (and, optionally, `/evses/operational_status`). Both tasks were dropped after the first real `/cpos` call confirmed REVE is registry-scale: a daily nationwide refresh of `/connectors/tariffs` (~600 pages at 100/page) doesn't fit the 5 req/hr public-API cap. The initial cursor-driven seed snapshots tariffs once; they are **static thereafter** until manually updated.
+
+Two deferred deliverables:
+
+- **Automated refresh.** Once the cap is lifted (commercial REVE tier, OCPI agreements, or EU Data Act §7 — see *Live CPO integration* above), reintroduce the in-process scheduler. The `apscheduler` dependency is already in `pyproject.toml` and the cursor table can carry the `last_attempted_at` watermark for delta `date_from` queries.
+- **Admin tariff editor.** Until automation lands, an admin can manually `UPDATE tariffs SET price_per_kwh = ... WHERE id = ...` via psql. A future-work item is a small admin UI (auth-gated route, list of tariffs with inline edit, audit log entry per change). Estimated effort: 2–3 days for the route + the UI.
+
+Trigger: same as *Live CPO integration*, or a user complaint that a price is wrong.
+
 ## Programmatic API for non-browser clients
 
 **API-key bearer backend.** Researchers or scripts querying the simulation output (phases 3–4) via curl can't use the session cookie. A `/api/v1/` namespace with its own bearer-token `AuthenticationBackend` and an API-key management UI would fill that gap without touching the PWA auth. Trigger: first external programmatic query, or reproducibility tooling requested by a paper reviewer.
