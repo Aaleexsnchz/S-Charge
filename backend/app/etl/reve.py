@@ -40,6 +40,12 @@ def _ensure_list(value: Any) -> list[dict[str, Any]]:
     return [value]
 
 
+def _date_from_params(date_from: datetime | None) -> dict[str, Any] | None:
+    if date_from is None:
+        return None
+    return {"date_from": date_from.isoformat()}
+
+
 async def _paginate_with_budget(
     client: ReveClient,
     path: str,
@@ -79,42 +85,6 @@ async def _paginate_with_budget(
     return rows, last_page_completed, exhausted
 
 
-def _date_from_params(date_from: datetime | None) -> dict[str, Any] | None:
-    if date_from is None:
-        return None
-    return {"date_from": date_from.isoformat()}
-
-
-async def import_cpos(
-    client: ReveClient,
-    db: AsyncSession,
-    *,
-    date_from: datetime | None = None,
-    start_page: int = 1,
-    max_pages: int | None = None,
-) -> tuple[int, int, bool]:
-    async def _process(raw: dict[str, Any]) -> None:
-        await _upsert_cpo(db, raw)
-
-    rows, last_page, exhausted = await _paginate_with_budget(
-        client,
-        "/cpos",
-        _date_from_params(date_from),
-        _process,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    audit(
-        "reve_etl_cpos",
-        rows=rows,
-        last_page=last_page,
-        exhausted=exhausted,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    return rows, last_page, exhausted
-
-
 async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> None:
     payload: dict[str, Any] = {
         "id": uuid.uuid4(),
@@ -143,34 +113,60 @@ async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> None:
     await db.execute(stmt)
 
 
-async def import_locations(
-    client: ReveClient,
+async def _upsert_connector(
     db: AsyncSession,
-    *,
-    date_from: datetime | None = None,
-    start_page: int = 1,
-    max_pages: int | None = None,
-) -> tuple[int, int, bool]:
-    async def _process(raw: dict[str, Any]) -> None:
-        await _upsert_location(db, raw)
+    evse_pk: uuid.UUID,
+    raw: dict[str, Any],
+) -> None:
+    payload: dict[str, Any] = {
+        "id": uuid.uuid4(),
+        "evse_id": evse_pk,
+        "source_id": raw["id"],
+        "standard": raw["standard"],
+        "format": raw["format"],
+        "power_type": raw["power_type"],
+        "max_electric_power": raw.get("max_electric_power"),
+        "max_voltage": raw["max_voltage"],
+        "max_amperage": raw["max_amperage"],
+        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
+    }
+    stmt = insert(Connector).values(**payload)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["evse_id", "source_id"],
+        set_={k: stmt.excluded[k] for k in payload if k not in ("id", "evse_id", "source_id")},
+    )
+    await db.execute(stmt)
 
-    rows, last_page, exhausted = await _paginate_with_budget(
-        client,
-        "/locations",
-        _date_from_params(date_from),
-        _process,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    audit(
-        "reve_etl_locations",
-        rows=rows,
-        last_page=last_page,
-        exhausted=exhausted,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    return rows, last_page, exhausted
+
+async def _upsert_evse(
+    db: AsyncSession,
+    charging_point_id: uuid.UUID,
+    raw: dict[str, Any],
+) -> None:
+    payload: dict[str, Any] = {
+        "id": uuid.uuid4(),
+        "charging_point_id": charging_point_id,
+        "source_id": raw["id"],
+        "evse_id": raw.get("evse_id"),
+        "physical_reference": raw.get("physical_reference"),
+        "floor_level": raw.get("floor_level"),
+        "capabilities": raw.get("capabilities"),
+        "wheelchair_accessibility": raw.get("accessibility"),
+        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
+    }
+    base = insert(Evse).values(**payload)
+    stmt = base.on_conflict_do_update(
+        index_elements=["charging_point_id", "source_id"],
+        set_={
+            k: base.excluded[k]
+            for k in payload
+            if k not in ("id", "charging_point_id", "source_id")
+        },
+    ).returning(Evse.id)
+    evse_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
+
+    for raw_conn in _ensure_list(raw.get("connectors")):
+        await _upsert_connector(db, evse_pk, raw_conn)
 
 
 async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
@@ -215,60 +211,118 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
         await _upsert_evse(db, cp_id, raw_evse)
 
 
-async def _upsert_evse(
+async def _upsert_connector_tariff(
     db: AsyncSession,
-    charging_point_id: uuid.UUID,
     raw: dict[str, Any],
+    refreshed_at: datetime,
 ) -> None:
-    payload: dict[str, Any] = {
+    raw_tariff = raw.get("tariffs")
+    if not raw_tariff:
+        return
+
+    elements = raw_tariff.get("elements") or {}
+    price_components = elements.get("price_components") or {}
+    is_energy = price_components.get("type") == "ENERGY"
+
+    tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
-        "charging_point_id": charging_point_id,
-        "source_id": raw["id"],
-        "evse_id": raw.get("evse_id"),
-        "physical_reference": raw.get("physical_reference"),
-        "floor_level": raw.get("floor_level"),
-        "capabilities": raw.get("capabilities"),
-        "wheelchair_accessibility": raw.get("accessibility"),
-        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
+        "source_id": raw_tariff["id"],
+        "currency": raw_tariff["currency"],
+        "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
+        "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
+        "price_per_kwh": _decimal_or_none(price_components.get("price")) if is_energy else None,
+        "price_component_type": price_components.get("type"),
+        "vat_percentage": _decimal_or_none(price_components.get("vat")),
+        "step_size": price_components.get("step_size"),
+        "raw_data": raw_tariff,
+        "source_last_updated_at": _parse_dt(raw_tariff["last_tariff_updated"]),
+        "last_refreshed_at": refreshed_at,
     }
-    base = insert(Evse).values(**payload)
+    base = insert(Tariff).values(**tariff_payload)
     stmt = base.on_conflict_do_update(
-        index_elements=["charging_point_id", "source_id"],
-        set_={
-            k: base.excluded[k]
-            for k in payload
-            if k not in ("id", "charging_point_id", "source_id")
-        },
-    ).returning(Evse.id)
-    evse_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
+        index_elements=["source_id"],
+        set_={k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")},
+    ).returning(Tariff.id)
+    tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
-    for raw_conn in _ensure_list(raw.get("connectors")):
-        await _upsert_connector(db, evse_pk, raw_conn)
-
-
-async def _upsert_connector(
-    db: AsyncSession,
-    evse_pk: uuid.UUID,
-    raw: dict[str, Any],
-) -> None:
-    payload: dict[str, Any] = {
-        "id": uuid.uuid4(),
-        "evse_id": evse_pk,
-        "source_id": raw["id"],
-        "standard": raw["standard"],
-        "format": raw["format"],
-        "power_type": raw["power_type"],
-        "max_electric_power": raw.get("max_electric_power"),
-        "max_voltage": raw["max_voltage"],
-        "max_amperage": raw["max_amperage"],
-        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
-    }
-    stmt = insert(Connector).values(**payload)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["evse_id", "source_id"],
-        set_={k: stmt.excluded[k] for k in payload if k not in ("id", "evse_id", "source_id")},
+    connector_lookup = (
+        select(Connector.id)
+        .join(Evse, Connector.evse_id == Evse.id)
+        .where(Evse.evse_id == raw["evse_id"])
+        .where(Connector.source_id == raw["connector_id"])
     )
-    await db.execute(stmt)
+    connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()
+    if connector_pk is None:
+        logger.warning(
+            "reve_tariff_connector_not_found evse_id=%s connector_id=%s",
+            raw["evse_id"],
+            raw["connector_id"],
+        )
+        return
+
+    await db.execute(
+        update(Connector).where(Connector.id == connector_pk).values(tariff_id=tariff_pk)
+    )
+
+
+async def import_cpos(
+    client: ReveClient,
+    db: AsyncSession,
+    *,
+    date_from: datetime | None = None,
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
+    async def _process(raw: dict[str, Any]) -> None:
+        await _upsert_cpo(db, raw)
+
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/cpos",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    audit(
+        "reve_etl_cpos",
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    return rows, last_page, exhausted
+
+
+async def import_locations(
+    client: ReveClient,
+    db: AsyncSession,
+    *,
+    date_from: datetime | None = None,
+    start_page: int = 1,
+    max_pages: int | None = None,
+) -> tuple[int, int, bool]:
+    async def _process(raw: dict[str, Any]) -> None:
+        await _upsert_location(db, raw)
+
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        "/locations",
+        _date_from_params(date_from),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    audit(
+        "reve_etl_locations",
+        rows=rows,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    return rows, last_page, exhausted
 
 
 async def import_evse_operational_status(
@@ -339,57 +393,3 @@ async def import_tariffs(
         max_pages=max_pages,
     )
     return rows, last_page, exhausted
-
-
-async def _upsert_connector_tariff(
-    db: AsyncSession,
-    raw: dict[str, Any],
-    refreshed_at: datetime,
-) -> None:
-    raw_tariff = raw.get("tariffs")
-    if not raw_tariff:
-        return
-
-    elements = raw_tariff.get("elements") or {}
-    price_components = elements.get("price_components") or {}
-    is_energy = price_components.get("type") == "ENERGY"
-
-    tariff_payload: dict[str, Any] = {
-        "id": uuid.uuid4(),
-        "source_id": raw_tariff["id"],
-        "currency": raw_tariff["currency"],
-        "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
-        "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
-        "price_per_kwh": _decimal_or_none(price_components.get("price")) if is_energy else None,
-        "price_component_type": price_components.get("type"),
-        "vat_percentage": _decimal_or_none(price_components.get("vat")),
-        "step_size": price_components.get("step_size"),
-        "raw_data": raw_tariff,
-        "source_last_updated_at": _parse_dt(raw_tariff["last_tariff_updated"]),
-        "last_refreshed_at": refreshed_at,
-    }
-    base = insert(Tariff).values(**tariff_payload)
-    stmt = base.on_conflict_do_update(
-        index_elements=["source_id"],
-        set_={k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")},
-    ).returning(Tariff.id)
-    tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
-
-    connector_lookup = (
-        select(Connector.id)
-        .join(Evse, Connector.evse_id == Evse.id)
-        .where(Evse.evse_id == raw["evse_id"])
-        .where(Connector.source_id == raw["connector_id"])
-    )
-    connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()
-    if connector_pk is None:
-        logger.warning(
-            "reve_tariff_connector_not_found evse_id=%s connector_id=%s",
-            raw["evse_id"],
-            raw["connector_id"],
-        )
-        return
-
-    await db.execute(
-        update(Connector).where(Connector.id == connector_pk).values(tariff_id=tariff_pk)
-    )

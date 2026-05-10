@@ -38,6 +38,7 @@ Routers should be **thin**: parse input, call a service, return. Business logic 
 - File and function naming: **snake_case**.
 - Type hints on all public functions and class attributes. Use `from __future__ import annotations` where it simplifies forward refs.
 - Prefer pure functions in `services/`. Side effects at the edges (routers, repositories).
+- **Module ordering: bottom-up.** Define a function before any function that calls it — pure helpers, then orchestration helpers, then the public API at the end of the file. Within classes, `__init__` first, public methods, then private methods last.
 
 ### Async
 
