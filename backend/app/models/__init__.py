@@ -1,5 +1,6 @@
 from app.models.charging_point import ChargingPoint, ChargingPointSource, Connector, Evse
 from app.models.cpo import Cpo
+from app.models.etl import ReveEtlCursor
 from app.models.tariff import Tariff
 from app.models.user import OAuthAccount, User
 
@@ -10,6 +11,7 @@ __all__ = [
     "Cpo",
     "Evse",
     "OAuthAccount",
+    "ReveEtlCursor",
     "Tariff",
     "User",
 ]
