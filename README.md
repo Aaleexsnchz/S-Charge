@@ -1,47 +1,72 @@
 # TFM — EV Charging PWA
 
-A master's thesis project (IoT): a Progressive Web App for managing EV charging points, combining real data from the **REVE API** (the Spanish public charging network) with historical sessions from **ACN-Data** (the Adaptive Charging Network research dataset), plus user-contributed private charging points with simulated occupation.
-
-The academic contribution lives in phases 3–4 (data integration, session simulation, and charging-schedule optimisation). Authentication, infrastructure, and business-feature scaffolding are kept deliberately library-backed — see [docs/auth-decisions.md](docs/auth-decisions.md) and [docs/future-work.md](docs/future-work.md) for the explicit scope record.
+A master's thesis project (IoT): a Progressive Web App for managing EV charging points. Combines real data from the **REVE API** (the Spanish public charging network) with historical sessions from **ACN-Data** (the Adaptive Charging Network research dataset), plus user-contributed private charging points with simulated occupation.
 
 ## Status
 
 | Phase | Status |
-|---|---|
-| 0 — Tooling setup | ✅ done |
-| 1 — Foundation (auth, schema, core UI) | ✅ done |
-| 2 — REVE + Map | ⏳ not started |
-| 3 — ACN import + analytics | ⏳ not started |
-| 4 — Simulation + algorithm | ⏳ not started |
-| 5 — Private points + bookings | ⏳ not started |
-| 6 — Polish + deployment | ⏳ not started |
-| 7 — Thesis writing | ⏳ not started |
+| --- | --- |
+| 1 — Foundation | `[x]` done |
+| 2 — REVE seed + Map | `[ ]` backend in progress; frontend not started |
+| 3 — ACN import + Analytics | `[ ]` not started |
+| 4 — Simulation + Algorithm | `[ ]` not started |
+| 5 — Private points + Bookings | `[ ]` not started |
+| 6 — Polish + Deployment | `[ ]` not started |
+| 7 — Thesis writing | `[ ]` not started |
 
-See [PLAN.md](PLAN.md) for the full phase breakdown and estimates.
+See [docs/PLAN.md](docs/PLAN.md) for phase descriptions, acceptance criteria, and estimates.
 
 ## Quick start
 
 ```bash
-# clone and prepare env
 git clone <repo> tfm && cd tfm
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 
-# start all services
 docker compose up
 ```
 
 Services:
 
 - **Backend API** — <http://localhost:8000> (OpenAPI docs at `/docs`)
-- **Frontend** — <http://localhost:5173>
+- **Frontend** — <http://localhost:5173> (Vite proxies `/api/*` to the backend so the session cookie stays first-party)
 - **Postgres** — exposed on `:5432` for host-side tools
 
-See [DOCKER.md](DOCKER.md) for when to rebuild vs. recreate the containers after a change.
+See [docs/DOCKER.md](docs/DOCKER.md) for when to rebuild vs. recreate the containers after a change.
 
-To enable **Google sign-in** on `/login`, follow the [Google OAuth setup](#google-oauth-setup) section below. To deliver verification and password-reset emails, follow the [Email provider setup](#email-provider-setup) section.
+To enable **Google sign-in**, follow [Google OAuth setup](#google-oauth-setup). To deliver verification and password-reset emails, follow [Email provider setup](#email-provider-setup).
 
-### Google OAuth setup
+## Tech stack
+
+**Backend** — Python 3.12+, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, fastapi-users for authentication. Package manager: `uv`. Lint/typecheck: `ruff` + `mypy`.
+
+**Frontend** — React + Vite + TypeScript + MUI v7 (Emotion), in `frontend/`. Package manager: `pnpm`.
+
+**Database** — PostgreSQL 17 with the `citext` extension (case-insensitive email lookup).
+
+## Repo layout
+
+```text
+tfm/
+├── backend/             FastAPI + Postgres backend
+├── frontend/            React + Vite + MUI v7 PWA
+├── docs/
+│   ├── PLAN.md          Project scope, phases, acceptance criteria
+│   ├── DOCKER.md        When to rebuild / recreate / do nothing
+│   ├── SKILLS.md        Claude Code skills installed in this repo
+│   ├── decisions/       Architectural decision records
+│   ├── thesis/          Concept-level chapters for the thesis writeup
+│   └── phases/          Per-phase task plans
+├── docker-compose.yml
+├── README.md
+└── CLAUDE.md            Project memory for Claude Code (also covers git workflow)
+```
+
+## Key architectural decisions
+
+See [docs/decisions/](docs/decisions/) for the explicit scope record.
+
+## Google OAuth setup
 
 The backend supports Google sign-in side by side with email/password; both flows land on the same HttpOnly session cookie. To enable it locally, create an OAuth 2.0 Client in Google Cloud Console and paste the credentials into `backend/.env`.
 
@@ -65,9 +90,9 @@ The backend supports Google sign-in side by side with email/password; both flows
 
 **Browser note for testing.** Run the OAuth flow from a regular browser tab. Google's "secure browsers" policy returns `403 disallowed_useragent` when the user-agent looks like an embedded webview — including Edge/Chrome DevTools' device-emulation toolbar (e.g. iPhone 12 Pro), in-IDE preview panels, and mobile in-app browsers. Toggle device emulation off for the consent step, then re-enable it for layout testing once you're authenticated.
 
-### Email provider setup
+## Email provider setup
 
-The backend sends verification and password-reset emails through [Resend](https://resend.com). Without an API key, registration still succeeds but the helper logs `email_send_failed` instead of delivering — fine for UI sanity-checking, not enough to exercise the verify or reset success paths. Decision rationale: [docs/auth-decisions §13](docs/auth-decisions.md#13-email-verification-and-password-reset-slice-3-2026-04-27).
+The backend sends verification and password-reset emails through [Resend](https://resend.com). Without an API key, registration still succeeds but the helper logs `email_send_failed` instead of delivering — fine for UI sanity-checking, not enough to exercise the verify or reset success paths. Decision rationale: [docs/decisions/auth-0003](docs/decisions/auth-0003-preregistration-shell-mitigation.md).
 
 1. Create an account at <https://resend.com> and copy a key from **API Keys**. Free tier is 100 emails/day, sufficient for the thesis demo.
 2. Add the credentials to `backend/.env`:
@@ -84,47 +109,15 @@ The backend sends verification and password-reset emails through [Resend](https:
 
 **Production setup (phase 6).** Once the production domain exists, verify it in Resend's **Domains** dashboard, add the SPF/DKIM/DMARC records they provide to your DNS, and switch `MAIL_FROM` to a sender on that domain. Inbox placement (especially Gmail) depends on those records — without DKIM, transactional mail tends to land in spam.
 
-## Tech stack
-
-**Backend.** FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, fastapi-users for authentication, pwdlib + argon2-cffi for password hashing. Package manager: `uv`. Lint/typecheck: `ruff` + `mypy`.
-
-**Frontend.** React + Vite + TypeScript, MUI, React Router v7 (data-router APIs: loaders, actions, lazy routes), `openapi-typescript` + `openapi-fetch` for the typed API client, `notistack` for toasts. Auth state lives in a root loader — no client-side store. TanStack Query lands in phase 2 for non-auth server state. PWA installability via `vite-plugin-pwa` (phase 1 slice 4). Decisions: [docs/frontend-decisions.md](docs/frontend-decisions.md). Package manager: `pnpm`.
-
-**Database.** PostgreSQL 17 with the `citext` extension (case-insensitive email lookup).
-
-**Deployment.** Single Hetzner VPS (CX22), Nginx + Let's Encrypt. Deliberately rejected: Kubernetes, Vercel, Supabase — all overkill for thesis scope.
-
-## Monorepo layout
-
-```text
-tfm/
-├── backend/         FastAPI + Postgres backend — see backend/CLAUDE.md
-├── frontend/        React + Vite + MUI frontend — see frontend/CLAUDE.md
-├── docs/            Decision records, slice plans, future-work catalogue
-├── docker-compose.yml
-├── PLAN.md          Project scope, phases, deliverables, estimates
-├── CONTRIBUTING.md  Branch naming, commit conventions, workflow
-└── DOCKER.md        When to rebuild / recreate / do nothing
-```
-
-## Key architectural decisions
-
-- **Authentication: single JWT in an HttpOnly cookie** via `fastapi-users` — no dual-token dance, no refresh tokens. Full 12-section decision record in [docs/auth-decisions.md](docs/auth-decisions.md); deferred security hardening in [docs/future-work.md](docs/future-work.md).
-- **Rate limiting: deferred to Nginx `limit_req`** at the reverse proxy, not in application code. See [auth-decisions §7](docs/auth-decisions.md).
-- **Payments and real-time occupation: simulated.** The thesis contribution is simulation and algorithm work, not payment integration. See the *Mocked* section in [PLAN.md](PLAN.md).
-- **Deployment: single VPS.** Nginx terminates TLS, reverse-proxies to `uvicorn`, serves the built PWA statically. See [PLAN.md](PLAN.md) phase 6.
-
 ## Documentation index
 
-- **[PLAN.md](PLAN.md)** — phases, deliverables, estimates
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — branch naming, Conventional Commits format, workflow
-- **[DOCKER.md](DOCKER.md)** — when to rebuild, recreate, or do nothing after a change
-- **[docs/auth-decisions.md](docs/auth-decisions.md)** — security decision record (ADR-style, 12 sections)
-- **[docs/frontend-decisions.md](docs/frontend-decisions.md)** — frontend architecture decision record (13 sections)
-- **[docs/phase-1.md](docs/phase-1.md)** — slice-by-slice auth task plan
-- **[docs/future-work.md](docs/future-work.md)** — items deliberately out of thesis scope
-- **[docs/screens.md](docs/screens.md)** — UI screen specifications
-- **[backend/CLAUDE.md](backend/CLAUDE.md)** / **[frontend/CLAUDE.md](frontend/CLAUDE.md)** — package-specific conventions and file layouts
+- [docs/PLAN.md](docs/PLAN.md) — phases, acceptance criteria, estimates
+- [docs/decisions/](docs/decisions/) — architectural decision records
+- [docs/thesis/](docs/thesis/) — concept-level chapters for the thesis writeup
+- [docs/phases/](docs/phases/) — per-phase task plans
+- [docs/DOCKER.md](docs/DOCKER.md) — when to rebuild, recreate, or do nothing
+- [docs/SKILLS.md](docs/SKILLS.md) — Claude Code skills installed in this repo
+- [CLAUDE.md](CLAUDE.md) — project memory for Claude Code (covers git workflow)
 
 ## License
 
