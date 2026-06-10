@@ -26,10 +26,10 @@ def _parse_dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _decimal_or_none(value: str | None) -> Decimal | None:
+def _decimal_or_none(value: str | float | None) -> Decimal | None:
     if value is None or value == "":
         return None
-    return Decimal(value)
+    return Decimal(str(value))
 
 
 def _ensure_list(value: Any) -> list[dict[str, Any]]:
@@ -38,6 +38,19 @@ def _ensure_list(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, list):
         return value
     return [value]
+
+
+def _energy_price_component(elements: Any) -> dict[str, Any]:
+    """Return the ENERGY price component from an OCPI tariff's ``elements``.
+
+    REVE follows OCPI, where ``elements`` and ``price_components`` are arrays;
+    accept the single-object shape too so older fixtures keep working.
+    """
+    for element in _ensure_list(elements):
+        for component in _ensure_list(element.get("price_components")):
+            if component.get("type") == "ENERGY":
+                return component
+    return {}
 
 
 def _date_from_params(date_from: datetime | None) -> dict[str, Any] | None:
@@ -191,7 +204,7 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
         "longitude": Decimal(coords["longitude"]),
         "parking_type": raw.get("parking_type"),
         "facilities": raw.get("facilities"),
-        "time_zone": raw["time_zone"],
+        "time_zone": raw.get("time_zone") or "Europe/Madrid",
         "opening_24_7": opening_times.get("twentyfourseven", False),
         "opening_hours": opening_times.get("regular_hours"),
         "charging_when_closed": raw.get("charging_when_closed"),
@@ -217,12 +230,13 @@ async def _upsert_connector_tariff(
     refreshed_at: datetime,
 ) -> None:
     raw_tariff = raw.get("tariffs")
+    if isinstance(raw_tariff, list):
+        raw_tariff = raw_tariff[0] if raw_tariff else None
     if not raw_tariff:
         return
 
-    elements = raw_tariff.get("elements") or {}
-    price_components = elements.get("price_components") or {}
-    is_energy = price_components.get("type") == "ENERGY"
+    price_components = _energy_price_component(raw_tariff.get("elements"))
+    is_energy = bool(price_components)
 
     tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
@@ -248,7 +262,7 @@ async def _upsert_connector_tariff(
     connector_lookup = (
         select(Connector.id)
         .join(Evse, Connector.evse_id == Evse.id)
-        .where(Evse.evse_id == raw["evse_id"])
+        .where(Evse.source_id == raw["evse_id"])
         .where(Connector.source_id == raw["connector_id"])
     )
     connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()

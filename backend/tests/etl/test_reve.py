@@ -224,21 +224,28 @@ async def test_import_tariffs_links_connector_and_extracts_price(
         url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
         json=[
             {
-                "evse_id": "ES*ABC*E1",
+                "evse_id": "evse-1",
                 "connector_id": "conn-1",
-                "tariffs": {
-                    "id": "tariff-1",
-                    "currency": "EUR",
-                    "elements": {
-                        "price_components": {
-                            "type": "ENERGY",
-                            "price": "0.4200",
-                            "vat": "21.00",
-                            "step_size": 1,
-                        }
-                    },
-                    "last_tariff_updated": "2026-04-20T12:00:00Z",
-                },
+                "tariffs": [
+                    {
+                        "id": "tariff-1",
+                        "currency": "EUR",
+                        "elements": [
+                            {
+                                "price_components": [
+                                    {"type": "FLAT", "price": 0.8265, "vat": 21.0, "step_size": 1}
+                                ],
+                                "restrictions": {"reservation": "RESERVATION_EXPIRES"},
+                            },
+                            {
+                                "price_components": [
+                                    {"type": "ENERGY", "price": 0.42, "vat": 21.0, "step_size": 1}
+                                ]
+                            },
+                        ],
+                        "last_tariff_updated": "2026-04-20T12:00:00Z",
+                    }
+                ],
                 "last_tariff_updated": "2026-04-20T12:00:00Z",
             }
         ],
@@ -270,18 +277,16 @@ async def test_import_tariffs_skips_unknown_connector(
             {
                 "evse_id": "ES*ABC*GHOST",
                 "connector_id": "ghost",
-                "tariffs": {
-                    "id": "tariff-ghost",
-                    "currency": "EUR",
-                    "elements": {
-                        "price_components": {
-                            "type": "ENERGY",
-                            "price": "0.5",
-                            "step_size": 1,
-                        }
-                    },
-                    "last_tariff_updated": "2026-04-20T12:00:00Z",
-                },
+                "tariffs": [
+                    {
+                        "id": "tariff-ghost",
+                        "currency": "EUR",
+                        "elements": [
+                            {"price_components": [{"type": "ENERGY", "price": 0.5, "step_size": 1}]}
+                        ],
+                        "last_tariff_updated": "2026-04-20T12:00:00Z",
+                    }
+                ],
                 "last_tariff_updated": "2026-04-20T12:00:00Z",
             }
         ],
