@@ -28,6 +28,8 @@ Concept-level summaries written for the thesis document, with links to the ADRs 
 | File | Coverage |
 | --- | --- |
 | [../thesis/auth.md](../thesis/auth.md) | Auth — identity, password storage, session, OAuth, verification, audit, rate limiting. |
+| [../thesis/data-model.md](../thesis/data-model.md) | Data model — the OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) as mirrored from REVE, and why we own the catalogue instead of proxying. |
+| [../thesis/seed-scheduling.md](../thesis/seed-scheduling.md) | Seed scheduling — why cron, how the per-tick contract works, the lifecycle from bootstrap to steady state, and the WSL2 idle caveat. |
 | [../thesis/session-theft.md](../thesis/session-theft.md) | Session theft and bearer-token replay — threat model for infostealer + cookie replay, what an application can and cannot defend against, DBSC / WebAuthn step-up as the defensive frontier, what this project's session does and explicitly does not. |
 
 ## Adding a new ADR
