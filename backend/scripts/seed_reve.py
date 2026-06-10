@@ -65,6 +65,7 @@ async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
                 await db.commit()
                 print(f"rate-limited on {endpoint}; resume next tick")
                 return 0
+            await db.rollback()
             await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")
             await db.commit()
             print(f"error on {endpoint}: {exc}", file=sys.stderr)
