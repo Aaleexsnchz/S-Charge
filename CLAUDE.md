@@ -112,7 +112,7 @@ When a slice ships (or an edit would otherwise leave a doc stale), update these 
 
 - **[README.md](README.md)** — status table, any new major component, changed quick-start
 - **[docs/PLAN.md](docs/PLAN.md)** — tick off acceptance bullets, adjust estimates, rewrite phase prose if shipped reality diverges from the plan (PLAN.md is living, not write-once)
-- **[docs/thesis/](docs/thesis/)** — update the matching chapter when a cross-cutting system lands (auth, ETL, simulation)
+- **[docs/thesis/](docs/thesis/)** — update the matching chapter when a cross-cutting system lands (auth, ETL, simulation); write a new chapter if none matches. **Chapters are written in Spanish** — the thesis is presented in Spanish, and these are its source material. Keep established technical terms in English (bearer token, upsert, rate limit) where a Spanish translation would be unusual in academic CS writing.
 
 Append-only docs (don't edit in place — add a dated revisions block at the top instead):
 
