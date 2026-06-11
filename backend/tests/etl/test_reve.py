@@ -296,7 +296,7 @@ async def test_import_tariffs_skips_unknown_connector(
         await import_tariffs(client, db_session)
 
     tariff_count = (await db_session.execute(select(func.count()).select_from(Tariff))).scalar_one()
-    assert tariff_count == 1
+    assert tariff_count == 0
     connector_count = (
         await db_session.execute(select(func.count()).select_from(Connector))
     ).scalar_one()

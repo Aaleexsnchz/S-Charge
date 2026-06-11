@@ -235,6 +235,21 @@ async def _upsert_connector_tariff(
     if not raw_tariff:
         return
 
+    connector_lookup = (
+        select(Connector.id)
+        .join(Evse, Connector.evse_id == Evse.id)
+        .where(Evse.source_id == raw["evse_id"])
+        .where(Connector.source_id == raw["connector_id"])
+    )
+    connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()
+    if connector_pk is None:
+        logger.warning(
+            "reve_tariff_connector_not_found evse_id=%s connector_id=%s",
+            raw["evse_id"],
+            raw["connector_id"],
+        )
+        return
+
     price_components = _energy_price_component(raw_tariff.get("elements"))
     is_energy = bool(price_components)
 
@@ -258,21 +273,6 @@ async def _upsert_connector_tariff(
         set_={k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")},
     ).returning(Tariff.id)
     tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
-
-    connector_lookup = (
-        select(Connector.id)
-        .join(Evse, Connector.evse_id == Evse.id)
-        .where(Evse.source_id == raw["evse_id"])
-        .where(Connector.source_id == raw["connector_id"])
-    )
-    connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()
-    if connector_pk is None:
-        logger.warning(
-            "reve_tariff_connector_not_found evse_id=%s connector_id=%s",
-            raw["evse_id"],
-            raw["connector_id"],
-        )
-        return
 
     await db.execute(
         update(Connector).where(Connector.id == connector_pk).values(tariff_id=tariff_pk)
