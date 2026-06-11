@@ -70,7 +70,7 @@ REVE provides the real network presence; ACN provides the behavioural data REVE 
 3. **Session analytics** — ACN-powered visualisations (energy, heatmap, utilisation, cross-site)
 4. **Pre-charge simulation** — predicted duration/energy/cost from ACN distributions
 5. **Smart charging algorithm** — recommended start time given constraints
-6. **Private charging points** — user-registered, public/private toggle, commission tracking
+6. **Private charging points** — user-registered, public/private toggle (commission tracking: stretch)
 7. **User dashboard** — sessions, bookings, owned points, cost history
 8. **System analytics** (admin) — aggregate stats across the platform
 
@@ -95,6 +95,8 @@ REVE provides the real network presence; ACN provides the behavioural data REVE 
 ## Development phases
 
 Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief description and acceptance criteria — task plans get written into `phases/phase-N.md` *when starting the phase*, not before.
+
+**Pacing check (2026-06-11):** ~9 weeks to the defense (~mid-August). Remaining work (rest of Phase 2 + Phases 3–7) is ~165–225h, i.e. **19–25h/week** — above the original assumption, with no slack. Mitigations baked in below: Phase 5 trimmed to its demo-critical core, thesis chapters written per slice (shrinks the Phase 7 tail), and anything in [Stretch goals](#stretch-goals) only after Phase 6 ships. If anything slips, cut Phase 5 scope — never Phases 4, 6, or 7.
 
 Slice-by-slice record: [phases](phases).
 
@@ -144,9 +146,9 @@ Distribution fitting, simulation, optimisation, session history. **The academic 
 - `/api/recommend` returns optimal start time + alternatives
 - 1–2 page algorithm write-up reusable in the thesis
 
-### Phase 5 — Private points + Bookings (25–35h)
+### Phase 5 — Private points + Bookings (20–28h)
 
-Private point CRUD, bookings, public/private toggle, owner dashboard.
+Private point CRUD, bookings, public/private toggle, owner dashboard. Trimmed 2026-06-11 to the demo-critical core; revenue/utilisation/commission analytics moved to [Stretch goals](#stretch-goals).
 
 **Done when:**
 
@@ -154,7 +156,7 @@ Private point CRUD, bookings, public/private toggle, owner dashboard.
 - Public/private toggle controls map visibility
 - Booking conflict detection rejects overlaps
 - User can view/cancel bookings
-- Owner dashboard shows bookings, revenue, utilisation, commission tracking
+- Owner dashboard lists upcoming and past bookings for owned points
 
 ### Phase 6 — Polish + Deployment (20–25h)
 
@@ -181,6 +183,15 @@ Document, diagram, defend.
 - ≥20 references
 - Defense slides (15–20) + demo plan
 - Tutor approves final version
+
+---
+
+## Stretch goals
+
+Only after Phase 6 (deployed, demo-ready) and only if hours remain. None of these are committed scope; the defense demo must not depend on them.
+
+- **Route optimisation (~10–15h, minimal version).** Given origin/destination, fetch the route polyline from a free routing API (OSRM / OpenRouteService), corridor-query seeded points along it, rank candidate stops by detour + price + Phase 4 predicted session. No consumption modelling, no custom routing engine — those would be 30–40h and are out of scope for this timeline.
+- **Owner analytics (from Phase 5 trim).** Revenue, utilisation, and commission tracking on the owner dashboard.
 
 ---
 
