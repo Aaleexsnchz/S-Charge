@@ -20,9 +20,12 @@ export function ForgotPasswordPage() {
   const navigation = useNavigation()
   const submitting = navigation.state === 'submitting'
 
+  const errorMessage =
+    actionData && 'error' in actionData ? actionData.error : null
+
   const [email, setEmail] = useState('')
 
-  if (actionData?.submitted) {
+  if (actionData && 'submitted' in actionData) {
     return (
       <Stack spacing={3}>
         <Typography variant="h4" component="h1">
@@ -50,6 +53,7 @@ export function ForgotPasswordPage() {
         Introduce tu email y te enviaremos un enlace para restablecer tu
         contraseña.
       </Typography>
+      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
       <Form method="post" noValidate>
         <Stack spacing={2}>
           <TextField

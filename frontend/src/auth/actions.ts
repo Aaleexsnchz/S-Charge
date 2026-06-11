@@ -7,7 +7,7 @@ export type LoginUnverified = { unverifiedEmail: string }
 
 export type LoginActionData = AuthActionError | LoginUnverified
 
-export type ForgotPasswordActionData = { submitted: true }
+export type ForgotPasswordActionData = { submitted: true } | AuthActionError
 
 export type ResetPasswordActionData =
   | { error: string; expiredToken?: boolean }
@@ -131,8 +131,16 @@ export async function forgotPasswordAction({
 }: ActionFunctionArgs): Promise<ForgotPasswordActionData> {
   const formData = await request.formData()
   const email = String(formData.get('email') ?? '')
-  await apiClient.POST('/api/auth/forgot-password', { body: { email } })
-  return { submitted: true }
+  const { error, response } = await apiClient.POST(
+    '/api/auth/forgot-password',
+    { body: { email } },
+  )
+  if (response.ok) return { submitted: true }
+
+  if (response.status === 422 && error) {
+    return { error: messageFor(error.detail) }
+  }
+  return { error: GENERIC_ERROR }
 }
 
 export async function resetPasswordAction({
