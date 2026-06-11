@@ -19,6 +19,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { RouteErrorPage } from './pages/RouteErrorPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 export const router = createBrowserRouter([
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
     loader: rootLoader,
     HydrateFallback: RootHydrateFallback,
     element: <Outlet />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <AuthLayout />,
