@@ -1,34 +1,34 @@
 ---
-title: Authentication
-status: draft (thesis writeup, concept-level)
+title: Autenticación
+status: borrador (redacción de la memoria, nivel conceptual)
 ---
 
-# Authentication
+# Autenticación
 
-Email/password and Google OAuth via [`fastapi-users`](https://fastapi-users.github.io/fastapi-users/) — see [decisions/auth-0001](../decisions/auth-0001-fastapi-users.md) for the library choice. The two places this project deliberately deviates from library defaults are recorded in [decisions/auth-0002](../decisions/auth-0002-cookie-session.md) (session transport) and [decisions/auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) (account-linking threat model).
+Email/contraseña y Google OAuth mediante [`fastapi-users`](https://fastapi-users.github.io/fastapi-users/) — véase [decisions/auth-0001](../decisions/auth-0001-fastapi-users.md) para la elección de la librería. Los dos puntos en los que este proyecto se desvía deliberadamente de los valores por defecto de la librería están registrados en [decisions/auth-0002](../decisions/auth-0002-cookie-session.md) (transporte de la sesión) y [decisions/auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) (modelo de amenazas de la vinculación de cuentas).
 
-## Identity
+## Identidad
 
-UUID v4 primary keys via fastapi-users' `SQLAlchemyBaseUserTableUUID` — non-enumerable, 122 bits of entropy. Emails stored in `citext` (PostgreSQL case-insensitive text), lowercased and trimmed in the Pydantic input schema. The case-insensitive uniqueness invariant lives at the database layer so a buggy code path can't let `Alice@x.com` and `alice@x.com` register as distinct accounts — the underlying account-takeover risk RFC 5321's case-sensitive local part otherwise creates.
+Claves primarias UUID v4 mediante `SQLAlchemyBaseUserTableUUID` de fastapi-users — no enumerables, 122 bits de entropía. Los emails se almacenan como `citext` (texto sin distinción de mayúsculas de PostgreSQL), normalizados a minúsculas y sin espacios en el esquema de entrada de Pydantic. La invariante de unicidad sin distinción de mayúsculas vive en la capa de base de datos, de modo que un código defectuoso no pueda permitir que `Alice@x.com` y `alice@x.com` se registren como cuentas distintas — el riesgo subyacente de apropiación de cuentas que crea la parte local sensible a mayúsculas del RFC 5321.
 
-## Password storage
+## Almacenamiento de contraseñas
 
-Argon2id via [`pwdlib`](https://github.com/frankie567/pwdlib) (the modern successor to `passlib`, bundled with fastapi-users) backed by `argon2-cffi`. OWASP-minimum parameters (`memory_cost=19456`, `time_cost=2`, `parallelism=1`). Auto-rehash on verify lets us tighten the cost parameters later without a migration. Password policy is length-only (≥ 12 characters), aligned with NIST SP 800-63B § 5.1.1 — no composition rules, no forced rotation (both push users toward predictable patterns).
+Argon2id mediante [`pwdlib`](https://github.com/frankie567/pwdlib) (el sucesor moderno de `passlib`, incluido con fastapi-users) respaldado por `argon2-cffi`. Parámetros mínimos de OWASP (`memory_cost=19456`, `time_cost=2`, `parallelism=1`). El re-hash automático al verificar permite endurecer los parámetros de coste más adelante sin necesidad de migración. La política de contraseñas es solo de longitud (≥ 12 caracteres), alineada con NIST SP 800-63B § 5.1.1 — sin reglas de composición ni rotación forzada (ambas empujan a los usuarios hacia patrones predecibles).
 
-Authentication failures return a single generic `401 "Invalid credentials"` regardless of whether the email exists; fastapi-users runs a dummy hash for the absent-user case so response timing doesn't leak account existence (no user-enumeration oracle).
+Los fallos de autenticación devuelven un único `401 "Invalid credentials"` genérico con independencia de si el email existe; fastapi-users ejecuta un hash ficticio para el caso de usuario inexistente, de modo que el tiempo de respuesta no filtre la existencia de la cuenta (sin oráculo de enumeración de usuarios).
 
-## Session
+## Sesión
 
-A single JWT in an `HttpOnly; Secure; SameSite=Lax` cookie at path `/`, 14-day lifetime, signed HS256 with audience `tfm:session`. No refresh tokens. Composition: `JWTStrategy + CookieTransport` in one `AuthenticationBackend`. The dual-token SPA pattern is deliberately avoided — full rationale in [auth-0002](../decisions/auth-0002-cookie-session.md).
+Un único JWT en una cookie `HttpOnly; Secure; SameSite=Lax` en la ruta `/`, con 14 días de vida, firmado con HS256 y audiencia `tfm:session`. Sin refresh tokens. Composición: `JWTStrategy + CookieTransport` en un único `AuthenticationBackend`. El patrón SPA de doble token se evita deliberadamente — justificación completa en [auth-0002](../decisions/auth-0002-cookie-session.md).
 
 ## OAuth (Google)
 
-Provider integration via [`httpx-oauth`](https://github.com/frankie567/httpx-oauth), exposed through fastapi-users' `get_oauth_router`. Provider identities live in a separate `oauth_account` join table (`SQLAlchemyBaseOAuthAccountTableUUID` mixin) with a unique constraint on `(oauth_name, account_id)` — scales to multiple providers without sparse per-provider columns. `associate_by_email=True` lets returning users link Google to their existing password account.
+Integración del proveedor mediante [`httpx-oauth`](https://github.com/frankie567/httpx-oauth), expuesta a través del `get_oauth_router` de fastapi-users. Las identidades del proveedor viven en una tabla de unión separada `oauth_account` (mixin `SQLAlchemyBaseOAuthAccountTableUUID`) con una restricción de unicidad sobre `(oauth_name, account_id)` — escala a múltiples proveedores sin columnas dispersas por proveedor. `associate_by_email=True` permite a los usuarios recurrentes vincular Google a su cuenta de contraseña existente.
 
-## Email verification and password reset
+## Verificación de email y restablecimiento de contraseña
 
-Password registrations are unverified by default and can't log in until verified (`requires_verification=True` on the auth router). Google OAuth users are auto-verified (`is_verified_by_default=True`) since Google has already proven control of the address. Tokens are fastapi-users' default 1-hour JWTs; delivery is via [Resend](https://resend.com). The combination plus a `UserManager.oauth_callback` override closes the pre-registration shell attack — full rationale in [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md).
+Los registros por contraseña quedan sin verificar por defecto y no pueden iniciar sesión hasta verificarse (`requires_verification=True` en el router de autenticación). Los usuarios de Google OAuth se verifican automáticamente (`is_verified_by_default=True`), puesto que Google ya ha demostrado el control de la dirección. Los tokens son los JWT de 1 hora por defecto de fastapi-users; la entrega se realiza mediante [Resend](https://resend.com). La combinación, junto con una sobreescritura de `UserManager.oauth_callback`, cierra el ataque de "cáscara" de pre-registro — justificación completa en [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md).
 
-## Audit logging
+## Registro de auditoría
 
-JSON-formatted lines on a dedicated `audit` logger to stdout (Docker captures). Events covered today: `register`, `login_ok`, `verify_ok`, `reset_ok`, `email_send_failed`, `oauth_link_reset_password`. Driven by `UserManager` hooks. `login_fail` and `logout` lack native hooks and aren't yet covered.
+Líneas en formato JSON en un logger `audit` dedicado hacia stdout (Docker las captura). Eventos cubiertos a día de hoy: `register`, `login_ok`, `verify_ok`, `reset_ok`, `email_send_failed`, `oauth_link_reset_password`. Dirigido por los hooks de `UserManager`. `login_fail` y `logout` carecen de hooks nativos y aún no están cubiertos.

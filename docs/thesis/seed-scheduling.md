@@ -1,47 +1,47 @@
 ---
-status: draft (thesis writeup, concept-level)
+status: borrador (redacción de la memoria, nivel conceptual)
 ---
 
-# Seed scheduling — cron + the per-tick contract
+# Planificación de la siembra — cron y el contrato por tick
 
-The REVE catalogue ETL runs on host-side cron: a single line invokes the `seed_reve` orchestrator inside the backend container, which spends up to five REVE calls per hour and exits. Over ~12 days of unattended ticks the full Spanish catalogue lands in Postgres. Once the four `reve_etl_cursor` rows all carry a `completed_at`, the same cron line becomes the daily-refresh hook described in [PLAN.md](../PLAN.md) without a code change. See [phases/phase-2.md](../phases/phase-2.md) for the slice criteria.
+El ETL del catálogo REVE se ejecuta con cron en el host: una sola línea invoca el orquestador `seed_reve` dentro del contenedor del backend, que gasta hasta cinco llamadas a REVE por hora y termina. A lo largo de ~12 días de ticks desatendidos, el catálogo español completo aterriza en Postgres. Cuando las cuatro filas de `reve_etl_cursor` tienen `completed_at`, la misma línea de cron se convierte en el gancho de refresco diario descrito en [PLAN.md](../PLAN.md) sin cambiar código. Véase [phases/phase-2.md](../phases/phase-2.md) para los criterios de la slice.
 
-## Why a scheduler is necessary
+## Por qué es necesario un planificador
 
-REVE caps at five requests per hour per credential. A live request-time proxy is impossible — one cold map load consumes the entire hour's allowance. A single bootstrap script is also impossible — hundreds of paginated calls are needed at thesis scale. The whole ETL shape (staged endpoints, cursor table, per-tick budget) falls out of that 5-req/hr rule.
+REVE limita a cinco peticiones por hora por credencial. Un proxy en tiempo de petición es imposible — una carga fría del mapa consume la cuota de toda la hora. Un script de bootstrap único también es imposible — a la escala del proyecto hacen falta cientos de llamadas paginadas. Toda la forma del ETL (endpoints por etapas, tabla de cursores, presupuesto por tick) se deriva de esa regla de 5 peticiones/hora.
 
-## Why cron over alternatives
+## Por qué cron frente a las alternativas
 
-- *In-process scheduler (APScheduler in the FastAPI lifespan).* Container restarts and `uvicorn --reload` reset in-memory state; a DB-backed job store duplicates the role of `reve_etl_cursor`.
-- *Single long-lived bootstrap script.* Either ignores the rate limit (and 429-throttles to a halt) or sleeps twelve minutes between calls for twelve days as a single point of failure.
-- *Windows Task Scheduler.* Bypasses WSL idle but isn't reproducible from the repo. Held as the upgrade path if WSL-idle losses become significant.
+- *Planificador en proceso (APScheduler en el lifespan de FastAPI).* Los reinicios del contenedor y `uvicorn --reload` resetean el estado en memoria; un almacén de trabajos respaldado por BD duplicaría el papel de `reve_etl_cursor`.
+- *Script de bootstrap único de larga duración.* O ignora el límite de peticiones (y se estrangula a base de 429) o duerme doce minutos entre llamadas durante doce días como punto único de fallo.
+- *Programador de tareas de Windows.* Esquiva la suspensión de WSL pero no es reproducible desde el repositorio. Se mantiene como vía de mejora si las pérdidas por inactividad de WSL resultan significativas.
 
-Cron is the smallest primitive that meets the constraint: declarative schedule, persists across reboots, one independent process per tick, no shared state.
+Cron es la primitiva más pequeña que cumple la restricción: planificación declarativa, persiste entre reinicios, un proceso independiente por tick, sin estado compartido.
 
-## The tick contract
+## El contrato por tick
 
-Each tick is **bounded** (≤5 REVE calls, picks the next uncompleted endpoint in dependency order `/cpos → /locations → /connectors/tariffs → /evses/operational_status`, exits cleanly on `429`) and **idempotent** (all four endpoint imports use Postgres `INSERT … ON CONFLICT DO UPDATE` keyed on the source ID; a re-run of an already-fetched page updates rows in place). That combination is what makes "one short process per hour" the right abstraction: missed ticks are recovered by the next, crashed ticks cost nothing.
+Cada tick está **acotado** (≤5 llamadas a REVE, elige el siguiente endpoint no completado en orden de dependencia `/cpos → /locations → /connectors/tariffs → /evses/operational_status`, termina limpiamente ante un `429`) y es **idempotente** (las cuatro importaciones usan `INSERT … ON CONFLICT DO UPDATE` de Postgres con clave en el ID de origen; re-ejecutar una página ya descargada actualiza las filas en su sitio). Esa combinación es lo que convierte "un proceso corto por hora" en la abstracción correcta: los ticks perdidos los recupera el siguiente, y los ticks fallidos no cuestan nada.
 
-## Operating it
+## Operación
 
 ```bash
-# Install (one-time) — runs at minute 30 of every hour.
+# Instalar (una sola vez) — se ejecuta en el minuto 30 de cada hora.
 (crontab -l 2>/dev/null; echo "30 * * * * /usr/bin/docker compose -f /home/aaleexsnchz/tfm/docker-compose.yml exec -T backend uv run python -m scripts.seed_reve >> /home/aaleexsnchz/.reve-seed.log 2>&1") | crontab -
 
-# Verify
+# Verificar
 crontab -l
 
-# Check progress (no API call)
+# Consultar progreso (sin llamada a la API)
 docker compose exec backend uv run python -m scripts.seed_reve --status
 tail -n 20 ~/.reve-seed.log
 
-# Stop
-crontab -r            # remove all entries, or
-crontab -e            # edit / comment the line
+# Detener
+crontab -r            # elimina todas las entradas, o
+crontab -e            # editar / comentar la línea
 ```
 
-Each tick appends one JSON audit line per endpoint touched plus a closing `calls used: N/5` summary to `~/.reve-seed.log`. The crontab persists across reboots; cron starts automatically because `systemd=true` is set in `/etc/wsl.conf` and `cron.service` is `enabled`.
+Cada tick añade una línea de auditoría JSON por endpoint tocado más un resumen final `calls used: N/5` a `~/.reve-seed.log`. El crontab persiste entre reinicios; cron arranca automáticamente porque `systemd=true` está configurado en `/etc/wsl.conf` y `cron.service` está habilitado.
 
-## WSL2 idle caveat
+## La salvedad de la inactividad en WSL2
 
-When no shell is open against the WSL distro, systemd inside it suspends and cron does not fire. A laptop closed for eight hours costs eight ticks (~4 000 catalogue rows of progress) — the cursor is unharmed and the next live tick resumes. Acceptable for a thesis defended on a personal laptop; the mitigation, if needed, is Windows Task Scheduler firing `wsl --distribution <name> docker compose …`.
+Cuando no hay ninguna shell abierta contra la distro de WSL, el systemd de su interior se suspende y cron no se dispara. Un portátil cerrado ocho horas cuesta ocho ticks (~4.000 filas de catálogo de progreso) — el cursor queda intacto y el siguiente tick activo reanuda el trabajo. Aceptable para una tesis defendida desde un portátil personal; la mitigación, si hiciera falta, es el programador de tareas de Windows lanzando `wsl --distribution <nombre> docker compose …`.

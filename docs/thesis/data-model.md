@@ -1,42 +1,42 @@
 ---
-status: draft (thesis writeup, concept-level)
+status: borrador (redacción de la memoria, nivel conceptual)
 ---
 
-# Data model — CPOs, Charging Points, EVSEs, Connectors
+# Modelo de datos — CPOs, puntos de carga, EVSEs y conectores
 
-The real-world charging-network catalogue ships from the [REVE API](https://www.mapareve.es), Spain's public OCPI 2.2.1 directory. The schema mirrors OCPI's four-level hierarchy: one operator runs many sites, each site has many physical stalls, each stall has one or two plugs. Live availability is deliberately not relayed (REVE's 5 req/hr public-API cap makes a live proxy impractical) — Phase 4 layers ACN-driven simulation on top of the static catalogue, which is owned in Postgres after the initial seed.
+El catálogo real de la red de carga procede de la [API REVE](https://www.mapareve.es), el directorio público OCPI 2.2.1 de España. El esquema replica la jerarquía de cuatro niveles de OCPI: un operador gestiona muchas ubicaciones, cada ubicación tiene muchas plazas físicas y cada plaza tiene uno o dos enchufes. La disponibilidad en tiempo real deliberadamente no se retransmite (el límite de 5 peticiones/hora de la API pública de REVE hace inviable un proxy en vivo) — la Fase 4 superpone una simulación basada en ACN sobre el catálogo estático, que tras la siembra inicial es propiedad de la aplicación en Postgres.
 
-## The hierarchy
+## La jerarquía
 
 ```text
-Cpo                   the operator company (Iberdrola, Endesa X, Wenea, ...)
- └── ChargingPoint    a physical site on the map (lat/lng, address, opening hours)
-      └── Evse        one parking stall within a charging point
-           └── Connector   the actual plug (Type 2, CCS, CHAdeMO) + power + tariff
+Cpo                   la empresa operadora (Iberdrola, Endesa X, Wenea, ...)
+ └── ChargingPoint    una ubicación física en el mapa (lat/lng, dirección, horario)
+      └── Evse        una plaza de aparcamiento dentro de un punto de carga
+           └── Connector   el enchufe real (Type 2, CCS, CHAdeMO) + potencia + tarifa
 ```
 
-In the REVE catalogue snapshot at seed time, Spain has 142 CPOs across roughly 13,700 charging points, which expand to about 42,000 EVSEs and 47,000 connectors — a charging point averages three EVSEs, and most EVSEs carry a single connector.
+En la instantánea del catálogo REVE en el momento de la siembra, España cuenta con 142 CPOs repartidos en unos 13.700 puntos de carga, que se expanden a unos 42.000 EVSEs y 47.000 conectores — un punto de carga tiene de media tres EVSEs, y la mayoría de los EVSEs llevan un único conector.
 
 ## CPO — Charge Point Operator
 
-The legal entity running the hardware. Identified by an OCPI `party_id` (a short alphanumeric code like `"IBE"`) plus a Spanish `cif` business tax ID. Stable identifiers — operators don't churn — which is why `/cpos` is the lightest endpoint and exhausts in two pages.
+La entidad legal que gestiona el hardware. Identificada por un `party_id` OCPI (un código alfanumérico corto como `"IBE"`) más el `cif` español. Identificadores estables — los operadores apenas rotan — por lo que `/cpos` es el endpoint más ligero y se agota en dos páginas.
 
-## Charging Point
+## Punto de carga (Charging Point)
 
-A physical site. The "station" the driver navigates to. Carries the data that matters for the map and the detail screen: latitude, longitude, address, parking type, opening hours (with the `opening_24_7` shortcut), facilities (food, restroom, wifi). One CPO owns each charging point — the FK `charging_points.party_id → cpos.party_id` links to the operator's catalogue row.
+Una ubicación física. La "estación" a la que navega el conductor. Contiene los datos que importan para el mapa y la pantalla de detalle: latitud, longitud, dirección, tipo de aparcamiento, horario de apertura (con el atajo `opening_24_7`) y servicios (comida, aseos, wifi). Cada punto de carga pertenece a un CPO — la FK `charging_points.party_id → cpos.party_id` enlaza con la fila del operador en el catálogo.
 
-A naming choice worth recording: OCPI calls these "**locations**" (which is why the REVE endpoint is `/locations`). The app schema renames to `charging_points` because that reads more naturally in code paths like `GET /api/points` and `usePoint(id)` than the more abstract OCPI term. The mirror schema preserves the OCPI semantics; only the table name shifts.
+Una decisión de nomenclatura que merece registrarse: OCPI llama a estas entidades "**locations**" (de ahí que el endpoint de REVE sea `/locations`). El esquema de la aplicación las renombra a `charging_points` porque se lee con más naturalidad en rutas de código como `GET /api/points` y `usePoint(id)` que el término OCPI, más abstracto. El esquema espejo conserva la semántica OCPI; solo cambia el nombre de la tabla.
 
-The `source` column distinguishes REVE-seeded points (`reve_seed`) from user-contributed private points (Phase 5, `user`). Sharing the table keeps the map query single-source — both kinds of points land in the same response shape.
+La columna `source` distingue los puntos sembrados desde REVE (`reve_seed`) de los puntos privados aportados por usuarios (Fase 5, `user`). Compartir la tabla mantiene la consulta del mapa con una única fuente — ambos tipos de punto aterrizan en la misma forma de respuesta.
 
 ## EVSE — Electric Vehicle Supply Equipment
 
-One physical stall within a charging point. A site with four parking spots has four EVSE rows. EVSEs are the unit of operational status — the `is_operational` boolean populated by the bulk `/evses/operational_status` endpoint lives here. That boolean is the only availability signal the public API exposes: the per-EVSE `/evses/{evse_id}` endpoint returns static data only (capabilities, floor level, physical reference — a near-subset of what `/locations` already nests), with no real-time OCPI status enum, so at ~42,000 EVSEs nationwide the 5 req/hr cap rules out per-EVSE fetching with nothing to gain from it. The marker colour on the map is computed as a per-charging-point `aggregate_status` rollup of those booleans (operational / partial / inoperative / unknown).
+Una plaza física dentro de un punto de carga. Una ubicación con cuatro plazas de aparcamiento tiene cuatro filas EVSE. Los EVSEs son la unidad del estado operativo — el booleano `is_operational`, poblado por el endpoint masivo `/evses/operational_status`, vive aquí. Ese booleano es la única señal de disponibilidad que expone la API pública: el endpoint por EVSE `/evses/{evse_id}` devuelve solo datos estáticos (capacidades, planta, referencia física — casi un subconjunto de lo que `/locations` ya anida), sin el enum de estado OCPI en tiempo real, de modo que con ~42.000 EVSEs en todo el país el límite de 5 peticiones/hora descarta la consulta por EVSE sin que hubiera nada que ganar con ella. El color del marcador en el mapa se calcula como un `aggregate_status` por punto de carga, agregado de esos booleanos (operativo / parcial / no operativo / desconocido).
 
-## Connector
+## Conector (Connector)
 
-The actual plug, with the technical characteristics drivers filter on: `standard` (Type 2, CCS, CHAdeMO, etc.), `power_type` (AC single-phase, AC three-phase, DC), and the trio of `max_electric_power`, `max_voltage`, `max_amperage`. A nullable FK `connectors.tariff_id` links to the `tariffs` table — REVE returns tariffs via a separate endpoint (`/connectors/tariffs`), which is why tariff data lags behind the rest of the catalogue during the seed.
+El enchufe real, con las características técnicas por las que filtran los conductores: `standard` (Type 2, CCS, CHAdeMO, etc.), `power_type` (AC monofásico, AC trifásico, DC) y el trío `max_electric_power`, `max_voltage`, `max_amperage`. Una FK anulable `connectors.tariff_id` enlaza con la tabla `tariffs` — REVE devuelve las tarifas por un endpoint separado (`/connectors/tariffs`), razón por la cual los datos de tarifas van por detrás del resto del catálogo durante la siembra.
 
-## Why mirror instead of proxy
+## Por qué espejo en lugar de proxy
 
-The architectural choice — own the catalogue in Postgres rather than live-proxy REVE — is driven entirely by the rate cap. Five requests per hour is below the floor of any real-time UX; a cold map load would consume the entire hour's allowance. Mirroring also lets the project add user-contributed private points to the same table, evolve the schema without coordinating with the upstream, and stay functional during REVE outages. The cost is a 12-day initial seed and a once-a-day catalogue refresh job — both happen unattended in a cron tick. See [PLAN.md](../PLAN.md) for the architecture diagram and [phases/phase-2.md](../phases/phase-2.md) for the seed slice.
+La decisión arquitectónica — poseer el catálogo en Postgres en lugar de hacer proxy en vivo de REVE — viene dictada íntegramente por el límite de peticiones. Cinco peticiones por hora está por debajo del suelo de cualquier experiencia en tiempo real; una carga fría del mapa consumiría la cuota de toda la hora. El espejo permite además añadir puntos privados de los usuarios a la misma tabla, evolucionar el esquema sin coordinarse con el proveedor, y seguir funcionando durante caídas de REVE. El coste es una siembra inicial de ~12 días y un trabajo diario de refresco del catálogo — ambos desatendidos en un tick de cron. Véase [PLAN.md](../PLAN.md) para el diagrama de arquitectura y [phases/phase-2.md](../phases/phase-2.md) para la slice de la siembra.
