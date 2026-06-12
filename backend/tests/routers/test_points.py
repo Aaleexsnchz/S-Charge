@@ -207,6 +207,69 @@ async def test_get_point_returns_nested_shape(
     assert standards == {"IEC_62196_T2"}
 
 
+async def test_map_returns_feature_collection(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    point = make_point()
+    type2_evse = make_evse(is_operational=True)
+    type2_evse.connectors.append(
+        make_connector(tariff=make_tariff("0.4200"), max_electric_power=22000)
+    )
+    ccs_evse = make_evse(is_operational=True)
+    ccs_evse.connectors.append(
+        make_connector(
+            standard="IEC_62196_T2_COMBO",
+            power_type="DC",
+            tariff=make_tariff("0.3000"),
+            max_electric_power=150000,
+        )
+    )
+    point.evses.extend([type2_evse, ccs_evse])
+
+    bare = make_point()
+    archived = make_point(archived_at=NOW)
+    db_session.add_all([point, bare, archived])
+    await db_session.commit()
+
+    response = await client.get("/api/points/map")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["type"] == "FeatureCollection"
+    features = {f["properties"]["id"]: f for f in body["features"]}
+    assert set(features) == {str(point.id), str(bare.id)}
+
+    rich = features[str(point.id)]
+    assert rich["geometry"] == {"type": "Point", "coordinates": [-3.7038, 40.4168]}
+    assert rich["properties"]["aggregate_status"] == "operational"
+    assert rich["properties"]["standards"] == ["IEC_62196_T2", "IEC_62196_T2_COMBO"]
+    assert rich["properties"]["max_power_w"] == 150000
+    assert rich["properties"]["min_price_per_kwh"] == 0.30
+
+    empty = features[str(bare.id)]
+    assert empty["properties"]["aggregate_status"] == "unknown"
+    assert empty["properties"]["standards"] == []
+    assert empty["properties"]["min_price_per_kwh"] is None
+
+
+async def test_map_aggregate_status_rollup(client: AsyncClient, db_session: AsyncSession) -> None:
+    partial = make_point()
+    partial.evses.extend([make_evse(is_operational=True), make_evse(is_operational=False)])
+    inoperative = make_point()
+    inoperative.evses.append(make_evse(is_operational=False))
+    db_session.add_all([partial, inoperative])
+    await db_session.commit()
+
+    response = await client.get("/api/points/map")
+
+    statuses = {
+        f["properties"]["id"]: f["properties"]["aggregate_status"]
+        for f in response.json()["features"]
+    }
+    assert statuses[str(partial.id)] == "partial"
+    assert statuses[str(inoperative.id)] == "inoperative"
+
+
 async def test_get_point_unknown_returns_reve_error_shape(client: AsyncClient) -> None:
     response = await client.get(f"/api/points/{uuid.uuid4()}")
 

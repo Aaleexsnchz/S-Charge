@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
 from app.schemas.point import PointRead
-from app.services.points import Bbox, get_point, list_points
+from app.services.points import Bbox, get_point, list_points, map_feature_collection
 
 router = APIRouter(prefix="/points", tags=["points"])
 
@@ -48,6 +48,17 @@ async def read_points(
         max_price_per_kwh=max_price_per_kwh,
     )
     return [PointRead.model_validate(point) for point in points]
+
+
+@router.get("/map")
+async def read_points_map(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    """GeoJSON FeatureCollection sized for the map's clustered source.
+
+    Declared before ``/{point_id}`` so the literal segment wins the route match.
+    """
+    return await map_feature_collection(db)
 
 
 @router.get(
