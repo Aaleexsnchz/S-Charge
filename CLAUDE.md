@@ -56,10 +56,13 @@ backend/
 │   ├── main.py          FastAPI app factory + router includes
 │   ├── config.py        Settings (pydantic-settings, loads backend/.env)
 │   ├── database.py      async engine + session factory
+│   ├── dependencies.py  FastAPI dependencies (get_db, get_user_db)
 │   ├── models/          SQLAlchemy ORM models (one file per aggregate)
 │   ├── schemas/         Pydantic request/response models
 │   ├── routers/         FastAPI APIRouters (thin — delegate to services)
 │   ├── services/        business logic (pure, testable, no FastAPI imports)
+│   ├── integrations/    HTTP clients for external APIs (REVE)
+│   ├── etl/             import/upsert logic + cursor helpers for seeds
 │   └── utils/           auth, timezone helpers, etc.
 ├── alembic/             migrations
 ├── scripts/             one-off ETL, seed, data generators
