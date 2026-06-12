@@ -7,7 +7,7 @@ A master's thesis project (IoT): a Progressive Web App for managing EV charging 
 | Phase | Status |
 | --- | --- |
 | 1 — Foundation | `[x]` done |
-| 2 — REVE seed + Map | `[ ]` backend in progress; frontend not started |
+| 2 — REVE seed + Map | `[~]` API + map UI shipped; seed cron mid-run; Lighthouse + mobile QA pending |
 | 3 — ACN import + Analytics | `[ ]` not started |
 | 4 — Simulation + Algorithm | `[ ]` not started |
 | 5 — Private points + Bookings | `[ ]` not started |

@@ -20,27 +20,27 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 
 **Acceptance:** navigating to `/map` lazy-loads a full-viewport map of Spain rendered with vector tiles. Mobile-first layout, safe-area insets. Locate-me control centres on the user's position when granted. The route's JS chunk is split. First Lighthouse audit recorded.
 
-- [ ] Map library + tile source chosen; `fe-NNNN` ADR written at the point of decision
-- [ ] Map page lazy-loaded behind `/map`; full-viewport canvas; navigation + locate-me controls; safe-area insets
-- [ ] Server-state caching library introduced (`fe-NNNN` ADR if not already chosen)
+- [x] Map library + tile source chosen; `fe-NNNN` ADR written at the point of decision (fe-0003: MapLibre GL JS + OpenFreeMap Positron)
+- [x] Map page lazy-loaded behind `/map`; full-viewport canvas; navigation + locate-me controls; safe-area insets
+- [x] Server-state caching library introduced (fe-0004: TanStack Query)
 - [ ] Phase 2 Lighthouse audit recorded; sub-90 scores noted with a deferred-or-fixed line
 
 ## Slice 3 — Markers, clustering, point sheet
 
 **Acceptance:** `/map` renders all REVE-seeded points as colour-coded clustered markers, with colour driven by `aggregate_status` (operational / partial / inoperative / unknown). Tapping a marker opens a sheet showing operator, address, connectors with power, tariff, status chip, and two buttons — outlined "Detalles" + contained "Navegar". "Navegar" deep-links to Google Maps directions.
 
-- [ ] Typed `useChargingPoints` hook backed by the server-state lib and the generated API schema
-- [ ] GeoJSON source with native clustering and three layers (clusters, cluster counts, unclustered points); colour expression on `aggregate_status`
-- [ ] Point sheet component rendering the selected point in Spanish; tap-outside to close
-- [ ] "Navegar" opens the universal Google Maps Directions URL (`?api=1&destination=lat,lng`) in a new tab
-- [ ] Selecting another marker swaps sheet content without remounting
+- [x] Typed `useChargingPoints` hook backed by the server-state lib and the generated API schema (shipped as `useMapPoints` over `GET /api/points/map`)
+- [x] GeoJSON source with native clustering and three layers (clusters, cluster counts, unclustered points); colour expression on `aggregate_status`
+- [x] Point sheet component rendering the selected point in Spanish; tap-outside to close
+- [x] "Navegar" opens the universal Google Maps Directions URL (`?api=1&destination=lat,lng`) in a new tab
+- [x] Selecting another marker swaps sheet content without remounting
 
 ## Slice 4 — Filters + `/points/:id` + Lighthouse
 
 **Acceptance:** the chip bar at the top of `/map` toggles availability / connector type / price band; unmatched markers vanish (client-side, no extra API calls). "Detalles" navigates to `/points/:id`, a code-split route rendering the full data from `/api/points/{id}`. Phase 2 Lighthouse audit recorded; tested on real iPhone + Android.
 
-- [ ] Filter chip bar with `MapFilters` state lifted to the page; compiled into a map filter expression
-- [ ] Filter applied to the unclustered-points layer; empty-state card when zero match
-- [ ] `/points/:id` route, lazy-loaded
-- [ ] `usePoint(id)` hook via the typed API client
+- [x] Filter chip bar with `MapFilters` state lifted to the page; compiled into a map filter expression (shipped as source `setData` refiltering so cluster counts track active filters — see commit message)
+- [x] Filter applied client-side, no extra API calls; empty-state card when zero match
+- [x] `/points/:id` route, lazy-loaded
+- [x] `usePoint(id)` hook via the typed API client
 - [ ] Phase 2 Lighthouse audit recorded; mobile testing on real iPhone + Android
