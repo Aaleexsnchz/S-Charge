@@ -61,6 +61,18 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <HomePage /> },
+          {
+            path: 'map',
+            lazy: async () => ({
+              Component: (await import('./map/MapPage')).MapPage,
+            }),
+          },
+          {
+            path: 'points/:pointId',
+            lazy: async () => ({
+              Component: (await import('./points/PointDetailPage')).PointDetailPage,
+            }),
+          },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'logout', action: logoutAction },
         ],

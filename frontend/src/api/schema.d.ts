@@ -160,6 +160,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Points */
+        get: operations["read_points_api_points_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Points Map
+         * @description GeoJSON FeatureCollection sized for the map's clustered source.
+         *
+         *     Declared before ``/{point_id}`` so the literal segment wins the route match.
+         */
+        get: operations["read_points_map_api_points_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/{point_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Point */
+        get: operations["read_point_api_points__point_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/me": {
         parameters: {
             query?: never;
@@ -270,12 +326,55 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** ConnectorRead */
+        ConnectorRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Standard */
+            standard: string;
+            /** Format */
+            format: string;
+            /** Power Type */
+            power_type: string;
+            /** Max Electric Power */
+            max_electric_power: number | null;
+            /** Max Voltage */
+            max_voltage: number;
+            /** Max Amperage */
+            max_amperage: number;
+            tariff: components["schemas"]["TariffRead"] | null;
+        };
         /** ErrorModel */
         ErrorModel: {
             /** Detail */
             detail: string | {
                 [key: string]: string;
             };
+        };
+        /** EvseRead */
+        EvseRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Evse Id */
+            evse_id: string | null;
+            /** Physical Reference */
+            physical_reference: string | null;
+            /** Floor Level */
+            floor_level: string | null;
+            /** Capabilities */
+            capabilities: string[] | null;
+            /** Wheelchair Accessibility */
+            wheelchair_accessibility: string | null;
+            /** Is Operational */
+            is_operational: boolean | null;
+            /** Connectors */
+            connectors: components["schemas"]["ConnectorRead"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -286,6 +385,77 @@ export interface components {
         OAuth2AuthorizeResponse: {
             /** Authorization Url */
             authorization_url: string;
+        };
+        /** PointRead */
+        PointRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Source */
+            source: string;
+            /** Name */
+            name: string | null;
+            /** Cpo Name */
+            cpo_name: string | null;
+            /** Address */
+            address: string;
+            /** City */
+            city: string;
+            /** Postal Code */
+            postal_code: string | null;
+            /** Region */
+            region: string | null;
+            /** State */
+            state: string | null;
+            /** Country Code */
+            country_code: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Parking Type */
+            parking_type: string | null;
+            /** Facilities */
+            facilities: string[] | null;
+            /** Time Zone */
+            time_zone: string;
+            /** Opening 24 7 */
+            opening_24_7: boolean;
+            /** Opening Hours */
+            opening_hours: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Charging When Closed */
+            charging_when_closed: boolean | null;
+            /**
+             * Aggregate Status
+             * @enum {string}
+             */
+            aggregate_status: "operational" | "partial" | "inoperative" | "unknown";
+            /** Evses */
+            evses: components["schemas"]["EvseRead"][];
+        };
+        /** TariffRead */
+        TariffRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Currency */
+            currency: string;
+            /** Price Per Kwh */
+            price_per_kwh: number | null;
+            /** Price Component Type */
+            price_component_type: string | null;
+            /** Vat Percentage */
+            vat_percentage: number | null;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid To */
+            valid_to: string | null;
         };
         /** UserCreate */
         UserCreate: {
@@ -722,6 +892,101 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorModel"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_points_api_points_get: {
+        parameters: {
+            query?: {
+                /** @description Bounding box as 'min_lng,min_lat,max_lng,max_lat' (GeoJSON axis order). */
+                bbox?: string | null;
+                /** @description OCPI connector standard, e.g. IEC_62196_T2. */
+                connector_standard?: string | null;
+                max_price_per_kwh?: number | string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_points_map_api_points_map_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    read_point_api_points__point_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                point_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointRead"];
+                };
+            };
+            /** @description Unknown point; body mirrors REVE's error shape. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

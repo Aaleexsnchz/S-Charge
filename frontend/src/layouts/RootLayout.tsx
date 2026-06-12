@@ -1,16 +1,22 @@
-import { Link, Outlet } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import '../styles/layout.css'
 
 export function RootLayout() {
   return (
     <div className="layout">
       <header className="topbar">
-        <h1>EV Charging App</h1>
+        <h1>EV Charging</h1>
         <nav className="nav">
-          <Link to="/">Home</Link>
+          <NavLink to="/" end>
+            Inicio
+          </NavLink>
+          <NavLink to="/map">Mapa</NavLink>
+          <NavLink to="/profile">Perfil</NavLink>
         </nav>
       </header>
-      <Outlet />
+      <main className="content">
+        <Outlet />
+      </main>
     </div>
   )
 }

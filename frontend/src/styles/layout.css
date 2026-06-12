@@ -1,7 +1,13 @@
 .layout {
-  min-height: 100svh;
+  height: 100svh;
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.content {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .topbar {
@@ -30,6 +36,10 @@
 
 .nav a:hover {
   text-decoration: underline;
+}
+
+.nav a.active {
+  font-weight: 600;
 }
 
 .page {
