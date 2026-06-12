@@ -22,6 +22,7 @@ Concept-level summary of what the library and these ADRs deliver: [thesis/auth.m
 | [fe-0002](fe-0002-pwa.md) | Ship the frontend as an installable Progressive Web App | Phase 1 / Slice 4 |
 | [fe-0003](fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles for the map | Phase 2 / Slice 2 |
 | [fe-0004](fe-0004-tanstack-query.md) | TanStack Query for server state | Phase 2 / Slice 2 |
+| [fe-0005](fe-0005-mui-x-charts.md) | MUI X Charts for in-app charts | Phase 5 (installed in Phase 3) |
 
 ## Thesis-writeup chapters
 
