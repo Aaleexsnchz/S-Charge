@@ -6,8 +6,6 @@ export type AggregateStatus =
 
 export type MapPointProperties = {
   id: string
-  name: string | null
-  cpo_name: string | null
   aggregate_status: AggregateStatus
   standards: string[]
   max_power_w: number | null

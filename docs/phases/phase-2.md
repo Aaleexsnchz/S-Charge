@@ -23,7 +23,7 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 - [x] Map library + tile source chosen; `fe-NNNN` ADR written at the point of decision (fe-0003: MapLibre GL JS + OpenFreeMap Positron)
 - [x] Map page lazy-loaded behind `/map`; full-viewport canvas; navigation + locate-me controls; safe-area insets
 - [x] Server-state caching library introduced (fe-0004: TanStack Query)
-- [ ] Phase 2 Lighthouse audit recorded; sub-90 scores noted with a deferred-or-fixed line
+- [x] Phase 2 Lighthouse audit recorded; sub-90 scores noted with a deferred-or-fixed line (see "Lighthouse audit" below)
 
 ## Slice 3 — Markers, clustering, point sheet
 
@@ -43,4 +43,16 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 - [x] Filter applied client-side, no extra API calls; empty-state card when zero match
 - [x] `/points/:id` route, lazy-loaded
 - [x] `usePoint(id)` hook via the typed API client
-- [ ] Phase 2 Lighthouse audit recorded; mobile testing on real iPhone + Android
+- [ ] Mobile testing on real iPhone + Android (map flows OK pending confirmation; Google OAuth over a tunnel is structurally blocked — redirect URI is registered for `localhost`, real-device OAuth gets tested on the production domain in Phase 6)
+
+## Lighthouse audit (2026-06-13, production build via `pnpm preview`, mobile preset)
+
+| Page | Performance | Accessibility | Best Practices | SEO |
+| --- | --- | --- | --- | --- |
+| `/login` | 94 | 98 | 96 | 82 |
+| `/map` | 31 | 100 | 100 | 82 |
+
+Sub-90 lines:
+
+- **SEO 82 (both)** — *fixed*: missing meta description added to `index.html`.
+- **`/map` Performance 31** — *partially fixed, rest deferred*: unused `name`/`cpo_name` properties dropped from the map GeoJSON (772 → 503 KB gzipped, −35%). The remaining cost is inherent to map pages under Lighthouse's mobile throttling (MapLibre engine + WebGL first paint + 13.6k-point source); map products routinely score in this range. Further options if Phase 6 QA wants them: service-worker runtime caching of `/api/points/map` (planned in fe-0002), fetching the source after first paint.

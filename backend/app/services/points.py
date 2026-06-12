@@ -74,8 +74,6 @@ async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
     stmt = (
         select(
             ChargingPoint.id,
-            ChargingPoint.name,
-            ChargingPoint.cpo_name,
             ChargingPoint.latitude,
             ChargingPoint.longitude,
             aggregate_status.label("aggregate_status"),
@@ -102,8 +100,6 @@ async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
             },
             "properties": {
                 "id": str(row.id),
-                "name": row.name,
-                "cpo_name": row.cpo_name,
                 "aggregate_status": row.aggregate_status,
                 "standards": sorted(row.standards) if row.standards else [],
                 "max_power_w": row.max_power_w,
