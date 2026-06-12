@@ -2,6 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Inside Docker the backend is reachable by service name; host-side runs
+// (pnpm preview for Lighthouse) override via VITE_PROXY_TARGET.
+const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://backend:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -48,7 +52,13 @@ export default defineConfig({
       '.trycloudflare.com',
     ],
     proxy: {
-      '/api': 'http://backend:8000',
+      '/api': proxyTarget,
+    },
+  },
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': proxyTarget,
     },
   },
 })
