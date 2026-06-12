@@ -67,7 +67,8 @@ class ChargingPoint(Base):
     facilities: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     time_zone: Mapped[str] = mapped_column(Text, nullable=False)
     opening_24_7: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    opening_hours: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # OCPI regular_hours: a list of {weekday, period_begin, period_end} objects
+    opening_hours: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
     charging_when_closed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     directions: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -97,6 +98,22 @@ class ChargingPoint(Base):
         back_populates="charging_point",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def aggregate_status(self) -> str:
+        """Marker-colour rollup of the EVSEs' operational booleans.
+
+        Requires ``evses`` to be loaded; readers go through the points
+        service, which eager-loads the full nesting.
+        """
+        known = [evse.is_operational for evse in self.evses if evse.is_operational is not None]
+        if not known:
+            return "unknown"
+        if all(known):
+            return "operational"
+        if any(known):
+            return "partial"
+        return "inoperative"
 
 
 class Evse(Base):

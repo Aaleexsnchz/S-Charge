@@ -12,9 +12,9 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 - [x] Idempotent ETL functions (one per endpoint) with `start_page` / `max_pages` and `(rows, last_page, exhausted)` return shape
 - [x] Cursor helpers (`read_cursor`, `read_all_cursors`, `record_progress` — folds `mark_completed` via `exhausted=True`, `record_error`)
 - [x] `seed_reve.py` orchestrator: per-run budget, priority order, clean exits on `429` / budget exhaustion, `--status` flag
-- [ ] `GET /api/points` returning active points with `evses[].connectors[].tariff` joined; optional `bbox`, `connector_standard`, `max_price_per_kwh` query params
-- [ ] `GET /api/points/{id}` returning the full nested point shape; 404 matches REVE's `{status_code, status_message}` shape
-- [ ] Tests for `/api/points` and `/api/points/{id}` (happy path + filters + 404)
+- [x] `GET /api/points` returning active points with `evses[].connectors[].tariff` joined; optional `bbox`, `connector_standard`, `max_price_per_kwh` query params
+- [x] `GET /api/points/{id}` returning the full nested point shape; 404 matches REVE's `{status_code, status_message}` shape
+- [x] Tests for `/api/points` and `/api/points/{id}` (happy path + filters + 404)
 
 ## Slice 2 — Map shell
 

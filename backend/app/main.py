@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 
 from app.routers.auth import router as auth_router
+from app.routers.points import router as points_router
 from app.routers.users import router as users_router
 
 OAUTH_PATH_PREFIX = "/api/auth/google/"
@@ -42,6 +43,7 @@ async def oauth_redirect_exception_handler(request: Request, exc: HTTPException)
 
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(points_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 
 
