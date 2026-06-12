@@ -9,7 +9,9 @@ from fastapi.responses import RedirectResponse, Response
 
 from app.routers.auth import router as auth_router
 from app.routers.points import router as points_router
+from app.routers.prices import router as prices_router
 from app.routers.users import router as users_router
+from app.routers.vehicles import router as vehicles_router
 
 OAUTH_PATH_PREFIX = "/api/auth/google/"
 OAUTH_FAILURE_REDIRECT = "/login?error=oauth_failed"
@@ -47,7 +49,9 @@ async def oauth_redirect_exception_handler(request: Request, exc: HTTPException)
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(points_router, prefix="/api")
+app.include_router(prices_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(vehicles_router, prefix="/api")
 
 
 @app.get("/api/health")

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     acn_api_token: str = ""
     acn_api_base_url: str = "https://ev.caltech.edu/api/v1"
 
+    ree_api_base_url: str = "https://apidatos.ree.es"
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
