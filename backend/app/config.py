@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     reve_api_key: str = ""
     reve_api_base_url: str = "https://www.mapareve.es/api/external/v1"
 
+    acn_api_token: str = ""
+    acn_api_base_url: str = "https://ev.caltech.edu/api/v1"
+
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
