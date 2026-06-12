@@ -6,21 +6,20 @@ Per [PLAN.md](../PLAN.md): ETL pipeline for ACN-Data (Caltech's Adaptive Chargin
 
 **Acceptance:** with `ACN_API_TOKEN` set, `python -m scripts.import_acn --site caltech` pages through the ACN sessions API (python-eve style: `_items` + `_meta`), idempotently upserts into `acn_sessions` (keyed on the ACN `_id`), commits per page, and resumes from `--start-page` after an interruption. Row counts per site are printed at the end and recorded in the data validation doc (slice 4).
 
-- [x] `AcnClient` async API client (HTTP Basic, token as username) with pagination support
-- [x] `acn_sessions` model + Alembic migration (session times, energy, user inputs, raw payload)
-- [x] Idempotent `import_acn_sessions` ETL with `(rows, last_page, exhausted)` return shape
-- [x] `import_acn.py` script: per-site loop, per-page commit, `--site` / `--start-page` / `--max-pages`
-- [x] Tests: client pagination + auth, ETL upsert/idempotency/datetime+userInputs parsing
-- [ ] Real import run against the live API with `ACN_API_TOKEN` (validates the assumed eve response shape)
+- [ ] `AcnClient` async API client (HTTP Basic, token as username) with pagination support
+- [ ] `acn_sessions` model + Alembic migration (session times, energy, user inputs, raw payload)
+- [ ] Idempotent `import_acn_sessions` ETL with `(rows, last_page, exhausted)` return shape
+- [ ] `import_acn.py` script: per-site loop, per-page commit, `--site` / `--start-page` / `--max-pages`
+- [ ] Tests: client pagination + auth, ETL upsert/idempotency/datetime+userInputs parsing
 
 ## Slice 2 — Statistics endpoints
 
 **Acceptance:** `/api/stats/*` endpoints return aggregations computed in SQL over `acn_sessions`, fast enough for dashboard use, covered by route tests with fixture sessions.
 
-- [x] `GET /api/stats/overview` — totals: sessions, energy delivered, avg energy/session, avg duration, per-site breakdown
-- [x] `GET /api/stats/energy-monthly` — monthly kWh series (optionally per site)
-- [x] `GET /api/stats/arrivals-heatmap` — session arrivals by weekday × hour (site-local time)
-- [x] Route tests with fixture sessions (happy path + empty DB)
+- [ ] `GET /api/stats/overview` — totals: sessions, energy delivered, avg energy/session, avg duration, per-site breakdown
+- [ ] `GET /api/stats/energy-monthly` — monthly kWh series (optionally per site)
+- [ ] `GET /api/stats/arrivals-heatmap` — session arrivals by weekday × hour (site-local time)
+- [ ] Route tests with fixture sessions (happy path + empty DB)
 
 ## Slice 3 — Charts dashboard
 
