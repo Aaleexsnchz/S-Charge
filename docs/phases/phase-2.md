@@ -43,7 +43,7 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 - [x] Filter applied client-side, no extra API calls; empty-state card when zero match
 - [x] `/points/:id` route, lazy-loaded
 - [x] `usePoint(id)` hook via the typed API client
-- [ ] Mobile testing on real iPhone + Android (map flows OK pending confirmation; Google OAuth over a tunnel is structurally blocked — redirect URI is registered for `localhost`, real-device OAuth gets tested on the production domain in Phase 6)
+- [x] Mobile testing on real devices via tunnel — map loads and flows well (user-confirmed 2026-06-13). Google OAuth and email links over a tunnel are structurally blocked in local dev (both point at `localhost`); real-device OAuth + email flows get tested on the production domain in Phase 6
 
 ## Lighthouse audit (2026-06-13, production build via `pnpm preview`, mobile preset)
 
@@ -56,3 +56,4 @@ Sub-90 lines:
 
 - **SEO 82 (both)** — *fixed*: missing meta description added to `index.html`.
 - **`/map` Performance 31** — *partially fixed, rest deferred*: unused `name`/`cpo_name` properties dropped from the map GeoJSON (772 → 503 KB gzipped, −35%). The remaining cost is inherent to map pages under Lighthouse's mobile throttling (MapLibre engine + WebGL first paint + 13.6k-point source); map products routinely score in this range. Further options if Phase 6 QA wants them: service-worker runtime caching of `/api/points/map` (planned in fe-0002), fetching the source after first paint.
+- **Re-audit after the payload fix (2026-06-13):** FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map` under mobile throttling — measurably improved; remaining gap accepted as inherent and deferred per the line above.
