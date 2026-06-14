@@ -71,7 +71,7 @@ async def import_acn_sessions(
     *,
     start_page: int = 1,
     max_pages: int | None = None,
-    per_page: int = 250,
+    per_page: int = 100,
 ) -> tuple[int, int, bool]:
     """Import consecutive pages of ACN sessions for ``site``.
 
@@ -93,7 +93,17 @@ async def import_acn_sessions(
             rows += 1
         last_page_completed = page
         pages_fetched += 1
-        if not items or len(items) < per_page or (total_pages is not None and page >= total_pages):
+        # The server caps max_results (100 as of 2026-06) and reports the cap in
+        # _meta, so trust _meta's total when present; a short page only signals
+        # exhaustion when there is no _meta to go by.
+        if not items:
+            exhausted = True
+            break
+        if total_pages is not None:
+            if page >= total_pages:
+                exhausted = True
+                break
+        elif len(items) < per_page:
             exhausted = True
             break
         page += 1

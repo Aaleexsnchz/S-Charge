@@ -14,7 +14,7 @@ from app.models.acn import AcnSession
 BASE_URL = "https://acn.test/api/v1"
 TOKEN = "acn-test-token"
 
-PER_PAGE = 250
+PER_PAGE = 100
 
 
 def _session(source_id: str = "5bc9aabbccdd", **overrides: Any) -> dict[str, Any]:

@@ -12,7 +12,7 @@ TOKEN = "acn-test-token"
 
 async def test_sends_basic_auth_with_token_as_username(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
-        url=f"{BASE_URL}/sessions/caltech?page=1&max_results=250&sort=connectionTime",
+        url=f"{BASE_URL}/sessions/caltech?page=1&max_results=100&sort=connectionTime",
         json={"_items": []},
     )
 
@@ -44,7 +44,7 @@ async def test_computes_total_pages_from_meta(httpx_mock: HTTPXMock) -> None:
 
 async def test_raises_on_http_error(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
-        url=f"{BASE_URL}/sessions/caltech?page=1&max_results=250&sort=connectionTime",
+        url=f"{BASE_URL}/sessions/caltech?page=1&max_results=100&sort=connectionTime",
         status_code=401,
     )
 

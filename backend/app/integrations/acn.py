@@ -47,7 +47,7 @@ class AcnClient:
         site: str,
         *,
         page: int = 1,
-        per_page: int = 250,
+        per_page: int = 100,
     ) -> tuple[list[dict[str, Any]], int | None]:
         """Fetch one page of sessions for ``site``.
 
