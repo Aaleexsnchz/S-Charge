@@ -10,8 +10,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     # TODO: pass to FastAPI(debug=...) or gate verbose SQL logging when needed
     debug: bool = Field(default=True, validation_alias="APP_DEBUG")
-    secret_key: str = "change_me_secret_key"
-    database_url: str = "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db"
+    secret_key: str = ""
+    database_url: str = (
+        "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db"
+    )
     test_database_url: str = (
         "postgresql+asyncpg://app_user:change_me_db_password@db:5432/app_db_test"
     )
