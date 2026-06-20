@@ -1,12 +1,13 @@
 from decimal import Decimal
 
+from app.models.vehicle import Vehicle
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.vehicle import Vehicle
 
-
-async def test_list_vehicles_ordered(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_vehicles_ordered(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     db_session.add_all(
         [
             Vehicle(

@@ -2,9 +2,8 @@ from collections.abc import Iterator
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import AsyncClient
-
 from app.utils.auth_backend import COOKIE_NAME
+from httpx import AsyncClient
 
 EMAIL = "alice@example.com"
 PASSWORD = "long-enough-password-123"
@@ -20,7 +19,9 @@ def mock_verification_email() -> Iterator[AsyncMock]:
         yield mock
 
 
-async def test_auth_happy_flow(client: AsyncClient, mock_verification_email: AsyncMock) -> None:
+async def test_auth_happy_flow(
+    client: AsyncClient, mock_verification_email: AsyncMock
+) -> None:
     register_resp = await client.post(
         "/api/auth/register",
         json={"email": EMAIL, "password": PASSWORD, "name": NAME},
@@ -35,7 +36,9 @@ async def test_auth_happy_flow(client: AsyncClient, mock_verification_email: Asy
     mock_verification_email.assert_called_once()
     verification_token = mock_verification_email.call_args.args[1]
 
-    verify_resp = await client.post("/api/auth/verify", json={"token": verification_token})
+    verify_resp = await client.post(
+        "/api/auth/verify", json={"token": verification_token}
+    )
     assert verify_resp.status_code == 200
     assert verify_resp.json()["is_verified"] is True
 

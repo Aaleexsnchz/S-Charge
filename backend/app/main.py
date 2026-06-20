@@ -40,10 +40,14 @@ app.add_middleware(
 
 
 @app.exception_handler(HTTPException)
-async def oauth_redirect_exception_handler(request: Request, exc: HTTPException) -> Response:
+async def oauth_redirect_exception_handler(
+    request: Request, exc: HTTPException
+) -> Response:
     is_oauth_path = request.url.path.startswith(OAUTH_PATH_PREFIX)
     if is_oauth_path and exc.status_code == status.HTTP_400_BAD_REQUEST:
-        return RedirectResponse(OAUTH_FAILURE_REDIRECT, status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            OAUTH_FAILURE_REDIRECT, status_code=status.HTTP_303_SEE_OTHER
+        )
     return await http_exception_handler(request, exc)
 
 

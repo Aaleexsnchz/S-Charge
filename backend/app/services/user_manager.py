@@ -16,15 +16,16 @@ from app.utils.auth_backend import auth_backend
 from app.utils.security import password_helper
 
 MIN_PASSWORD_LENGTH = 12
-PASSWORD_PROVIDER = "password"
+PASSWORD_PROVIDER = "password"  # noqa: S105 — login-provider name, not a credential
 
 
 def _detect_provider(request: Request | None) -> str:
     """Derive the login provider from the matched fastapi-users route name.
 
-    fastapi-users names its OAuth callback route `oauth:{client.name}.{backend.name}.callback`
-    (see fastapi_users/router/oauth.py). The email/password login route has no such prefix,
-    so a missing or non-oauth route name means password login.
+    fastapi-users names its OAuth callback route
+    `oauth:{client.name}.{backend.name}.callback` (see fastapi_users/router/oauth.py).
+    The email/password login route has no such prefix, so a missing or non-oauth
+    route name means password login.
     """
     if request is None:
         return PASSWORD_PROVIDER
@@ -45,7 +46,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
                 reason=f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
             )
 
-    async def on_after_register(self, user: User, request: Request | None = None) -> None:
+    async def on_after_register(
+        self, user: User, request: Request | None = None
+    ) -> None:
         audit(
             "register",
             user_id=str(user.id),
@@ -88,7 +91,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
     ) -> None:
         await send_reset_password_email(user.email, token)
 
-    async def on_after_reset_password(self, user: User, request: Request | None = None) -> None:
+    async def on_after_reset_password(
+        self, user: User, request: Request | None = None
+    ) -> None:
         audit(
             "reset_ok",
             user_id=str(user.id),
@@ -96,7 +101,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             user_agent=request.headers.get("user-agent") if request else None,
         )
 
-    async def oauth_callback(  # type: ignore[override]
+    async def oauth_callback(  # type: ignore[override]  # noqa: PLR0913 — fastapi-users signature
         self,
         oauth_name: str,
         access_token: str,

@@ -2,9 +2,8 @@ import base64
 
 import httpx
 import pytest
-from pytest_httpx import HTTPXMock
-
 from app.integrations.acn import AcnClient
+from pytest_httpx import HTTPXMock
 
 BASE_URL = "https://acn.test/api/v1"
 TOKEN = "acn-test-token"

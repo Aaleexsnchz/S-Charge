@@ -4,16 +4,15 @@ from uuid import UUID
 
 import pytest
 import pytest_asyncio
+from app.config import settings
+from app.models.user import OAuthAccount, User
+from app.routers.auth import google_client
+from app.utils.auth_backend import COOKIE_NAME
 from fastapi_users.router.oauth import CSRF_TOKEN_COOKIE_NAME, generate_state_token
 from httpx import AsyncClient
 from httpx_oauth.oauth2 import OAuth2Token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.config import settings
-from app.models.user import OAuthAccount, User
-from app.routers.auth import google_client
-from app.utils.auth_backend import COOKIE_NAME
 
 CALLBACK_URL = "/api/auth/google/callback"
 GOOGLE_ACCOUNT_ID = "118452365478912345678"
@@ -33,9 +32,13 @@ def _prime_csrf(client: AsyncClient, csrf: str = CSRF_VALUE) -> None:
 @pytest.fixture(autouse=True)
 def mock_google_calls() -> Iterator[None]:
     """Replace the outbound Google HTTP calls with deterministic stand-ins."""
-    access_token = OAuth2Token({"access_token": "fake_access_token", "token_type": "bearer"})
+    access_token = OAuth2Token(
+        {"access_token": "fake_access_token", "token_type": "bearer"}
+    )
     with (
-        patch.object(google_client, "get_access_token", AsyncMock(return_value=access_token)),
+        patch.object(
+            google_client, "get_access_token", AsyncMock(return_value=access_token)
+        ),
         patch.object(
             google_client,
             "get_id_email",
@@ -56,7 +59,9 @@ async def fresh_client(client: AsyncClient) -> AsyncIterator[AsyncClient]:
     yield client
 
 
-async def test_oauth_first_time_user(fresh_client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_oauth_first_time_user(
+    fresh_client: AsyncClient, db_session: AsyncSession
+) -> None:
     _prime_csrf(fresh_client)
     resp = await fresh_client.get(
         CALLBACK_URL,
@@ -69,7 +74,9 @@ async def test_oauth_first_time_user(fresh_client: AsyncClient, db_session: Asyn
     assert COOKIE_NAME in fresh_client.cookies
 
     user_row = (
-        (await db_session.execute(select(User).filter_by(email=GOOGLE_EMAIL))).unique().scalar_one()
+        (await db_session.execute(select(User).filter_by(email=GOOGLE_EMAIL)))
+        .unique()
+        .scalar_one()
     )
     assert isinstance(user_row.id, UUID)
     assert user_row.is_verified is True
@@ -116,7 +123,11 @@ async def test_oauth_returning_user_matches_by_provider_id(
     assert len(users) == 1
 
     oauth_rows = (
-        (await db_session.execute(select(OAuthAccount).filter_by(account_id=GOOGLE_ACCOUNT_ID)))
+        (
+            await db_session.execute(
+                select(OAuthAccount).filter_by(account_id=GOOGLE_ACCOUNT_ID)
+            )
+        )
         .scalars()
         .all()
     )

@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from http import HTTPStatus
 from typing import Any
 
 import httpx
@@ -43,13 +44,19 @@ class ReeClient:
             "time_trunc": "hour",
         }
         response = await self._client.get(PRICES_PATH, params=params)
-        if response.status_code >= 500:
+        if response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
             # REE answers 500 for days it has not published yet (e.g. tomorrow
             # before ~20:15 CET) — treat as "no data", not as a hard failure.
-            audit("ree_day_not_published", day=day.isoformat(), status=response.status_code)
+            audit(
+                "ree_day_not_published",
+                day=day.isoformat(),
+                status=response.status_code,
+            )
             return []
         if response.is_error:
-            audit("ree_request_failed", day=day.isoformat(), status=response.status_code)
+            audit(
+                "ree_request_failed", day=day.isoformat(), status=response.status_code
+            )
             response.raise_for_status()
         body = response.json()
 

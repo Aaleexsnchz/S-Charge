@@ -8,10 +8,9 @@ import asyncio
 import sys
 import uuid
 
-from sqlalchemy.dialects.postgresql import insert
-
 from app.database import SessionLocal
 from app.models.vehicle import Vehicle
+from sqlalchemy.dialects.postgresql import insert
 
 CCS = "IEC_62196_T2_COMBO"
 CHADEMO = "CHADEMO"
@@ -67,7 +66,11 @@ async def seed() -> int:
             stmt = insert(Vehicle).values(**payload)
             stmt = stmt.on_conflict_do_update(
                 constraint="uq_vehicles_make_model",
-                set_={k: stmt.excluded[k] for k in payload if k not in ("id", "make", "model")},
+                set_={
+                    k: stmt.excluded[k]
+                    for k in payload
+                    if k not in ("id", "make", "model")
+                },
             )
             await db.execute(stmt)
         await db.commit()

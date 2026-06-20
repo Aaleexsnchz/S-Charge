@@ -60,7 +60,9 @@ async def main(argv: list[str] | None = None) -> int:
                 total_rows += rows
                 pages_done += 1
                 print(f"  {site:<10} page={last_page:<5} rows={rows}")
-                if exhausted or (args.max_pages is not None and pages_done >= args.max_pages):
+                if exhausted or (
+                    args.max_pages is not None and pages_done >= args.max_pages
+                ):
                     break
                 page = last_page + 1
             print(f"{site}: {total_rows} sessions imported")

@@ -18,7 +18,8 @@ MADRID = ZoneInfo("Europe/Madrid")
 async def read_prices_today(
     db: Annotated[AsyncSession, Depends(get_db)],
     day: Annotated[
-        date | None, Query(description="Madrid-local day, ISO format; defaults to today.")
+        date | None,
+        Query(description="Madrid-local day, ISO format; defaults to today."),
     ] = None,
 ) -> list[PricePoint]:
     target = day if day is not None else datetime.now(UTC).astimezone(MADRID).date()

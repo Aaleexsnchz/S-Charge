@@ -1,18 +1,6 @@
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
-import {
-  Alert,
-  Button,
-  Link as MuiLink,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
-import {
-  Form,
-  Link as RouterLink,
-  useActionData,
-  useNavigation,
-} from 'react-router'
+import { Form, Link as RouterLink, useActionData, useNavigation } from 'react-router'
 import type { AuthActionError } from '../auth/actions'
 
 export function RegisterPage() {
@@ -60,15 +48,8 @@ export function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
           />
-          {actionData?.error && (
-            <Alert severity="error">{actionData.error}</Alert>
-          )}
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={submitting || !canSubmit}
-            fullWidth
-          >
+          {actionData?.error && <Alert severity="error">{actionData.error}</Alert>}
+          <Button type="submit" variant="contained" disabled={submitting || !canSubmit} fullWidth>
             {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
           </Button>
         </Stack>

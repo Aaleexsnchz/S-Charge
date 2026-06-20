@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Button } from '@mui/material'
 import GoogleIcon from '@mui/icons-material/Google'
+import { Button } from '@mui/material'
+import { useState } from 'react'
 import { apiClient } from '../api/client'
 
 export function GoogleSignInButton({ label }: { label: string }) {

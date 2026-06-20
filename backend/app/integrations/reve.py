@@ -1,11 +1,14 @@
 import asyncio
 from collections.abc import AsyncIterator
+from http import HTTPStatus
 from typing import Any
 
 import httpx
 
 from app.config import settings
 from app.utils.audit import audit
+
+MAX_PAGE_SIZE = 100
 
 
 class ReveClient:
@@ -39,7 +42,7 @@ class ReveClient:
 
     async def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         response = await self._client.get(path.lstrip("/"), params=params)
-        if response.status_code == 429:
+        if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
             delay = self._retry_after_seconds(response)
             audit("reve_rate_limited_retry", path=path, delay=delay)
             await asyncio.sleep(delay)
@@ -55,10 +58,12 @@ class ReveClient:
         params: dict[str, Any] | None = None,
         *,
         data_key: str | None = None,
-        page_size: int = 100,
+        page_size: int = MAX_PAGE_SIZE,
     ) -> AsyncIterator[dict[str, Any]]:
-        if not 1 <= page_size <= 100:
-            raise ValueError(f"REVE caps limit between 1 and 100; got {page_size}")
+        if not 1 <= page_size <= MAX_PAGE_SIZE:
+            raise ValueError(
+                f"REVE caps limit between 1 and {MAX_PAGE_SIZE}; got {page_size}"
+            )
         page = 1
         while True:
             page_params = {**(params or {}), "page": page, "limit": page_size}

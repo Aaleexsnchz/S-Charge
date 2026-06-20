@@ -2,9 +2,8 @@ import logging
 
 import httpx
 import pytest
-from pytest_httpx import HTTPXMock
-
 from app.integrations.reve import ReveClient
+from pytest_httpx import HTTPXMock
 
 BASE_URL = "https://reve.test/api/v1"
 API_KEY = "secret-key-do-not-leak"
@@ -33,7 +32,9 @@ async def test_get_sends_api_key_header(httpx_mock: HTTPXMock) -> None:
 
 
 async def test_get_retries_once_on_429(httpx_mock: HTTPXMock) -> None:
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"})
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"}
+    )
     httpx_mock.add_response(url=f"{BASE_URL}/cpos", json={"data": []})
 
     async with ReveClient(api_key=API_KEY, base_url=BASE_URL) as client:
@@ -44,8 +45,12 @@ async def test_get_retries_once_on_429(httpx_mock: HTTPXMock) -> None:
 
 
 async def test_get_raises_after_second_429(httpx_mock: HTTPXMock) -> None:
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"})
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"})
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"}
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"}
+    )
 
     async with ReveClient(api_key=API_KEY, base_url=BASE_URL) as client:
         with pytest.raises(httpx.HTTPStatusError):
@@ -61,7 +66,9 @@ async def test_get_raises_on_other_4xx(httpx_mock: HTTPXMock) -> None:
 
 
 async def test_api_key_never_appears_in_audit_log(httpx_mock: HTTPXMock) -> None:
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"})
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/cpos", status_code=429, headers={"Retry-After": "0"}
+    )
     httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=500)
 
     captured: list[logging.LogRecord] = []

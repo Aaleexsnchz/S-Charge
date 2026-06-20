@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from app.config import settings
 from app.services.email import send_reset_password_email, send_verification_email
 
@@ -13,7 +12,8 @@ def _api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "app_base_url", "https://app.test")
 
 
-async def test_send_verification_email_calls_resend(_api_key: None) -> None:
+@pytest.mark.usefixtures("_api_key")
+async def test_send_verification_email_calls_resend() -> None:
     with patch("app.services.email.resend.Emails.send") as mock_send:
         await send_verification_email("user@example.com", "tok123")
 
@@ -24,7 +24,8 @@ async def test_send_verification_email_calls_resend(_api_key: None) -> None:
     assert "https://app.test/verify-email?token=tok123" in payload["text"]
 
 
-async def test_send_reset_password_email_calls_resend(_api_key: None) -> None:
+@pytest.mark.usefixtures("_api_key")
+async def test_send_reset_password_email_calls_resend() -> None:
     with patch("app.services.email.resend.Emails.send") as mock_send:
         await send_reset_password_email("user@example.com", "rtok")
 
@@ -33,12 +34,17 @@ async def test_send_reset_password_email_calls_resend(_api_key: None) -> None:
     assert "https://app.test/reset-password?token=rtok" in payload["text"]
 
 
-async def test_send_swallows_resend_errors(_api_key: None) -> None:
-    with patch("app.services.email.resend.Emails.send", side_effect=RuntimeError("boom")):
+@pytest.mark.usefixtures("_api_key")
+async def test_send_swallows_resend_errors() -> None:
+    with patch(
+        "app.services.email.resend.Emails.send", side_effect=RuntimeError("boom")
+    ):
         await send_verification_email("user@example.com", "tok")
 
 
-async def test_send_skipped_when_api_key_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_send_skipped_when_api_key_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(settings, "resend_api_key", "")
     with patch("app.services.email.resend.Emails.send") as mock_send:
         await send_verification_email("user@example.com", "tok")

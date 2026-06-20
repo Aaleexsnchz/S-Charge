@@ -1,13 +1,12 @@
 from datetime import date
 from decimal import Decimal
 
-from pytest_httpx import HTTPXMock
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.etl.pvpc import import_pvpc_prices
 from app.integrations.ree import ReeClient
 from app.models.price import ElectricityPrice
+from pytest_httpx import HTTPXMock
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 BASE_URL = "https://ree.test"
 DAY_URL = (
@@ -23,7 +22,12 @@ def _payload(price_mwh: float) -> dict:
                 "id": "1001",
                 "attributes": {
                     "title": "PVPC",
-                    "values": [{"value": price_mwh, "datetime": "2026-06-12T00:00:00.000+02:00"}],
+                    "values": [
+                        {
+                            "value": price_mwh,
+                            "datetime": "2026-06-12T00:00:00.000+02:00",
+                        }
+                    ],
                 },
             }
         ]

@@ -1,4 +1,4 @@
-import { redirect, type ActionFunctionArgs } from 'react-router'
+import { type ActionFunctionArgs, redirect } from 'react-router'
 import { apiClient } from '../api/client'
 
 export type AuthActionError = { error: string }
@@ -9,9 +9,7 @@ export type LoginActionData = AuthActionError | LoginUnverified
 
 export type ForgotPasswordActionData = { submitted: true } | AuthActionError
 
-export type ResetPasswordActionData =
-  | { error: string; expiredToken?: boolean }
-  | { success: true }
+export type ResetPasswordActionData = { error: string; expiredToken?: boolean } | { success: true }
 
 const AUTH_ERROR_COPY: Record<string, string> = {
   LOGIN_BAD_CREDENTIALS: 'Email o contraseña inválidos',
@@ -34,9 +32,7 @@ export function errorCodeFromDetail(detail: unknown): string | null {
   return null
 }
 
-export function fieldErrorFromValidationArray(
-  detail: unknown,
-): string | null {
+export function fieldErrorFromValidationArray(detail: unknown): string | null {
   if (!Array.isArray(detail)) return null
   for (const item of detail) {
     if (!item || typeof item !== 'object') continue
@@ -70,8 +66,7 @@ function submitLogin(username: string, password: string) {
       grant_type: 'password',
       scope: '',
     },
-    bodySerializer: (body) =>
-      new URLSearchParams(body as Record<string, string>),
+    bodySerializer: (body) => new URLSearchParams(body as Record<string, string>),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
@@ -131,10 +126,7 @@ export async function forgotPasswordAction({
 }: ActionFunctionArgs): Promise<ForgotPasswordActionData> {
   const formData = await request.formData()
   const email = String(formData.get('email') ?? '')
-  const { error, response } = await apiClient.POST(
-    '/api/auth/forgot-password',
-    { body: { email } },
-  )
+  const { error, response } = await apiClient.POST('/api/auth/forgot-password', { body: { email } })
   if (response.ok) return { submitted: true }
 
   if (response.status === 422 && error) {
@@ -150,10 +142,9 @@ export async function resetPasswordAction({
   const token = String(formData.get('token') ?? '')
   const password = String(formData.get('password') ?? '')
 
-  const { error, response } = await apiClient.POST(
-    '/api/auth/reset-password',
-    { body: { token, password } },
-  )
+  const { error, response } = await apiClient.POST('/api/auth/reset-password', {
+    body: { token, password },
+  })
   if (response.ok) return { success: true }
 
   if ((response.status === 400 || response.status === 422) && error) {

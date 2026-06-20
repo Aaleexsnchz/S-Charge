@@ -1,4 +1,4 @@
-import { Outlet, createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Outlet } from 'react-router'
 import {
   forgotPasswordAction,
   loginAction,

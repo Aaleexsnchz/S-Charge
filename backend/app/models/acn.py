@@ -18,7 +18,9 @@ class AcnSession(Base):
     """
 
     __tablename__ = "acn_sessions"
-    __table_args__ = (Index("ix_acn_sessions_site_connection", "site", "connection_time"),)
+    __table_args__ = (
+        Index("ix_acn_sessions_site_connection", "site", "connection_time"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     source_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
@@ -27,8 +29,12 @@ class AcnSession(Base):
     station_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     space_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     cluster_id: Mapped[str | None] = mapped_column(Text, nullable=True)
-    connection_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    disconnect_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    connection_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    disconnect_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     done_charging_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

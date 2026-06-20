@@ -7,14 +7,13 @@ from urllib.parse import urlparse, urlunparse
 import asyncpg
 import pytest
 import pytest_asyncio
-from alembic.config import Config
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-
 from alembic import command
+from alembic.config import Config
 from app.config import settings
 from app.dependencies import get_db
 from app.main import app
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 ALEMBIC_CFG_PATH = Path(__file__).resolve().parents[1] / "alembic.ini"
 

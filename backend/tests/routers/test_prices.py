@@ -1,17 +1,18 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from app.models.price import ElectricityPrice
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.price import ElectricityPrice
 
 
 def _price(hour_start: datetime, value: str) -> ElectricityPrice:
     return ElectricityPrice(hour_start=hour_start, price_per_kwh=Decimal(value))
 
 
-async def test_prices_for_madrid_local_day(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_prices_for_madrid_local_day(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     db_session.add_all(
         [
             # 22:00 UTC on the 11th is 00:00 on the 12th in Madrid (CEST)

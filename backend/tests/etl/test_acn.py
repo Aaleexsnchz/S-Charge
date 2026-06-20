@@ -3,13 +3,12 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
-from pytest_httpx import HTTPXMock
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.etl.acn import import_acn_sessions
 from app.integrations.acn import AcnClient
 from app.models.acn import AcnSession
+from pytest_httpx import HTTPXMock
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 BASE_URL = "https://acn.test/api/v1"
 TOKEN = "acn-test-token"
@@ -51,7 +50,10 @@ def _session(source_id: str = "5bc9aabbccdd", **overrides: Any) -> dict[str, Any
 
 
 def _page_url(page: int) -> str:
-    return f"{BASE_URL}/sessions/caltech?page={page}&max_results={PER_PAGE}&sort=connectionTime"
+    return (
+        f"{BASE_URL}/sessions/caltech?"
+        f"page={page}&max_results={PER_PAGE}&sort=connectionTime"
+    )
 
 
 def _meta(total: int, page: int) -> dict[str, Any]:
@@ -72,7 +74,9 @@ async def test_import_parses_fields_and_latest_user_input(
     )
 
     async with acn_client as client:
-        rows, last_page, exhausted = await import_acn_sessions(client, db_session, "caltech")
+        rows, last_page, exhausted = await import_acn_sessions(
+            client, db_session, "caltech"
+        )
 
     assert (rows, last_page, exhausted) == (1, 1, True)
     session = (await db_session.execute(select(AcnSession))).scalar_one()
@@ -105,7 +109,9 @@ async def test_import_is_idempotent(
         await import_acn_sessions(client, db_session, "caltech")
         await import_acn_sessions(client, db_session, "caltech")
 
-    count = (await db_session.execute(select(func.count()).select_from(AcnSession))).scalar_one()
+    count = (
+        await db_session.execute(select(func.count()).select_from(AcnSession))
+    ).scalar_one()
     assert count == 1
     session = (await db_session.execute(select(AcnSession))).scalar_one()
     assert session.kwh_delivered == Decimal("12.0000")
@@ -126,7 +132,9 @@ async def test_import_paginates_until_meta_total(
     )
 
     async with acn_client as client:
-        rows, last_page, exhausted = await import_acn_sessions(client, db_session, "caltech")
+        rows, last_page, exhausted = await import_acn_sessions(
+            client, db_session, "caltech"
+        )
 
     assert (rows, last_page, exhausted) == (PER_PAGE + 1, 2, True)
 

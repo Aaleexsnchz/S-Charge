@@ -87,7 +87,9 @@ async def import_acn_sessions(
     while True:
         if max_pages is not None and pages_fetched >= max_pages:
             break
-        items, total_pages = await client.get_sessions(site, page=page, per_page=per_page)
+        items, total_pages = await client.get_sessions(
+            site, page=page, per_page=per_page
+        )
         for item in items:
             await _upsert_session(db, site, item)
             rows += 1

@@ -59,7 +59,9 @@ class AcnClient:
             params={"page": page, "max_results": per_page, "sort": "connectionTime"},
         )
         if response.is_error:
-            audit("acn_request_failed", site=site, page=page, status=response.status_code)
+            audit(
+                "acn_request_failed", site=site, page=page, status=response.status_code
+            )
             response.raise_for_status()
         body = response.json()
         items: list[dict[str, Any]] = body.get("_items", [])

@@ -1,12 +1,12 @@
+import { registerSW } from 'virtual:pwa-register'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SnackbarProvider } from 'notistack'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
-import { SnackbarProvider } from 'notistack'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { registerSW } from 'virtual:pwa-register'
 import './index.css'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 import { router } from './router'
-import { CssBaseline, ThemeProvider } from '@mui/material';
 import { theme } from './theme'
 
 import '@fontsource/inter/400.css'
@@ -28,7 +28,10 @@ const queryClient = new QueryClient({
   },
 })
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Root element #root not found')
+
+createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />

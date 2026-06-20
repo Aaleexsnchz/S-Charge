@@ -29,7 +29,9 @@ class Cpo(Base):
     country: Mapped[str] = mapped_column(Text, nullable=False)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     website: Mapped[str | None] = mapped_column(Text, nullable=True)
-    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     raw_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     source_last_updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

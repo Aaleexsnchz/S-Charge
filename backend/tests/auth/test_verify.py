@@ -18,7 +18,9 @@ def mock_verification_email() -> Iterator[AsyncMock]:
         yield mock
 
 
-async def _register_capture_token(client: AsyncClient, mock_verification_email: AsyncMock) -> str:
+async def _register_capture_token(
+    client: AsyncClient, mock_verification_email: AsyncMock
+) -> str:
     resp = await client.post(
         "/api/auth/register",
         json={"email": EMAIL, "password": PASSWORD, "name": NAME},
@@ -43,7 +45,9 @@ async def test_request_verify_token_resends_email(
 async def test_request_verify_token_unknown_email_silent(
     client: AsyncClient, mock_verification_email: AsyncMock
 ) -> None:
-    resp = await client.post("/api/auth/request-verify-token", json={"email": "ghost@example.com"})
+    resp = await client.post(
+        "/api/auth/request-verify-token", json={"email": "ghost@example.com"}
+    )
     assert resp.status_code == 202
     mock_verification_email.assert_not_called()
 
