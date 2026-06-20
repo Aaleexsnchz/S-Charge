@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material'
 import { filterFeatures } from './filters'
@@ -29,15 +29,7 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
     source: SOURCE_ID,
     filter: ['has', 'point_count'],
     paint: {
-      'circle-color': [
-        'step',
-        ['get', 'point_count'],
-        '#42a5f5',
-        50,
-        '#1e88e5',
-        250,
-        '#1565c0',
-      ],
+      'circle-color': ['step', ['get', 'point_count'], '#42a5f5', 50, '#1e88e5', 250, '#1565c0'],
       'circle-radius': ['step', ['get', 'point_count'], 16, 50, 21, 250, 27],
       'circle-stroke-width': 2,
       'circle-stroke-color': '#ffffff',
@@ -66,12 +58,10 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
       'circle-color': [
         'match',
         ['get', 'aggregate_status'],
-        'operational',
-        STATUS_COLORS.operational,
-        'partial',
-        STATUS_COLORS.partial,
-        'inoperative',
-        STATUS_COLORS.inoperative,
+        'available',
+        STATUS_COLORS.available,
+        'occupied',
+        STATUS_COLORS.occupied,
         STATUS_COLORS.unknown,
       ],
       'circle-radius': 7,
@@ -87,14 +77,12 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
     const geometry = feature?.geometry
     if (!feature || geometry.type !== 'Point') return
     const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource
-    void source
-      .getClusterExpansionZoom(feature.properties.cluster_id as number)
-      .then((zoom) => {
-        map.easeTo({
-          center: geometry.coordinates as [number, number],
-          zoom,
-        })
+    void source.getClusterExpansionZoom(feature.properties.cluster_id as number).then((zoom) => {
+      map.easeTo({
+        center: geometry.coordinates as [number, number],
+        zoom,
       })
+    })
   })
 
   map.on('click', 'unclustered-point', (event) => {
@@ -121,10 +109,7 @@ export function MapPage() {
 
   const { data, isPending, isError } = useMapPoints()
 
-  const filtered = useMemo(
-    () => (data ? filterFeatures(data, filters) : null),
-    [data, filters],
-  )
+  const filtered = useMemo(() => (data ? filterFeatures(data, filters) : null), [data, filters])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -135,10 +120,7 @@ export function MapPage() {
       center: SPAIN_CENTER,
       zoom: SPAIN_ZOOM,
     })
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      'top-right',
-    )
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(
       new maplibregl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true },
@@ -161,9 +143,7 @@ export function MapPage() {
 
   useEffect(() => {
     if (!mapLoaded || !filtered) return
-    const source = mapRef.current?.getSource(SOURCE_ID) as
-      | maplibregl.GeoJSONSource
-      | undefined
+    const source = mapRef.current?.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined
     source?.setData(filtered as unknown as SourceData)
   }, [mapLoaded, filtered])
 
@@ -209,9 +189,7 @@ export function MapPage() {
             zIndex: 2,
           }}
         >
-          <Typography variant="body2">
-            Ningún punto coincide con los filtros
-          </Typography>
+          <Typography variant="body2">Ningún punto coincide con los filtros</Typography>
         </Paper>
       )}
 

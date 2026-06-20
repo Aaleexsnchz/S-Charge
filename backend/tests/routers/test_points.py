@@ -3,11 +3,15 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from app.models.charging_point import (
+    ChargingPoint,
+    ChargingPointSource,
+    Connector,
+    Evse,
+)
+from app.models.tariff import Tariff
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.charging_point import ChargingPoint, ChargingPointSource, Connector, Evse
-from app.models.tariff import Tariff
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
@@ -93,7 +97,9 @@ async def test_list_points_returns_nested_shape(
     assert connector["tariff"]["currency"] == "EUR"
 
 
-async def test_list_points_excludes_archived(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_points_excludes_archived(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     active = make_point()
     archived = make_point(archived_at=NOW)
     db_session.add_all([active, archived])
@@ -106,7 +112,9 @@ async def test_list_points_excludes_archived(client: AsyncClient, db_session: As
     assert ids == [str(active.id)]
 
 
-async def test_list_points_bbox_filter(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_points_bbox_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     madrid = make_point()
     barcelona = make_point(
         city="Barcelona", latitude=Decimal("41.385100"), longitude=Decimal("2.173400")
@@ -152,7 +160,9 @@ async def test_list_points_connector_standard_filter(
     assert ids == [str(chademo.id)]
 
 
-async def test_list_points_max_price_filter(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_points_max_price_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     cheap = make_point()
     cheap_evse = make_evse()
     cheap_evse.connectors.append(make_connector(tariff=make_tariff("0.3000")))
@@ -185,11 +195,11 @@ async def test_get_point_returns_nested_shape(
         opening_24_7=False,
         opening_hours=[{"weekday": 1, "period_begin": "09:00", "period_end": "18:00"}],
     )
-    operational = make_evse(is_operational=True)
-    operational.connectors.append(make_connector(tariff=make_tariff("0.4200")))
-    broken = make_evse(is_operational=False)
-    broken.connectors.append(make_connector())
-    point.evses.extend([operational, broken])
+    available = make_evse(status="AVAILABLE")
+    available.connectors.append(make_connector(tariff=make_tariff("0.4200")))
+    busy = make_evse(status="CHARGING")
+    busy.connectors.append(make_connector())
+    point.evses.extend([available, busy])
     db_session.add(point)
     await db_session.commit()
 
@@ -198,11 +208,15 @@ async def test_get_point_returns_nested_shape(
     assert response.status_code == 200
     body = response.json()
     assert body["id"] == str(point.id)
-    assert body["aggregate_status"] == "partial"
-    assert body["opening_hours"] == [{"weekday": 1, "period_begin": "09:00", "period_end": "18:00"}]
+    assert body["aggregate_status"] == "available"
+    assert body["opening_hours"] == [
+        {"weekday": 1, "period_begin": "09:00", "period_end": "18:00"}
+    ]
     assert len(body["evses"]) == 2
     standards = {
-        connector["standard"] for evse in body["evses"] for connector in evse["connectors"]
+        connector["standard"]
+        for evse in body["evses"]
+        for connector in evse["connectors"]
     }
     assert standards == {"IEC_62196_T2"}
 
@@ -211,11 +225,11 @@ async def test_map_returns_feature_collection(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     point = make_point()
-    type2_evse = make_evse(is_operational=True)
+    type2_evse = make_evse(status="AVAILABLE")
     type2_evse.connectors.append(
         make_connector(tariff=make_tariff("0.4200"), max_electric_power=22000)
     )
-    ccs_evse = make_evse(is_operational=True)
+    ccs_evse = make_evse(status="AVAILABLE")
     ccs_evse.connectors.append(
         make_connector(
             standard="IEC_62196_T2_COMBO",
@@ -241,7 +255,7 @@ async def test_map_returns_feature_collection(
 
     rich = features[str(point.id)]
     assert rich["geometry"] == {"type": "Point", "coordinates": [-3.7038, 40.4168]}
-    assert rich["properties"]["aggregate_status"] == "operational"
+    assert rich["properties"]["aggregate_status"] == "available"
     assert rich["properties"]["standards"] == ["IEC_62196_T2", "IEC_62196_T2_COMBO"]
     assert rich["properties"]["max_power_w"] == 150000
     assert rich["properties"]["min_price_per_kwh"] == 0.30
@@ -252,12 +266,14 @@ async def test_map_returns_feature_collection(
     assert empty["properties"]["min_price_per_kwh"] is None
 
 
-async def test_map_aggregate_status_rollup(client: AsyncClient, db_session: AsyncSession) -> None:
-    partial = make_point()
-    partial.evses.extend([make_evse(is_operational=True), make_evse(is_operational=False)])
-    inoperative = make_point()
-    inoperative.evses.append(make_evse(is_operational=False))
-    db_session.add_all([partial, inoperative])
+async def test_map_aggregate_status_rollup(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    mixed = make_point()
+    mixed.evses.extend([make_evse(status="AVAILABLE"), make_evse(status="CHARGING")])
+    busy = make_point()
+    busy.evses.append(make_evse(status="CHARGING"))
+    db_session.add_all([mixed, busy])
     await db_session.commit()
 
     response = await client.get("/api/points/map")
@@ -266,8 +282,8 @@ async def test_map_aggregate_status_rollup(client: AsyncClient, db_session: Asyn
         f["properties"]["id"]: f["properties"]["aggregate_status"]
         for f in response.json()["features"]
     }
-    assert statuses[str(partial.id)] == "partial"
-    assert statuses[str(inoperative.id)] == "inoperative"
+    assert statuses[str(mixed.id)] == "available"
+    assert statuses[str(busy.id)] == "occupied"
 
 
 async def test_get_point_unknown_returns_reve_error_shape(client: AsyncClient) -> None:

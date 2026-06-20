@@ -42,12 +42,16 @@ async def list_points(
         )
     if connector_standard is not None:
         stmt = stmt.where(
-            ChargingPoint.evses.any(Evse.connectors.any(Connector.standard == connector_standard))
+            ChargingPoint.evses.any(
+                Evse.connectors.any(Connector.standard == connector_standard)
+            )
         )
     if max_price_per_kwh is not None:
         stmt = stmt.where(
             ChargingPoint.evses.any(
-                Evse.connectors.any(Connector.tariff.has(Tariff.price_per_kwh <= max_price_per_kwh))
+                Evse.connectors.any(
+                    Connector.tariff.has(Tariff.price_per_kwh <= max_price_per_kwh)
+                )
             )
         )
     return (await db.execute(stmt)).scalars().all()
@@ -61,15 +65,14 @@ async def get_point(db: AsyncSession, point_id: uuid.UUID) -> ChargingPoint | No
 async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
     """Slim GeoJSON FeatureCollection for the map: one aggregated row per point.
 
-    Duplicate evse rows from the connector join don't skew bool_and/bool_or
-    (AND/OR are idempotent), and aggregates skip NULLs, so bool_or IS NULL
-    means no evse reported an operational status.
+    Availability rollup over the EVSEs' (simulated) status. Duplicate evse rows
+    from the connector join don't skew the aggregates, and ``count(status) == 0``
+    means no evse has a status yet — i.e. unknown.
     """
     aggregate_status = case(
-        (func.bool_or(Evse.is_operational).is_(None), "unknown"),
-        (func.bool_and(Evse.is_operational), "operational"),
-        (func.bool_or(Evse.is_operational), "partial"),
-        else_="inoperative",
+        (func.count(Evse.status) == 0, "unknown"),
+        (func.bool_or(Evse.status == "AVAILABLE"), "available"),
+        else_="occupied",
     )
     stmt = (
         select(
@@ -104,7 +107,9 @@ async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
                 "standards": sorted(row.standards) if row.standards else [],
                 "max_power_w": row.max_power_w,
                 "min_price_per_kwh": (
-                    float(row.min_price_per_kwh) if row.min_price_per_kwh is not None else None
+                    float(row.min_price_per_kwh)
+                    if row.min_price_per_kwh is not None
+                    else None
                 ),
             },
         }

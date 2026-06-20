@@ -1,3 +1,4 @@
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import {
   Alert,
   Box,
@@ -10,15 +11,14 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import {
   googleMapsDirectionsUrl,
   powerLabel,
   priceLabel,
-  standardLabel,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
+  standardLabel,
 } from './display'
 import { PointNotFoundError, usePoint } from './usePoint'
 
@@ -98,8 +98,12 @@ export function PointDetailPage() {
                 Horario
               </Typography>
               <Stack spacing={0.25}>
-                {point.opening_hours.map((slot, index) => (
-                  <Typography key={index} variant="body2" color="text.secondary">
+                {point.opening_hours.map((slot) => (
+                  <Typography
+                    key={`${slot.weekday}-${slot.period_begin}-${slot.period_end}`}
+                    variant="body2"
+                    color="text.secondary"
+                  >
                     {WEEKDAY_LABELS[Number(slot.weekday)] ?? String(slot.weekday)}{' '}
                     {String(slot.period_begin)}–{String(slot.period_end)}
                   </Typography>
@@ -124,11 +128,11 @@ export function PointDetailPage() {
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {evse.evse_id ?? `Plaza ${index + 1}`}
                   </Typography>
-                  {evse.is_operational !== null && (
+                  {evse.status !== null && (
                     <Chip
                       size="small"
-                      label={evse.is_operational ? 'Operativo' : 'Fuera de servicio'}
-                      color={evse.is_operational ? 'success' : 'error'}
+                      label={evse.status === 'AVAILABLE' ? 'Disponible' : 'Ocupado'}
+                      color={evse.status === 'AVAILABLE' ? 'success' : 'warning'}
                       variant="outlined"
                     />
                   )}

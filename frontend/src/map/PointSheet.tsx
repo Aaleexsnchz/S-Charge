@@ -14,9 +14,9 @@ import {
   googleMapsDirectionsUrl,
   powerLabel,
   priceLabel,
-  standardLabel,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
+  standardLabel,
 } from '../points/display'
 import { usePoint } from '../points/usePoint'
 
@@ -30,9 +30,7 @@ export function PointSheet({ pointId, onClose }: Props) {
   const { data: point, isPending, isError } = usePoint(pointId)
 
   const connectors =
-    point?.evses.flatMap((evse) =>
-      evse.connectors.map((connector) => ({ evse, connector })),
-    ) ?? []
+    point?.evses.flatMap((evse) => evse.connectors.map((connector) => ({ evse, connector }))) ?? []
 
   return (
     <Drawer
@@ -58,9 +56,7 @@ export function PointSheet({ pointId, onClose }: Props) {
             <Skeleton variant="rounded" height={56} />
           </Stack>
         )}
-        {isError && (
-          <Alert severity="error">No se pudo cargar el punto de carga.</Alert>
-        )}
+        {isError && <Alert severity="error">No se pudo cargar el punto de carga.</Alert>}
         {point && (
           <Stack spacing={1.5}>
             <Stack
@@ -119,11 +115,7 @@ export function PointSheet({ pointId, onClose }: Props) {
             </Stack>
 
             <Stack direction="row" spacing={1.5} sx={{ pt: 0.5 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => navigate(`/points/${point.id}`)}
-              >
+              <Button variant="outlined" fullWidth onClick={() => navigate(`/points/${point.id}`)}>
                 Detalles
               </Button>
               <Button

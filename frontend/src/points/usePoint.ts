@@ -15,8 +15,7 @@ export function usePoint(pointId: string | null) {
   return useQuery({
     queryKey: ['point', pointId],
     enabled: pointId !== null,
-    retry: (failureCount, error) =>
-      !(error instanceof PointNotFoundError) && failureCount < 2,
+    retry: (failureCount, error) => !(error instanceof PointNotFoundError) && failureCount < 2,
     queryFn: async (): Promise<Point> => {
       const { data, response } = await apiClient.GET('/api/points/{point_id}', {
         params: { path: { point_id: pointId as string } },

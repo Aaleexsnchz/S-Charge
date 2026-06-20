@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-AggregateStatus = Literal["operational", "partial", "inoperative", "unknown"]
+AggregateStatus = Literal["available", "occupied", "unknown"]
 
 
 class TariffRead(BaseModel):
@@ -41,7 +41,7 @@ class EvseRead(BaseModel):
     floor_level: str | None
     capabilities: list[str] | None
     wheelchair_accessibility: str | None
-    is_operational: bool | None
+    status: str | None
     connectors: list[ConnectorRead]
 
 

@@ -1,8 +1,4 @@
-export type AggregateStatus =
-  | 'operational'
-  | 'partial'
-  | 'inoperative'
-  | 'unknown'
+export type AggregateStatus = 'available' | 'occupied' | 'unknown'
 
 export type MapPointProperties = {
   id: string

@@ -32,9 +32,7 @@ export function MapFilterBar({ filters, onChange }: Props) {
         label="Disponibles"
         size="small"
         color={filters.onlyAvailable ? 'primary' : 'default'}
-        onClick={() =>
-          onChange({ ...filters, onlyAvailable: !filters.onlyAvailable })
-        }
+        onClick={() => onChange({ ...filters, onlyAvailable: !filters.onlyAvailable })}
       />
       {STANDARD_OPTIONS.map((standard) => (
         <Chip

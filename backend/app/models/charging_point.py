@@ -35,8 +35,15 @@ class ChargingPointSource(enum.StrEnum):
 class ChargingPoint(Base):
     __tablename__ = "charging_points"
     __table_args__ = (
-        UniqueConstraint("source", "source_id", name="uq_charging_points_source_source_id"),
-        Index("ix_charging_points_archived_lat_lng", "archived_at", "latitude", "longitude"),
+        UniqueConstraint(
+            "source", "source_id", name="uq_charging_points_source_source_id"
+        ),
+        Index(
+            "ix_charging_points_archived_lat_lng",
+            "archived_at",
+            "latitude",
+            "longitude",
+        ),
         Index("ix_charging_points_party_id", "party_id"),
         Index("ix_charging_points_owner_user_id", "owner_user_id"),
     )
@@ -53,7 +60,9 @@ class ChargingPoint(Base):
     source_id: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str | None] = mapped_column(Text, nullable=True)
     cpo_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    party_id: Mapped[str | None] = mapped_column(Text, ForeignKey("cpos.party_id"), nullable=True)
+    party_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("cpos.party_id"), nullable=True
+    )
     version: Mapped[str | None] = mapped_column(Text, nullable=True)
     address: Mapped[str] = mapped_column(Text, nullable=False)
     city: Mapped[str] = mapped_column(Text, nullable=False)
@@ -68,9 +77,13 @@ class ChargingPoint(Base):
     time_zone: Mapped[str] = mapped_column(Text, nullable=False)
     opening_24_7: Mapped[bool] = mapped_column(Boolean, nullable=False)
     # OCPI regular_hours: a list of {weekday, period_begin, period_end} objects
-    opening_hours: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    opening_hours: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     charging_when_closed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    directions: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    directions: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -78,7 +91,9 @@ class ChargingPoint(Base):
     source_last_updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -101,19 +116,17 @@ class ChargingPoint(Base):
 
     @property
     def aggregate_status(self) -> str:
-        """Marker-colour rollup of the EVSEs' operational booleans.
+        """Marker-colour rollup of the EVSEs' (simulated) availability.
 
         Requires ``evses`` to be loaded; readers go through the points
         service, which eager-loads the full nesting.
         """
-        known = [evse.is_operational for evse in self.evses if evse.is_operational is not None]
+        known = [evse.status for evse in self.evses if evse.status is not None]
         if not known:
             return "unknown"
-        if all(known):
-            return "operational"
-        if any(known):
-            return "partial"
-        return "inoperative"
+        if any(status == "AVAILABLE" for status in known):
+            return "available"
+        return "occupied"
 
 
 class Evse(Base):
@@ -139,8 +152,11 @@ class Evse(Base):
     floor_level: Mapped[str | None] = mapped_column(Text, nullable=True)
     capabilities: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     wheelchair_accessibility: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_operational: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    operational_status_updated_at: Mapped[datetime | None] = mapped_column(
+    # Availability (OCPI EVSE status, e.g. "AVAILABLE"), simulated in Phase 4 —
+    # not mirrored from REVE. Null until simulation runs. Operational status
+    # (working vs. broken) is assumed always-operational and is not modelled.
+    status: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     source_last_updated_at: Mapped[datetime] = mapped_column(

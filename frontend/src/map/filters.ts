@@ -1,6 +1,6 @@
 import type { MapFeatureCollection, MapFilters } from './types'
 
-const AVAILABLE_STATUSES = new Set(['operational', 'partial'])
+const AVAILABLE_STATUSES = new Set(['available'])
 
 export function filterFeatures(
   collection: MapFeatureCollection,
@@ -16,8 +16,7 @@ export function filterFeatures(
     }
     if (
       filters.maxPrice !== null &&
-      (props.min_price_per_kwh === null ||
-        props.min_price_per_kwh > filters.maxPrice)
+      (props.min_price_per_kwh === null || props.min_price_per_kwh > filters.maxPrice)
     ) {
       return false
     }

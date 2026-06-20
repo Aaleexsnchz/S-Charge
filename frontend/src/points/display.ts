@@ -15,9 +15,8 @@ export function standardLabel(standard: string): string {
 }
 
 export const STATUS_LABELS: Record<AggregateStatus, string> = {
-  operational: 'Operativo',
-  partial: 'Parcialmente operativo',
-  inoperative: 'Fuera de servicio',
+  available: 'Disponible',
+  occupied: 'Ocupado',
   unknown: 'Estado desconocido',
 }
 
@@ -25,9 +24,8 @@ export const STATUS_CHIP_COLOR: Record<
   AggregateStatus,
   'success' | 'warning' | 'error' | 'default'
 > = {
-  operational: 'success',
-  partial: 'warning',
-  inoperative: 'error',
+  available: 'success',
+  occupied: 'warning',
   unknown: 'default',
 }
 
