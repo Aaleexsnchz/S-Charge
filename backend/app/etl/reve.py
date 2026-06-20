@@ -10,7 +10,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.reve import ReveClient
-from app.models.charging_point import ChargingPoint, ChargingPointSource, Connector, Evse
+from app.models.charging_point import (
+    ChargingPoint,
+    ChargingPointSource,
+    Connector,
+    Evse,
+)
 from app.models.cpo import Cpo
 from app.models.tariff import Tariff
 from app.utils.audit import audit
@@ -53,10 +58,15 @@ def _energy_price_component(elements: Any) -> dict[str, Any]:
     return {}
 
 
-def _date_from_params(date_from: datetime | None) -> dict[str, Any] | None:
-    if date_from is None:
-        return None
-    return {"date_from": date_from.isoformat()}
+def _window_params(
+    date_from: datetime | None, date_to: datetime | None = None
+) -> dict[str, Any] | None:
+    params: dict[str, Any] = {}
+    if date_from is not None:
+        params["date_from"] = date_from.isoformat()
+    if date_to is not None:
+        params["date_to"] = date_to.isoformat()
+    return params or None
 
 
 async def _paginate_with_budget(
@@ -146,7 +156,11 @@ async def _upsert_connector(
     stmt = insert(Connector).values(**payload)
     stmt = stmt.on_conflict_do_update(
         index_elements=["evse_id", "source_id"],
-        set_={k: stmt.excluded[k] for k in payload if k not in ("id", "evse_id", "source_id")},
+        set_={
+            k: stmt.excluded[k]
+            for k in payload
+            if k not in ("id", "evse_id", "source_id")
+        },
     )
     await db.execute(stmt)
 
@@ -216,7 +230,11 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
     base = insert(ChargingPoint).values(**payload)
     stmt = base.on_conflict_do_update(
         index_elements=["source", "source_id"],
-        set_={k: base.excluded[k] for k in payload if k not in ("id", "source", "source_id")},
+        set_={
+            k: base.excluded[k]
+            for k in payload
+            if k not in ("id", "source", "source_id")
+        },
     ).returning(ChargingPoint.id)
     cp_id: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
@@ -259,7 +277,9 @@ async def _upsert_connector_tariff(
         "currency": raw_tariff["currency"],
         "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
         "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
-        "price_per_kwh": _decimal_or_none(price_components.get("price")) if is_energy else None,
+        "price_per_kwh": _decimal_or_none(price_components.get("price"))
+        if is_energy
+        else None,
         "price_component_type": price_components.get("type"),
         "vat_percentage": _decimal_or_none(price_components.get("vat")),
         "step_size": price_components.get("step_size"),
@@ -270,12 +290,16 @@ async def _upsert_connector_tariff(
     base = insert(Tariff).values(**tariff_payload)
     stmt = base.on_conflict_do_update(
         index_elements=["source_id"],
-        set_={k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")},
+        set_={
+            k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")
+        },
     ).returning(Tariff.id)
     tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     await db.execute(
-        update(Connector).where(Connector.id == connector_pk).values(tariff_id=tariff_pk)
+        update(Connector)
+        .where(Connector.id == connector_pk)
+        .values(tariff_id=tariff_pk)
     )
 
 
@@ -284,6 +308,7 @@ async def import_cpos(
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
+    date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
 ) -> tuple[int, int, bool]:
@@ -293,7 +318,7 @@ async def import_cpos(
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
         "/cpos",
-        _date_from_params(date_from),
+        _window_params(date_from, date_to),
         _process,
         start_page=start_page,
         max_pages=max_pages,
@@ -314,6 +339,7 @@ async def import_locations(
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
+    date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
 ) -> tuple[int, int, bool]:
@@ -323,7 +349,7 @@ async def import_locations(
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
         "/locations",
-        _date_from_params(date_from),
+        _window_params(date_from, date_to),
         _process,
         start_page=start_page,
         max_pages=max_pages,
@@ -339,49 +365,12 @@ async def import_locations(
     return rows, last_page, exhausted
 
 
-async def import_evse_operational_status(
-    client: ReveClient,
-    db: AsyncSession,
-    *,
-    date_from: datetime | None = None,
-    start_page: int = 1,
-    max_pages: int | None = None,
-) -> tuple[int, int, bool]:
-    async def _process(raw: dict[str, Any]) -> None:
-        stmt = (
-            update(Evse)
-            .where(Evse.source_id == raw["id"])
-            .values(
-                is_operational=raw["operational_status"],
-                operational_status_updated_at=_parse_dt(raw["last_operational_status_updated"]),
-            )
-        )
-        await db.execute(stmt)
-
-    rows, last_page, exhausted = await _paginate_with_budget(
-        client,
-        "/evses/operational_status",
-        _date_from_params(date_from),
-        _process,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    audit(
-        "reve_etl_evse_operational_status",
-        rows=rows,
-        last_page=last_page,
-        exhausted=exhausted,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    return rows, last_page, exhausted
-
-
 async def import_tariffs(
     client: ReveClient,
     db: AsyncSession,
     *,
     date_from: datetime | None = None,
+    date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
 ) -> tuple[int, int, bool]:
@@ -393,7 +382,7 @@ async def import_tariffs(
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
         "/connectors/tariffs",
-        _date_from_params(date_from),
+        _window_params(date_from, date_to),
         _process,
         start_page=start_page,
         max_pages=max_pages,

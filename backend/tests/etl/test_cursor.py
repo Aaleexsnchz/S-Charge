@@ -1,13 +1,12 @@
 from datetime import UTC, datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.etl.cursor import (
     read_all_cursors,
     read_cursor,
     record_error,
     record_progress,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def test_read_cursor_returns_seeded_row(db_session: AsyncSession) -> None:
@@ -20,14 +19,15 @@ async def test_read_cursor_returns_seeded_row(db_session: AsyncSession) -> None:
     assert cursor.last_error is None
 
 
-async def test_read_all_cursors_returns_four_rows(db_session: AsyncSession) -> None:
+async def test_read_all_cursors_returns_seeded_endpoints(
+    db_session: AsyncSession,
+) -> None:
     cursors = await read_all_cursors(db_session)
 
     endpoints = sorted(c.endpoint for c in cursors)
     assert endpoints == [
         "/connectors/tariffs",
         "/cpos",
-        "/evses/operational_status",
         "/locations",
     ]
 
@@ -35,7 +35,9 @@ async def test_read_all_cursors_returns_four_rows(db_session: AsyncSession) -> N
 async def test_record_progress_advances_next_page(db_session: AsyncSession) -> None:
     now = datetime(2026, 5, 10, 18, 0, tzinfo=UTC)
 
-    await record_progress(db_session, "/cpos", next_page=3, exhausted=False, attempted_at=now)
+    await record_progress(
+        db_session, "/cpos", next_page=3, exhausted=False, attempted_at=now
+    )
     cursor = await read_cursor(db_session, "/cpos")
 
     assert cursor.next_page == 3
@@ -49,7 +51,9 @@ async def test_record_progress_with_exhausted_sets_completed_at(
 ) -> None:
     now = datetime(2026, 5, 10, 18, 0, tzinfo=UTC)
 
-    await record_progress(db_session, "/cpos", next_page=4, exhausted=True, attempted_at=now)
+    await record_progress(
+        db_session, "/cpos", next_page=4, exhausted=True, attempted_at=now
+    )
     cursor = await read_cursor(db_session, "/cpos")
 
     assert cursor.next_page == 4

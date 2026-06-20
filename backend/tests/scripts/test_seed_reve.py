@@ -2,12 +2,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from pytest_httpx import HTTPXMock
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.etl.cursor import read_cursor, record_progress
 from app.integrations.reve import ReveClient
+from pytest_httpx import HTTPXMock
 from scripts.seed_reve import _run_tick
+from sqlalchemy.ext.asyncio import AsyncSession
 
 BASE_URL = "https://reve.test/api/v1"
 API_KEY = "secret-key"

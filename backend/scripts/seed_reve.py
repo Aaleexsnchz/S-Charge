@@ -5,17 +5,15 @@ import sys
 from collections.abc import Awaitable, Callable
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import SessionLocal
 from app.etl.cursor import read_all_cursors, read_cursor, record_error, record_progress
 from app.etl.reve import (
     import_cpos,
-    import_evse_operational_status,
     import_locations,
     import_tariffs,
 )
 from app.integrations.reve import ReveClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = int(os.getenv("REVE_BUDGET_PER_RUN", "5"))
 
@@ -24,7 +22,6 @@ ENDPOINT_PRIORITY: list[tuple[str, ImportFn]] = [
     ("/cpos", import_cpos),
     ("/locations", import_locations),
     ("/connectors/tariffs", import_tariffs),
-    ("/evses/operational_status", import_evse_operational_status),
 ]
 
 
@@ -73,7 +70,9 @@ async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
 
         pages = max(0, last_page - start_page + 1)
         calls_used += pages
-        await record_progress(db, endpoint, next_page=last_page + 1, exhausted=exhausted)
+        await record_progress(
+            db, endpoint, next_page=last_page + 1, exhausted=exhausted
+        )
         await db.commit()
         print(
             f"  {endpoint:<30} rows={rows:<6} pages={pages:<3} "

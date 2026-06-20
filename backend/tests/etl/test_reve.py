@@ -1,22 +1,24 @@
-from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 import pytest
-from pytest_httpx import HTTPXMock
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.etl.reve import (
     import_cpos,
-    import_evse_operational_status,
     import_locations,
     import_tariffs,
 )
 from app.integrations.reve import ReveClient
-from app.models.charging_point import ChargingPoint, ChargingPointSource, Connector, Evse
+from app.models.charging_point import (
+    ChargingPoint,
+    ChargingPointSource,
+    Connector,
+    Evse,
+)
 from app.models.cpo import Cpo
 from app.models.tariff import Tariff
+from pytest_httpx import HTTPXMock
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 BASE_URL = "https://reve.test/api/v1"
 API_KEY = "secret-key"
@@ -135,7 +137,9 @@ async def test_import_cpos_resumes_from_start_page(
         )
         assert (rows2, last2, exhausted2) == (1, 2, True)
 
-    total = (await db_session.execute(select(func.count()).select_from(Cpo))).scalar_one()
+    total = (
+        await db_session.execute(select(func.count()).select_from(Cpo))
+    ).scalar_one()
     assert total == 101
 
 
@@ -143,7 +147,9 @@ async def test_import_locations_creates_full_chain(
     reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
 
     async with reve_client as client:
         await import_cpos(client, db_session)
@@ -175,7 +181,9 @@ async def test_import_locations_preserves_null_name(
     nameless = _location()
     nameless.pop("name")
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[nameless])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[nameless]
+    )
 
     async with reve_client as client:
         await import_cpos(client, db_session)
@@ -186,40 +194,13 @@ async def test_import_locations_preserves_null_name(
     assert cp.cpo_name == "Cargas Iberica"
 
 
-async def test_import_evse_operational_status_updates_existing(
-    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
-) -> None:
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()])
-    httpx_mock.add_response(
-        url=f"{BASE_URL}/evses/operational_status?page=1&limit=100",
-        json=[
-            {
-                "id": "evse-1",
-                "evse_id": "ES*ABC*E1",
-                "operational_status": True,
-                "last_operational_status_updated": "2026-04-15T10:00:00Z",
-            }
-        ],
-    )
-
-    async with reve_client as client:
-        await import_cpos(client, db_session)
-        await import_locations(client, db_session)
-        rows, _, exhausted = await import_evse_operational_status(client, db_session)
-
-    assert rows == 1
-    assert exhausted is True
-    evse = (await db_session.execute(select(Evse))).scalar_one()
-    assert evse.is_operational is True
-    assert evse.operational_status_updated_at == datetime(2026, 4, 15, 10, 0, tzinfo=UTC)
-
-
 async def test_import_tariffs_links_connector_and_extracts_price(
     reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
-    httpx_mock.add_response(url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
     httpx_mock.add_response(
         url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
         json=[
@@ -233,13 +214,23 @@ async def test_import_tariffs_links_connector_and_extracts_price(
                         "elements": [
                             {
                                 "price_components": [
-                                    {"type": "FLAT", "price": 0.8265, "vat": 21.0, "step_size": 1}
+                                    {
+                                        "type": "FLAT",
+                                        "price": 0.8265,
+                                        "vat": 21.0,
+                                        "step_size": 1,
+                                    }
                                 ],
                                 "restrictions": {"reservation": "RESERVATION_EXPIRES"},
                             },
                             {
                                 "price_components": [
-                                    {"type": "ENERGY", "price": 0.42, "vat": 21.0, "step_size": 1}
+                                    {
+                                        "type": "ENERGY",
+                                        "price": 0.42,
+                                        "vat": 21.0,
+                                        "step_size": 1,
+                                    }
                                 ]
                             },
                         ],
@@ -282,7 +273,11 @@ async def test_import_tariffs_skips_unknown_connector(
                         "id": "tariff-ghost",
                         "currency": "EUR",
                         "elements": [
-                            {"price_components": [{"type": "ENERGY", "price": 0.5, "step_size": 1}]}
+                            {
+                                "price_components": [
+                                    {"type": "ENERGY", "price": 0.5, "step_size": 1}
+                                ]
+                            }
                         ],
                         "last_tariff_updated": "2026-04-20T12:00:00Z",
                     }
@@ -295,7 +290,9 @@ async def test_import_tariffs_skips_unknown_connector(
     async with reve_client as client:
         await import_tariffs(client, db_session)
 
-    tariff_count = (await db_session.execute(select(func.count()).select_from(Tariff))).scalar_one()
+    tariff_count = (
+        await db_session.execute(select(func.count()).select_from(Tariff))
+    ).scalar_one()
     assert tariff_count == 0
     connector_count = (
         await db_session.execute(select(func.count()).select_from(Connector))

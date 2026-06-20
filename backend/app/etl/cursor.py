@@ -8,17 +8,19 @@ from app.models.etl import ReveEtlCursor
 
 
 async def read_cursor(db: AsyncSession, endpoint: str) -> ReveEtlCursor:
-    cursor = (
-        await db.execute(select(ReveEtlCursor).where(ReveEtlCursor.endpoint == endpoint))
+    return (
+        await db.execute(
+            select(ReveEtlCursor).where(ReveEtlCursor.endpoint == endpoint)
+        )
     ).scalar_one()
-    return cursor
 
 
 async def read_all_cursors(db: AsyncSession) -> Sequence[ReveEtlCursor]:
-    cursors = (
-        (await db.execute(select(ReveEtlCursor).order_by(ReveEtlCursor.endpoint))).scalars().all()
+    return (
+        (await db.execute(select(ReveEtlCursor).order_by(ReveEtlCursor.endpoint)))
+        .scalars()
+        .all()
     )
-    return cursors
 
 
 async def record_progress(
@@ -37,6 +39,35 @@ async def record_progress(
     }
     if exhausted:
         values["completed_at"] = now
+    await db.execute(
+        update(ReveEtlCursor).where(ReveEtlCursor.endpoint == endpoint).values(**values)
+    )
+
+
+async def record_refresh_progress(
+    db: AsyncSession,
+    endpoint: str,
+    *,
+    next_page: int,
+    cycle_end: datetime,
+    exhausted: bool,
+    attempted_at: datetime | None = None,
+) -> None:
+    """Persist progress of a post-seed incremental refresh cycle.
+
+    While a cycle is mid-flight, ``refresh_cycle_end`` keeps its frozen upper
+    bound so pagination stays stable across ticks. When the cycle drains
+    (a short page), the watermark advances to that bound and paging resets.
+    """
+    now = attempted_at or datetime.now(UTC)
+    values: dict[str, object] = {"last_attempted_at": now, "last_error": None}
+    if exhausted:
+        values["refresh_watermark"] = cycle_end
+        values["refresh_cycle_end"] = None
+        values["next_page"] = 1
+    else:
+        values["refresh_cycle_end"] = cycle_end
+        values["next_page"] = next_page
     await db.execute(
         update(ReveEtlCursor).where(ReveEtlCursor.endpoint == endpoint).values(**values)
     )
