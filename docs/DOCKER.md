@@ -12,6 +12,24 @@ Always run commands from the project root (`/home/aaleexsnchz/tfm`).
 
 ---
 
+## Multi-stage builds: `dev` vs `prod`
+
+Both Dockerfiles are multi-stage with two final targets:
+
+- **`dev`** — what Compose builds (`target: dev` in [docker-compose.yml](../docker-compose.yml)). Full dependencies incl. test/lint tooling, source bind-mounted, hot reload. Everything else in this guide assumes the `dev` target.
+- **`prod`** — lean deployment image, built explicitly (Compose never builds it):
+  - **Backend** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB vs ~860 MB for `dev`.
+  - **Frontend** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for React Router. ~80 MB vs ~1.1 GB for `dev`. Serves static assets only — API proxying is deployment-specific.
+
+Build the prod images directly (outside Compose):
+
+```bash
+docker build --target prod -t tfm-backend ./backend
+docker build --target prod -t tfm-frontend ./frontend
+```
+
+---
+
 ## Frontend (React + Vite)
 
 **Install new dependencies:**
@@ -23,6 +41,8 @@ cd frontend && pnpm add <package>
 # 2. Rebuild image + recreate container (fresh musl-compiled node_modules)
 docker compose build frontend && docker compose up -d --force-recreate -V frontend
 ```
+
+> If the new package runs an install/build script (native deps like `sharp`), pnpm 11 blocks it by default. Approve it in [frontend/pnpm-workspace.yaml](../frontend/pnpm-workspace.yaml) under `allowBuilds` (`<pkg>: true`, or `false` to keep it skipped) — otherwise the image build fails with `ERR_PNPM_IGNORED_BUILDS`.
 
 **Edit source files (`.tsx`, `.ts`, `.css`):** Nothing needed — bind mount + HMR handles it automatically.
 

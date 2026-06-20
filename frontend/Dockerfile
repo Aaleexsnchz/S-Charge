@@ -1,14 +1,29 @@
-FROM node:24-alpine
+# syntax=docker/dockerfile:1.7
 
+ARG NODE_VERSION=24
+
+# ---------- deps: install with pinned standalone pnpm + BuildKit store cache ----------
+FROM node:${NODE_VERSION}-alpine AS deps
 WORKDIR /app
+RUN npm install -g pnpm@11
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
-RUN corepack enable
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
+# ---------- build: produce dist/ for production serving ----------
+FROM deps AS build
 COPY . .
+RUN pnpm build
 
+# ---------- prod: serve built assets via nginx (opt-in via --target prod) ----------
+FROM nginx:1.27-alpine AS prod
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+# ---------- dev: Vite HMR for local development (compose builds this) ----------
+FROM deps AS dev
+COPY . .
 EXPOSE 5173
-
-CMD ["pnpm", "dev"]
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
