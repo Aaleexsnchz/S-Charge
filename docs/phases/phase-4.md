@@ -1,5 +1,7 @@
 # Phase 4 — Simulation + Algorithm
 
+> **Revision (2026-06-16).** PVPC history backfilled (2026-01-01 → today) via the existing `import_pvpc_prices`. Pricing strategy decided (input to Slices 4–5): serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin` with recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Slice 2 still open: install the daily PVPC cron and add gap-backfill to `fetch_pvpc.py`. See [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+
 Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, distribution fitting on ACN, per-car pre-charge simulation, smart home-charging optimiser. The academic core. Slices 3–5 depend on the real ACN import (token) for calibration; slices 1–2 have no external dependency.
 
 ## Slice 1 — Vehicle catalogue

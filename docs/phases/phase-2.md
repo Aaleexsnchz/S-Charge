@@ -1,5 +1,7 @@
 # Phase 2 — REVE seed + Map
 
+> **Revision (2026-06-16).** REVE operational-status mirror removed from the ETL — operational status (working/broken) is assumed always-operational. EVSE *availability* (free/in use) is now the `status` column (OCPI value, e.g. `AVAILABLE`), to be simulated in Phase 4; the map's `aggregate_status` changes from operational/partial/inoperative to **available/occupied/unknown**, and the seed runs three endpoints instead of four. A post-seed incremental refresh (`refresh_reve.py`) keeps the catalogue fresh under the 5 req/hr cap. See [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+
 Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap. Frontend renders a map of Spanish charging points with filters and a detail view. Live availability is a static stub from the seed snapshot until Phase 4 wires ACN-driven simulation.
 
 ## Slice 1 — REVE seed ETL + mirror schema + `/api/points`

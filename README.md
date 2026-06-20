@@ -7,9 +7,9 @@ A master's thesis project (IoT): a Progressive Web App for managing EV charging 
 | Phase | Status |
 | --- | --- |
 | 1 — Foundation | `[x]` done |
-| 2 — REVE seed + Map | `[~]` shipped + QA'd on real devices; REVE seed cron still mid-run (tariffs → operational status) |
+| 2 — REVE seed + Map | `[~]` shipped + QA'd on real devices; seed cron mid-run (tariffs); post-seed incremental refresh ready |
 | 3 — ACN import (internal) | `[~]` ingest backend shipped; real import + analysis notebook need `ACN_API_TOKEN` |
-| 4 — Simulation + Algorithm | `[ ]` not started |
+| 4 — Simulation + Algorithm | `[~]` slices 1–2 shipped (vehicle catalogue + PVPC ingest); 3–5 pending |
 | 5 — Private points, Bookings + Sessions | `[ ]` not started |
 | 6 — Polish + Deployment | `[ ]` not started |
 | 7 — Thesis writing | `[ ]` not started |

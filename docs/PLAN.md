@@ -103,6 +103,8 @@ Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief de
 
 **Revision (2026-06-12):** product refocus — ACN demoted to internal modelling data (Phase 3 shrinks: notebook instead of dashboard), Phase 4 gains the vehicle catalogue + PVPC ingest, Phase 5 regains owner per-point stats and adds session recording. Net scope roughly unchanged; Phases 2–3 are tracking well under their original estimates, which absorbs the additions.
 
+**Revision (2026-06-16):** REVE operational-status mirror dropped. *Operational status* (working/broken) is now assumed always-operational and not modelled; *availability* (free/in use) becomes a `status` column on the EVSE (OCPI value, simulated in Phase 4), and the map's `aggregate_status` is now available/occupied/unknown. A post-seed incremental refresh (`refresh_reve.py`) keeps tariffs fresh under the rate cap. Pricing strategy fixed: serve the real REVE tariff; where none exists, estimate `PVPC + margin` (recommended default AC +0.22 / DC +0.32 €/kWh, owner-overridable). PVPC history backfilled. See [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md).
+
 Slice-by-slice record: [phases](phases).
 
 ### Phase 1 — Foundation (22–28h) — done
