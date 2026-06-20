@@ -14,12 +14,16 @@ router = APIRouter(prefix="/points", tags=["points"])
 
 NOT_FOUND_BODY = {"status_code": 404, "status_message": "Charging point not found"}
 
-BBOX_DESCRIPTION = "Bounding box as 'min_lng,min_lat,max_lng,max_lat' (GeoJSON axis order)."
+BBOX_PARTS = 4
+
+BBOX_DESCRIPTION = (
+    "Bounding box as 'min_lng,min_lat,max_lng,max_lat' (GeoJSON axis order)."
+)
 
 
 def _parse_bbox(raw: str) -> Bbox:
     parts = raw.split(",")
-    if len(parts) != 4:
+    if len(parts) != BBOX_PARTS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=BBOX_DESCRIPTION
         )
@@ -72,5 +76,7 @@ async def read_point(
 ) -> Response:
     point = await get_point(db, point_id)
     if point is None:
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=NOT_FOUND_BODY)
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content=NOT_FOUND_BODY
+        )
     return JSONResponse(content=PointRead.model_validate(point).model_dump(mode="json"))
