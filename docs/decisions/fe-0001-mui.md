@@ -9,6 +9,10 @@ date: 2026-06
 
 > Foundational frontend decision. Append revisions below with date and reason rather than editing in place.
 
+**Revisions.**
+
+- *2026-06 — Biome replaces ESLint + Prettier ([fe-0006](fe-0006-biome.md)).* The per-path `@mui/icons-material` import rule described under *Implementation* below is now enforced by Biome's `noRestrictedImports`, not the ESLint rule referenced there.
+
 **Decision.** The PWA is built with [MUI](https://mui.com) (Material UI) as the component library, styled via [Emotion](https://emotion.sh) (`@emotion/react` + `@emotion/styled`). Theming, typography (Inter + JetBrains Mono via `@fontsource`), and a shared palette are centralised in a single MUI theme. Icons are imported per-path from `@mui/icons-material` (never from the barrel).
 
 **Rationale.** This is a solo thesis project on a fixed timeline, and the academic contribution sits in Phases 3–4 (ACN import, distribution fitting, smart-charging algorithm). The frontend exists to demo that work, not to be a CSS exercise. MUI ships the surface the app actually needs out of the box: form controls with validation styling, data grid, dialogs and bottom sheets, navigation primitives, snackbars (via [notistack](https://notistack.com/)), accessible focus rings, ARIA defaults and keyboard handling. Spanish copy is component-prop driven — no i18n library required at this stage. Emotion's runtime CSS-in-JS carries a measurable bundle and parse cost vs. zero-runtime alternatives, accepted as the price of MUI's documented happy path.

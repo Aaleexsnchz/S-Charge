@@ -23,6 +23,7 @@ Concept-level summary of what the library and these ADRs deliver: [thesis/auth.m
 | [fe-0003](fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles for the map | Phase 2 / Slice 2 |
 | [fe-0004](fe-0004-tanstack-query.md) | TanStack Query for server state | Phase 2 / Slice 2 |
 | [fe-0005](fe-0005-mui-x-charts.md) | MUI X Charts for in-app charts | Phase 5 (installed in Phase 3) |
+| [fe-0006](fe-0006-biome.md) | Use Biome for frontend linting and formatting | Phase 4 (tooling) |
 
 ## Thesis-writeup chapters
 

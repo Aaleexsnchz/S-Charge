@@ -42,7 +42,7 @@ Hot reload is on for both backend (`.py`) and frontend (`.ts`/`.tsx`) edits. See
 - **Commit message format**: Conventional Commits — `<type>(<scope>): <imperative summary>`. One logical change per commit; no mixing unrelated changes.
 - **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`.
 - **Scopes**: `backend`, `frontend`, `root`, `infra`.
-- **Pre-commit hooks** ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run backend `ruff check`, `ruff format --check`, `mypy`, and frontend `eslint` + `prettier`. Install with `pre-commit install` once per clone. No secrets or credentials in the diff.
+- **Pre-commit hooks** ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run backend `ruff check`, `ruff format --check`, `basedpyright`, and frontend `biome` (lint + format). Install with `pre-commit install` once per clone. No secrets or credentials in the diff.
 
 ## Backend
 
@@ -87,9 +87,9 @@ Routers should be thin: parse input, call a service, return. Business logic live
 Both must pass before commit:
 
 ```bash
-uv run ruff check app tests            # E F I UP B, line length 100
-uv run ruff format --check app tests
-uv run mypy app tests
+uv run ruff check
+uv run ruff format --check
+uv run basedpyright
 ```
 
 ### Commands
@@ -108,6 +108,29 @@ In Docker (default): `.py` edits auto-reload; `pyproject.toml` changes need a re
 React + Vite + TypeScript + MUI v7 (Emotion), in [frontend/](frontend/). Package manager: **pnpm**.
 
 The Phase 1 scaffold ships the auth pages and PWA manifest. Per-icon imports from `@mui/icons-material` (never the barrel — breaks tree-shaking). Frontend ADRs go under `fe-NNNN` in [docs/decisions/](docs/decisions/) at the point of each decision.
+
+### Lint and format
+
+[Biome](https://biomejs.dev) handles both lint and format (config in [frontend/biome.json](frontend/biome.json)). Must pass before commit:
+
+```bash
+pnpm run lint            # biome check — lint + format check + import sort
+pnpm run format          # biome check --write — auto-fix lint + format
+```
+
+### Commands
+
+Run from [frontend/](frontend/):
+
+```bash
+pnpm install             # install deps
+pnpm run dev             # Vite dev server (http://localhost:5173)
+pnpm run build           # tsc -b && vite build — typecheck + production build
+pnpm run test            # vitest
+pnpm run gen:api         # regenerate API types from the backend OpenAPI schema
+```
+
+In Docker (default): `.ts`/`.tsx` edits hot-reload; `package.json`/lockfile changes need a rebuild. See [docs/DOCKER.md](docs/DOCKER.md).
 
 ## Documentation discipline
 
