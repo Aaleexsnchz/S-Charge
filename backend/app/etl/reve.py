@@ -58,6 +58,35 @@ def _energy_price_component(elements: Any) -> dict[str, Any]:
     return {}
 
 
+def _first_tariff(raw: dict[str, Any]) -> dict[str, Any] | None:
+    raw_tariff = raw.get("tariffs")
+    if isinstance(raw_tariff, list):
+        return raw_tariff[0] if raw_tariff else None
+    return raw_tariff or None
+
+
+def _tariff_changed_in_window(
+    raw: dict[str, Any],
+    date_from: datetime | None,
+    date_to: datetime | None,
+) -> bool:
+    """Whether the tariff genuinely changed at REVE inside the refresh window.
+
+    The upsert rewrites every fetched row unconditionally, so the fetched count
+    overstates real movement; only rows whose ``last_tariff_updated`` lands in
+    ``[date_from, date_to]`` actually changed at the source.
+    """
+    raw_tariff = _first_tariff(raw)
+    if raw_tariff is None:
+        return False
+    updated = _parse_dt(raw_tariff.get("last_tariff_updated"))
+    if updated is None:
+        return False
+    if date_from is not None and updated < date_from:
+        return False
+    return date_to is None or updated <= date_to
+
+
 def _window_params(
     date_from: datetime | None, date_to: datetime | None = None
 ) -> dict[str, Any] | None:
@@ -247,10 +276,8 @@ async def _upsert_connector_tariff(
     raw: dict[str, Any],
     refreshed_at: datetime,
 ) -> None:
-    raw_tariff = raw.get("tariffs")
-    if isinstance(raw_tariff, list):
-        raw_tariff = raw_tariff[0] if raw_tariff else None
-    if not raw_tariff:
+    raw_tariff = _first_tariff(raw)
+    if raw_tariff is None:
         return
 
     connector_lookup = (
@@ -375,8 +402,12 @@ async def import_tariffs(
     max_pages: int | None = None,
 ) -> tuple[int, int, bool]:
     refreshed_at = datetime.now(UTC)
+    changed = 0
 
     async def _process(raw: dict[str, Any]) -> None:
+        nonlocal changed
+        if _tariff_changed_in_window(raw, date_from, date_to):
+            changed += 1
         await _upsert_connector_tariff(db, raw, refreshed_at)
 
     rows, last_page, exhausted = await _paginate_with_budget(
@@ -390,6 +421,7 @@ async def import_tariffs(
     audit(
         "reve_etl_tariffs",
         rows=rows,
+        changed=changed,
         last_page=last_page,
         exhausted=exhausted,
         start_page=start_page,

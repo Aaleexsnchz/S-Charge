@@ -1,12 +1,17 @@
-"""Post-seed incremental refresh of the REVE mirror.
+"""Post-seed incremental refresh of REVE tariffs (prices).
 
 Runs on the same hourly, budgeted cron as ``seed_reve`` once the initial seed
-is complete. Each endpoint is refreshed with an ``[date_from, date_to]`` window:
-``date_from`` is the last fully drained cycle's upper bound (the watermark),
-``date_to`` is frozen when the cycle starts so pagination stays stable across
-ticks. A cycle may span several ticks under budget; the watermark only advances
-once the whole window drains, so a backlog is always picked up by later ticks.
-Operational status is intentionally not refreshed — availability is simulated.
+is complete. Only ``/connectors/tariffs`` is refreshed: prices are the sole
+field that changes often enough to matter. The physical catalogue (``/cpos``,
+``/locations``) is left frozen at the seed snapshot — it carries no price data,
+rarely changes, and refreshing it would only starve the tariff call budget; the
+cost is that stations added to REVE after the seed won't appear.
+
+The endpoint is refreshed with an ``[date_from, date_to]`` window: ``date_from``
+is the last fully drained cycle's upper bound (the watermark), ``date_to`` is
+frozen when the cycle starts so pagination stays stable across ticks. A cycle
+may span several ticks under budget; the watermark only advances once the whole
+window drains, so a backlog is always picked up by later ticks.
 """
 
 import argparse
@@ -19,17 +24,14 @@ from datetime import UTC, datetime
 import httpx
 from app.database import SessionLocal
 from app.etl.cursor import read_all_cursors, record_error, record_refresh_progress
-from app.etl.reve import import_cpos, import_locations, import_tariffs
+from app.etl.reve import import_tariffs
 from app.integrations.reve import ReveClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = int(os.getenv("REVE_BUDGET_PER_RUN", "5"))
 
 ImportFn = Callable[..., Awaitable[tuple[int, int, bool]]]
-# Dependency order: catalogue before the tariffs that reference it.
 REFRESH_PRIORITY: list[tuple[str, ImportFn]] = [
-    ("/cpos", import_cpos),
-    ("/locations", import_locations),
     ("/connectors/tariffs", import_tariffs),
 ]
 

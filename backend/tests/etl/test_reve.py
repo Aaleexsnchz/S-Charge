@@ -1,8 +1,10 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 import pytest
 from app.etl.reve import (
+    _tariff_changed_in_window,
     import_cpos,
     import_locations,
     import_tariffs,
@@ -298,3 +300,30 @@ async def test_import_tariffs_skips_unknown_connector(
         await db_session.execute(select(func.count()).select_from(Connector))
     ).scalar_one()
     assert connector_count == 0
+
+
+def _tariff_row(last_tariff_updated: str | None) -> dict[str, Any]:
+    return {"tariffs": [{"id": "t", "last_tariff_updated": last_tariff_updated}]}
+
+
+@pytest.mark.parametrize(
+    ("updated", "expected"),
+    [
+        ("2026-06-21T10:00:00Z", True),
+        ("2026-06-20T23:59:59Z", False),
+        ("2026-06-21T12:00:01Z", False),
+        (None, False),
+    ],
+)
+def test_tariff_changed_in_window(updated: str | None, expected: bool) -> None:
+    window_start = datetime(2026, 6, 21, 0, 0, tzinfo=UTC)
+    window_end = datetime(2026, 6, 21, 12, 0, tzinfo=UTC)
+    assert (
+        _tariff_changed_in_window(_tariff_row(updated), window_start, window_end)
+        is expected
+    )
+
+
+def test_tariff_changed_in_window_no_tariff() -> None:
+    window_start = datetime(2026, 6, 21, 0, 0, tzinfo=UTC)
+    assert _tariff_changed_in_window({"tariffs": []}, window_start, None) is False
