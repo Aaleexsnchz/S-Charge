@@ -37,8 +37,13 @@ punto: sirve siempre desde Postgres, con su fecha de actualización. La cuota se
 gasta solo en la ingesta de fondo, nunca en el tráfico de usuario.
 
 **2. Refresco incremental tras la siembra** ([refresh_reve.py](../../backend/scripts/refresh_reve.py)).
-Una vez completada la siembra inicial, cada tick refresca por ventana temporal
-`[date_from, date_to]`: `date_from` es la marca de agua del último ciclo drenado;
+Una vez completada la siembra inicial, cada tick refresca **solo
+`/connectors/tariffs`**: el precio es el único campo que cambia con la frecuencia
+suficiente para importar. El catálogo físico (`/cpos`, `/locations`) se congela en
+la instantánea de la siembra —no contiene precios, varía rara vez y refrescarlo
+solo robaría presupuesto a las tarifas; el coste asumido es que las estaciones
+añadidas a REVE tras la siembra no aparecerán. El refresco usa una ventana
+temporal `[date_from, date_to]`: `date_from` es la marca de agua del último ciclo drenado;
 `date_to` se congela al iniciar el ciclo para que la paginación sea estable entre
 ticks. Como REVE permite filtrar por fecha de actualización, cada ciclo trae solo
 lo que cambió — decenas de tarifas al día frente a una capacidad de ~12 000/día.
@@ -47,6 +52,23 @@ pico (p. ej. 600 cambios) simplemente se reparte en varios ticks sin perder nada
 los `upsert` idempotentes absorben cualquier reproceso en el borde. El diseño es
 correcto aunque REVE ignore `date_to` o no ordene los resultados: lo que se escape
 de un ciclo lo recoge el siguiente, que arranca donde terminó el anterior.
+
+Un matiz en el traspaso siembra→refresco: como la siembra es **no atómica** (con
+presupuesto de 5 llamadas/hora pagina durante días), una tarifa de la página 1
+refleja el estado de REVE del primer día, no del último. Por eso el `date_from`
+del primer ciclo de refresco debe ser la captura **más antigua**
+(`min(last_refreshed_at)`), no `completed_at`: arrancar en la fecha de
+finalización se saltaría cualquier precio que cambiara durante la propia siembra.
+Una vez drenado ese primer barrido, la marca de agua salta a «ahora» y todas las
+filas comparten un mismo instante de captura, de modo que el modelo de marca de
+agua única ya es correcto en adelante.
+
+Como el `upsert` reescribe toda fila descargada —cambie o no su precio—, el
+recuento de filas tocadas sobrestima el movimiento real. Por eso la línea de
+auditoría `reve_etl_tariffs` registra, además de `rows`, un campo `changed`: las
+tarifas cuyo `last_tariff_updated` cae dentro de `[date_from, date_to]`, es decir,
+las que de verdad cambiaron en origen. Así el log distingue "descargadas" de
+"realmente actualizadas" en cada tick.
 
 **3. Estimación de respaldo.** Para un conector sin tarifa, el precio se estima
 como `PVPC(hora) + margen[tipo]` (AC +0.22 / DC +0.32 €/kWh) y se etiqueta como

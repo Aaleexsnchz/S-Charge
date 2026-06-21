@@ -12,7 +12,7 @@ Task-oriented, step-by-step.
 | --- | --- |
 | [setup/google-oauth.md](setup/google-oauth.md) | Enable Google sign-in: Cloud Console client, People API, the env-snapshot gotcha. |
 | [setup/email.md](setup/email.md) | Wire up Resend for verification/reset email; sandbox sender limits; production DNS. |
-| [DOCKER.md](DOCKER.md) | When to rebuild vs. recreate vs. do nothing after a change. |
+| [DOCKER.md](DOCKER.md) | When to rebuild vs. recreate vs. do nothing after a change; database backup & restore. |
 
 ## Reference
 

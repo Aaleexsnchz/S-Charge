@@ -67,11 +67,13 @@ backend/
 │   ├── etl/             import/upsert logic + cursor helpers for seeds
 │   └── utils/           auth, timezone helpers, etc.
 ├── alembic/             migrations
-├── scripts/             one-off ETL, seed, data generators
+├── scripts/             one-off ETL, seed, data generators (Python, run in-container via `uv run python -m scripts.X`)
 └── tests/               pytest (mirrors app/ structure)
 ```
 
 Routers should be thin: parse input, call a service, return. Business logic lives in `services/`, never in route handlers.
+
+Host-level ops tooling (bash, run on the host / from cron — e.g. DB backup) lives in the **repo-root `scripts/`**, separate from `backend/scripts/`; see [docs/DOCKER.md](docs/DOCKER.md).
 
 ### Alembic
 

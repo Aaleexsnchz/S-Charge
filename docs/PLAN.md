@@ -118,16 +118,16 @@ Docker Compose, FastAPI + Postgres + Alembic, auth via `fastapi-users` (email/pa
 - [x] Google OAuth end-to-end via `httpx-oauth`; first-time users auto-provisioned; existing accounts linkable
 - [x] Frontend scaffold serves the six auth pages (login, register, check-email, verify-email, forgot-password, reset-password); Spanish copy; PWA installable on iOS Safari and Chrome
 
-### Phase 2 — REVE seed + Map (25–30h)
+### Phase 2 — REVE seed + Map (25–30h) — done
 
 REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap. Frontend renders a map of Spanish charging points with filters and a detail view.
 
 **Done when:**
 
-- REVE seed runs unattended via cron; full-Spain bootstrap completes in ~12 days
-- `/api/points` and `/api/points/{id}` serve seeded points
-- Map renders with filters (availability, connector, price band), point detail, Google Maps "Navegar" deep link
-- Tested on real iPhone + Android
+- [x] REVE seed runs unattended via cron; full-Spain bootstrap completes in ~12 days
+- [x] `/api/points` and `/api/points/{id}` serve seeded points
+- [x] Map renders with filters (availability, connector, price band), point detail, Google Maps "Navegar" deep link
+- [x] Tested on real iPhone + Android
 
 ### Phase 3 — ACN import + internal analysis (18–24h)
 
@@ -135,10 +135,10 @@ ETL pipeline for ACN-Data plus a thesis analysis notebook. Reframed 2026-06-12: 
 
 **Done when:**
 
-- ACN imported; row counts match source
-- Core tables populated and indexed
-- Analysis notebook (energy, arrivals heatmap, cross-site) produces thesis figures + conclusions
-- Data validation doc (nulls, gaps, ranges) written
+- [ ] ACN imported; row counts match source
+- [ ] Core tables populated and indexed
+- [ ] Analysis notebook (energy, arrivals heatmap, cross-site) produces thesis figures + conclusions
+- [ ] Data validation doc (nulls, gaps, ranges) written
 
 ### Phase 4 — Simulation + Algorithm (40–50h)
 
@@ -146,12 +146,12 @@ Vehicle catalogue, PVPC price ingest, distribution fitting, per-car simulation, 
 
 **Done when:**
 
-- `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
-- PVPC hourly prices ingested daily from REE's public API (cron, same tick pattern as REVE)
-- Distribution fitting on ACN produces occupancy/arrival parameters; simulated availability drives map status
-- `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price)
-- `/api/recommend`: owned point + departure time + energy needed → cheapest PVPC charging schedule + alternatives
-- Simulation UI shows the predicted session; 1–2 page algorithm write-up reusable in the thesis
+- [x] `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
+- [x] PVPC hourly prices ingested daily from REE's public API (cron, same tick pattern as REVE)
+- [ ] Distribution fitting on ACN produces occupancy/arrival parameters; simulated availability drives map status
+- [ ] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price)
+- [ ] `/api/recommend`: owned point + departure time + energy needed → cheapest PVPC charging schedule + alternatives
+- [ ] Simulation UI shows the predicted session; 1–2 page algorithm write-up reusable in the thesis
 
 ### Phase 5 — Private points, Bookings + Sessions (26–34h)
 
@@ -159,11 +159,11 @@ Private point CRUD with owner pricing, bookings, session recording, driver histo
 
 **Done when:**
 
-- Private point creation works end-to-end; public/private toggle controls map visibility
-- Public points priced as PVPC + margin (live) or fixed €/kWh, owner's choice
-- Booking conflict detection rejects overlaps; user can view/cancel bookings
-- Completed bookings and home smart-charges record a session (energy, duration, cost); driver sees history in `/sessions`
-- Owner dashboard: per-point sessions, energy delivered, revenue
+- [ ] Private point creation works end-to-end; public/private toggle controls map visibility
+- [ ] Public points priced as PVPC + margin (live) or fixed €/kWh, owner's choice
+- [ ] Booking conflict detection rejects overlaps; user can view/cancel bookings
+- [ ] Completed bookings and home smart-charges record a session (energy, duration, cost); driver sees history in `/sessions`
+- [ ] Owner dashboard: per-point sessions, energy delivered, revenue
 
 ### Phase 6 — Polish + Deployment (20–25h)
 
@@ -171,12 +171,12 @@ Responsive QA, error states, deploy, tests.
 
 **Done when:**
 
-- All pages tested on real phone
-- Every API call has loading/error/empty states
-- Backend tests pass with ≥70% coverage on `services/`
-- Deployed at real HTTPS domain
-- PWA installable from production on iOS + Android
-- At least one external user registers + uses the app
+- [ ] All pages tested on real phone
+- [ ] Every API call has loading/error/empty states
+- [ ] Backend tests pass with ≥70% coverage on `services/`
+- [ ] Deployed at real HTTPS domain
+- [ ] PWA installable from production on iOS + Android
+- [ ] At least one external user registers + uses the app
 
 ### Phase 7 — Thesis writing (40–60h)
 
@@ -184,12 +184,12 @@ Document, diagram, defend.
 
 **Done when:**
 
-- Full draft: intro, SoTA, architecture, data, implementation, results, conclusions
-- Architecture + ER diagrams, UI screenshots included
-- Algorithm chapter: formulation, pseudocode, evaluation on ACN
-- ≥20 references
-- Defense slides (15–20) + demo plan
-- Tutor approves final version
+- [ ] Full draft: intro, SoTA, architecture, data, implementation, results, conclusions
+- [ ] Architecture + ER diagrams, UI screenshots included
+- [ ] Algorithm chapter: formulation, pseudocode, evaluation on ACN
+- [ ] ≥20 references
+- [ ] Defense slides (15–20) + demo plan
+- [ ] Tutor approves final version
 
 ---
 
