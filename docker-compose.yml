@@ -2,7 +2,7 @@ name: ev-charging-app
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: ev-charging-app-db
     restart: unless-stopped
     env_file:
@@ -21,6 +21,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: dev
     container_name: ev-charging-app-backend
     restart: unless-stopped
     env_file:
@@ -35,18 +36,21 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/scripts:/app/scripts
       - ./backend/tests:/app/tests
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: ev-charging-app-frontend
     restart: unless-stopped
     env_file:
       - ./frontend/.env
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      CI: "true"
     depends_on:
       - backend
     ports:

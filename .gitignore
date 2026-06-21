@@ -16,6 +16,7 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
+.zed/
 
 # OS
 .DS_Store
@@ -23,6 +24,9 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Database backups (large; stored out-of-band, see scripts/backup_db.sh)
+backups/
 
 # Claude Code (skills tracked in SKILLS.md + skills-lock.json; user-local settings and
 # other-agent copies excluded)

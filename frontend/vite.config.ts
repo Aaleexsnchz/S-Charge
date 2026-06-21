@@ -1,6 +1,10 @@
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// Inside Docker the backend is reachable by service name; host-side runs
+// (pnpm preview for Lighthouse) override via VITE_PROXY_TARGET.
+const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://backend:8000'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -39,16 +43,16 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    allowedHosts: [
-      '.ngrok-free.dev',
-      '.ngrok-free.app',
-      '.ngrok.dev',
-      '.ngrok.app',
-      '.ngrok.io',
-      '.trycloudflare.com',
-    ],
+    allowedHosts: ['.ngrok-free.dev'],
     proxy: {
-      '/api': 'http://backend:8000',
+      '/api': proxyTarget,
+    },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    proxy: {
+      '/api': proxyTarget,
     },
   },
 })

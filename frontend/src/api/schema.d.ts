@@ -4,997 +4,1382 @@
  */
 
 export interface paths {
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Auth:Cookie.Login */
-        post: operations["auth_cookie_login_api_auth_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Auth:Cookie.Logout */
-        post: operations["auth_cookie_logout_api_auth_logout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Register:Register */
-        post: operations["register_register_api_auth_register_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/request-verify-token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify:Request-Token */
-        post: operations["verify_request_token_api_auth_request_verify_token_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify:Verify */
-        post: operations["verify_verify_api_auth_verify_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/forgot-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset:Forgot Password */
-        post: operations["reset_forgot_password_api_auth_forgot_password_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/reset-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset:Reset Password */
-        post: operations["reset_reset_password_api_auth_reset_password_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/google/authorize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Oauth:Google.Oauth-Cookie.Authorize */
-        get: operations["oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/google/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Oauth:Google.Oauth-Cookie.Callback
-         * @description The response varies based on the authentication backend used.
-         */
-        get: operations["oauth_google_oauth_cookie_callback_api_auth_google_callback_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/users/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Users:Current User */
-        get: operations["users_current_user_api_users_me_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Users:Patch Current User */
-        patch: operations["users_patch_current_user_api_users_me_patch"];
-        trace?: never;
-    };
-    "/api/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Users:User */
-        get: operations["users_user_api_users__id__get"];
-        put?: never;
-        post?: never;
-        /** Users:Delete User */
-        delete: operations["users_delete_user_api_users__id__delete"];
-        options?: never;
-        head?: never;
-        /** Users:Patch User */
-        patch: operations["users_patch_user_api_users__id__patch"];
-        trace?: never;
-    };
-    "/api/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_api_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  '/api/auth/login': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Auth:Cookie.Login */
+    post: operations['auth_cookie_login_api_auth_login_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/logout': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Auth:Cookie.Logout */
+    post: operations['auth_cookie_logout_api_auth_logout_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/register': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Register:Register */
+    post: operations['register_register_api_auth_register_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/request-verify-token': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Verify:Request-Token */
+    post: operations['verify_request_token_api_auth_request_verify_token_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/verify': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Verify:Verify */
+    post: operations['verify_verify_api_auth_verify_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/forgot-password': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reset:Forgot Password */
+    post: operations['reset_forgot_password_api_auth_forgot_password_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/reset-password': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reset:Reset Password */
+    post: operations['reset_reset_password_api_auth_reset_password_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/google/authorize': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Oauth:Google.Oauth-Cookie.Authorize */
+    get: operations['oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/google/callback': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Oauth:Google.Oauth-Cookie.Callback
+     * @description The response varies based on the authentication backend used.
+     */
+    get: operations['oauth_google_oauth_cookie_callback_api_auth_google_callback_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/points': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read Points */
+    get: operations['read_points_api_points_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/points/map': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Read Points Map
+     * @description GeoJSON FeatureCollection sized for the map's clustered source.
+     *
+     *     Declared before ``/{point_id}`` so the literal segment wins the route match.
+     */
+    get: operations['read_points_map_api_points_map_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/points/{point_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read Point */
+    get: operations['read_point_api_points__point_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/prices/today': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read Prices Today */
+    get: operations['read_prices_today_api_prices_today_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/users/me': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Users:Current User */
+    get: operations['users_current_user_api_users_me_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /** Users:Patch Current User */
+    patch: operations['users_patch_current_user_api_users_me_patch']
+    trace?: never
+  }
+  '/api/users/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Users:User */
+    get: operations['users_user_api_users__id__get']
+    put?: never
+    post?: never
+    /** Users:Delete User */
+    delete: operations['users_delete_user_api_users__id__delete']
+    options?: never
+    head?: never
+    /** Users:Patch User */
+    patch: operations['users_patch_user_api_users__id__patch']
+    trace?: never
+  }
+  '/api/vehicles': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read Vehicles */
+    get: operations['read_vehicles_api_vehicles_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/health': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Health */
+    get: operations['health_api_health_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
-export type webhooks = Record<string, never>;
+export type webhooks = Record<string, never>
 export interface components {
-    schemas: {
-        /** Body_auth_cookie_login_api_auth_login_post */
-        Body_auth_cookie_login_api_auth_login_post: {
-            /** Grant Type */
-            grant_type?: string | null;
-            /** Username */
-            username: string;
-            /**
-             * Password
-             * Format: password
-             */
-            password: string;
-            /**
-             * Scope
-             * @default
-             */
-            scope?: string;
-            /** Client Id */
-            client_id?: string | null;
-            /**
-             * Client Secret
-             * Format: password
-             */
-            client_secret?: string | null;
-        };
-        /** Body_reset_forgot_password_api_auth_forgot_password_post */
-        Body_reset_forgot_password_api_auth_forgot_password_post: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-        };
-        /** Body_reset_reset_password_api_auth_reset_password_post */
-        Body_reset_reset_password_api_auth_reset_password_post: {
-            /** Token */
-            token: string;
-            /** Password */
-            password: string;
-        };
-        /** Body_verify_request_token_api_auth_request_verify_token_post */
-        Body_verify_request_token_api_auth_request_verify_token_post: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-        };
-        /** Body_verify_verify_api_auth_verify_post */
-        Body_verify_verify_api_auth_verify_post: {
-            /** Token */
-            token: string;
-        };
-        /** ErrorModel */
-        ErrorModel: {
-            /** Detail */
-            detail: string | {
-                [key: string]: string;
-            };
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** OAuth2AuthorizeResponse */
-        OAuth2AuthorizeResponse: {
-            /** Authorization Url */
-            authorization_url: string;
-        };
-        /** UserCreate */
-        UserCreate: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Password */
-            password: string;
-            /**
-             * Is Active
-             * @default true
-             */
-            is_active?: boolean | null;
-            /**
-             * Is Superuser
-             * @default false
-             */
-            is_superuser?: boolean | null;
-            /**
-             * Is Verified
-             * @default false
-             */
-            is_verified?: boolean | null;
-            /** Name */
-            name?: string | null;
-        };
-        /** UserRead */
-        UserRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /**
-             * Is Active
-             * @default true
-             */
-            is_active?: boolean;
-            /**
-             * Is Superuser
-             * @default false
-             */
-            is_superuser?: boolean;
-            /**
-             * Is Verified
-             * @default false
-             */
-            is_verified?: boolean;
-            /** Name */
-            name?: string | null;
-            /** Picture Url */
-            picture_url?: string | null;
-        };
-        /** UserUpdate */
-        UserUpdate: {
-            /** Password */
-            password?: string | null;
-            /** Email */
-            email?: string | null;
-            /** Is Active */
-            is_active?: boolean | null;
-            /** Is Superuser */
-            is_superuser?: boolean | null;
-            /** Is Verified */
-            is_verified?: boolean | null;
-            /** Name */
-            name?: string | null;
-            /** Picture Url */
-            picture_url?: string | null;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    /** Body_auth_cookie_login_api_auth_login_post */
+    Body_auth_cookie_login_api_auth_login_post: {
+      /** Grant Type */
+      grant_type?: string | null
+      /** Username */
+      username: string
+      /**
+       * Password
+       * Format: password
+       */
+      password: string
+      /**
+       * Scope
+       * @default
+       */
+      scope?: string
+      /** Client Id */
+      client_id?: string | null
+      /**
+       * Client Secret
+       * Format: password
+       */
+      client_secret?: string | null
+    }
+    /** Body_reset_forgot_password_api_auth_forgot_password_post */
+    Body_reset_forgot_password_api_auth_forgot_password_post: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string
+    }
+    /** Body_reset_reset_password_api_auth_reset_password_post */
+    Body_reset_reset_password_api_auth_reset_password_post: {
+      /** Token */
+      token: string
+      /** Password */
+      password: string
+    }
+    /** Body_verify_request_token_api_auth_request_verify_token_post */
+    Body_verify_request_token_api_auth_request_verify_token_post: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string
+    }
+    /** Body_verify_verify_api_auth_verify_post */
+    Body_verify_verify_api_auth_verify_post: {
+      /** Token */
+      token: string
+    }
+    /** ConnectorRead */
+    ConnectorRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Standard */
+      standard: string
+      /** Format */
+      format: string
+      /** Power Type */
+      power_type: string
+      /** Max Electric Power */
+      max_electric_power: number | null
+      /** Max Voltage */
+      max_voltage: number
+      /** Max Amperage */
+      max_amperage: number
+      tariff: components['schemas']['TariffRead'] | null
+    }
+    /** ErrorModel */
+    ErrorModel: {
+      /** Detail */
+      detail:
+        | string
+        | {
+            [key: string]: string
+          }
+    }
+    /** EvseRead */
+    EvseRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Evse Id */
+      evse_id: string | null
+      /** Physical Reference */
+      physical_reference: string | null
+      /** Floor Level */
+      floor_level: string | null
+      /** Capabilities */
+      capabilities: string[] | null
+      /** Wheelchair Accessibility */
+      wheelchair_accessibility: string | null
+      /** Status */
+      status: string | null
+      /** Connectors */
+      connectors: components['schemas']['ConnectorRead'][]
+    }
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components['schemas']['ValidationError'][]
+    }
+    /** OAuth2AuthorizeResponse */
+    OAuth2AuthorizeResponse: {
+      /** Authorization Url */
+      authorization_url: string
+    }
+    /** PointRead */
+    PointRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Source */
+      source: string
+      /** Name */
+      name: string | null
+      /** Cpo Name */
+      cpo_name: string | null
+      /** Address */
+      address: string
+      /** City */
+      city: string
+      /** Postal Code */
+      postal_code: string | null
+      /** Region */
+      region: string | null
+      /** State */
+      state: string | null
+      /** Country Code */
+      country_code: string
+      /** Latitude */
+      latitude: number
+      /** Longitude */
+      longitude: number
+      /** Parking Type */
+      parking_type: string | null
+      /** Facilities */
+      facilities: string[] | null
+      /** Time Zone */
+      time_zone: string
+      /** Opening 24 7 */
+      opening_24_7: boolean
+      /** Opening Hours */
+      opening_hours:
+        | {
+            [key: string]: unknown
+          }[]
+        | null
+      /** Charging When Closed */
+      charging_when_closed: boolean | null
+      /**
+       * Aggregate Status
+       * @enum {string}
+       */
+      aggregate_status: 'available' | 'occupied' | 'unknown'
+      /** Evses */
+      evses: components['schemas']['EvseRead'][]
+    }
+    /** PricePoint */
+    PricePoint: {
+      /**
+       * Hour Start
+       * Format: date-time
+       */
+      hour_start: string
+      /** Price Per Kwh */
+      price_per_kwh: number
+    }
+    /** TariffRead */
+    TariffRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Currency */
+      currency: string
+      /** Price Per Kwh */
+      price_per_kwh: number | null
+      /** Price Component Type */
+      price_component_type: string | null
+      /** Vat Percentage */
+      vat_percentage: number | null
+      /** Valid From */
+      valid_from: string | null
+      /** Valid To */
+      valid_to: string | null
+    }
+    /** UserCreate */
+    UserCreate: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string
+      /** Password */
+      password: string
+      /**
+       * Is Active
+       * @default true
+       */
+      is_active?: boolean | null
+      /**
+       * Is Superuser
+       * @default false
+       */
+      is_superuser?: boolean | null
+      /**
+       * Is Verified
+       * @default false
+       */
+      is_verified?: boolean | null
+      /** Name */
+      name?: string | null
+    }
+    /** UserRead */
+    UserRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /**
+       * Email
+       * Format: email
+       */
+      email: string
+      /**
+       * Is Active
+       * @default true
+       */
+      is_active?: boolean
+      /**
+       * Is Superuser
+       * @default false
+       */
+      is_superuser?: boolean
+      /**
+       * Is Verified
+       * @default false
+       */
+      is_verified?: boolean
+      /** Name */
+      name?: string | null
+      /** Picture Url */
+      picture_url?: string | null
+    }
+    /** UserUpdate */
+    UserUpdate: {
+      /** Password */
+      password?: string | null
+      /** Email */
+      email?: string | null
+      /** Is Active */
+      is_active?: boolean | null
+      /** Is Superuser */
+      is_superuser?: boolean | null
+      /** Is Verified */
+      is_verified?: boolean | null
+      /** Name */
+      name?: string | null
+      /** Picture Url */
+      picture_url?: string | null
+    }
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[]
+      /** Message */
+      msg: string
+      /** Error Type */
+      type: string
+      /** Input */
+      input?: unknown
+      /** Context */
+      ctx?: Record<string, never>
+    }
+    /** VehicleRead */
+    VehicleRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Make */
+      make: string
+      /** Model */
+      model: string
+      /** Battery Kwh */
+      battery_kwh: number
+      /** Max Ac Kw */
+      max_ac_kw: number
+      /** Max Dc Kw */
+      max_dc_kw: number | null
+      /** Dc Connector */
+      dc_connector: string | null
+    }
+  }
+  responses: never
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
-export type $defs = Record<string, never>;
+export type $defs = Record<string, never>
 export interface operations {
-    auth_cookie_login_api_auth_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/x-www-form-urlencoded": components["schemas"]["Body_auth_cookie_login_api_auth_login_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    auth_cookie_logout_api_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    register_register_api_auth_register_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    verify_request_token_api_auth_request_verify_token_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_verify_request_token_api_auth_request_verify_token_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    verify_verify_api_auth_verify_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_verify_verify_api_auth_verify_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reset_forgot_password_api_auth_forgot_password_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_reset_forgot_password_api_auth_forgot_password_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reset_reset_password_api_auth_reset_password_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_reset_reset_password_api_auth_reset_password_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get: {
-        parameters: {
-            query?: {
-                scopes?: string[];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OAuth2AuthorizeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    oauth_google_oauth_cookie_callback_api_auth_google_callback_get: {
-        parameters: {
-            query?: {
-                code?: string | null;
-                code_verifier?: string | null;
-                state?: string | null;
-                error?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    users_current_user_api_users_me_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    users_patch_current_user_api_users_me_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    users_user_api_users__id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not a superuser. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The user does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    users_delete_user_api_users__id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not a superuser. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The user does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    users_patch_user_api_users__id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRead"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorModel"];
-                };
-            };
-            /** @description Missing token or inactive user. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not a superuser. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The user does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    health_api_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
+  auth_cookie_login_api_auth_login_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/x-www-form-urlencoded': components['schemas']['Body_auth_cookie_login_api_auth_login_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  auth_cookie_logout_api_auth_logout_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
+  register_register_api_auth_register_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UserCreate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  verify_request_token_api_auth_request_verify_token_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_verify_request_token_api_auth_request_verify_token_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  verify_verify_api_auth_verify_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_verify_verify_api_auth_verify_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reset_forgot_password_api_auth_forgot_password_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_reset_forgot_password_api_auth_forgot_password_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reset_reset_password_api_auth_reset_password_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_reset_reset_password_api_auth_reset_password_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get: {
+    parameters: {
+      query?: {
+        scopes?: string[]
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['OAuth2AuthorizeResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  oauth_google_oauth_cookie_callback_api_auth_google_callback_get: {
+    parameters: {
+      query?: {
+        code?: string | null
+        code_verifier?: string | null
+        state?: string | null
+        error?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  read_points_api_points_get: {
+    parameters: {
+      query?: {
+        /** @description Bounding box as 'min_lng,min_lat,max_lng,max_lat' (GeoJSON axis order). */
+        bbox?: string | null
+        /** @description OCPI connector standard, e.g. IEC_62196_T2. */
+        connector_standard?: string | null
+        max_price_per_kwh?: number | string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PointRead'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  read_points_map_api_points_map_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
+  read_point_api_points__point_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        point_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PointRead']
+        }
+      }
+      /** @description Unknown point; body mirrors REVE's error shape. */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  read_prices_today_api_prices_today_get: {
+    parameters: {
+      query?: {
+        /** @description Madrid-local day, ISO format; defaults to today. */
+        day?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PricePoint'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  users_current_user_api_users_me_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
+  users_patch_current_user_api_users_me_patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UserUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  users_user_api_users__id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Not a superuser. */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The user does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  users_delete_user_api_users__id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Not a superuser. */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The user does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  users_patch_user_api_users__id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UserUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UserRead']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Missing token or inactive user. */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Not a superuser. */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The user does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  read_vehicles_api_vehicles_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VehicleRead'][]
+        }
+      }
+    }
+  }
+  health_api_health_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+    }
+  }
 }

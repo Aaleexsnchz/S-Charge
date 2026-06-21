@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: ci_test_user
           POSTGRES_PASSWORD: ci_test_password
@@ -38,11 +38,11 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --locked --all-groups
       - name: Lint (ruff check)
-        run: uv run ruff check app tests
+        run: uv run ruff check
       - name: Format check (ruff format)
-        run: uv run ruff format --check app tests
-      - name: Type check (mypy)
-        run: uv run mypy app tests
+        run: uv run ruff format --check
+      - name: Type check (basedpyright)
+        run: uv run basedpyright
       - name: Generate ephemeral test secret for JWT signing
         run: echo "SECRET_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
       - name: Run backend tests

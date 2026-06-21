@@ -1,4 +1,4 @@
-import { Outlet, createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Outlet } from 'react-router'
 import {
   forgotPasswordAction,
   loginAction,
@@ -19,6 +19,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { RouteErrorPage } from './pages/RouteErrorPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 export const router = createBrowserRouter([
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
     loader: rootLoader,
     HydrateFallback: RootHydrateFallback,
     element: <Outlet />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <AuthLayout />,
@@ -59,6 +61,18 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <HomePage /> },
+          {
+            path: 'map',
+            lazy: async () => ({
+              Component: (await import('./map/MapPage')).MapPage,
+            }),
+          },
+          {
+            path: 'points/:pointId',
+            lazy: async () => ({
+              Component: (await import('./points/PointDetailPage')).PointDetailPage,
+            }),
+          },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'logout', action: logoutAction },
         ],

@@ -1,12 +1,6 @@
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { useSnackbar } from 'notistack'
 import { useEffect, useState } from 'react'
-import {
-  Alert,
-  Button,
-  Link as MuiLink,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
 import {
   Form,
   Link as RouterLink,
@@ -15,7 +9,6 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import { useSnackbar } from 'notistack'
 import type { ResetPasswordActionData } from '../auth/actions'
 
 export function ResetPasswordPage() {
@@ -53,8 +46,7 @@ export function ResetPasswordPage() {
     )
   }
 
-  const errorData =
-    actionData && 'error' in actionData ? actionData : undefined
+  const errorData = actionData && 'error' in actionData ? actionData : undefined
 
   return (
     <Stack spacing={3}>
@@ -83,12 +75,7 @@ export function ResetPasswordPage() {
               </MuiLink>
             </Typography>
           )}
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={submitting || !canSubmit}
-            fullWidth
-          >
+          <Button type="submit" variant="contained" disabled={submitting || !canSubmit} fullWidth>
             {submitting ? 'Guardando…' : 'Guardar contraseña'}
           </Button>
         </Stack>

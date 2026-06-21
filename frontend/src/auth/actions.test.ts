@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import {
-  errorCodeFromDetail,
-  fieldErrorFromValidationArray,
-  messageFor,
-} from './actions'
+import { errorCodeFromDetail, fieldErrorFromValidationArray, messageFor } from './actions'
 
 const GENERIC = 'Error del servidor, inténtalo de nuevo'
 
 describe('errorCodeFromDetail', () => {
   it('returns a string detail as-is', () => {
-    expect(errorCodeFromDetail('LOGIN_BAD_CREDENTIALS')).toBe(
-      'LOGIN_BAD_CREDENTIALS',
-    )
+    expect(errorCodeFromDetail('LOGIN_BAD_CREDENTIALS')).toBe('LOGIN_BAD_CREDENTIALS')
   })
 
   it('reads a string `code` from an object detail', () => {
@@ -28,30 +22,30 @@ describe('errorCodeFromDetail', () => {
     expect(errorCodeFromDetail({ reason: 'missing code' })).toBeNull()
   })
 
-  it.each([null, undefined, 42, [], [{ code: 'X' }]])(
-    'returns null for non-object/non-string input: %p',
-    (input) => {
-      expect(errorCodeFromDetail(input)).toBeNull()
-    },
-  )
+  it.each([
+    null,
+    undefined,
+    42,
+    [],
+    [{ code: 'X' }],
+  ])('returns null for non-object/non-string input: %p', (input) => {
+    expect(errorCodeFromDetail(input)).toBeNull()
+  })
 })
 
 describe('messageFor', () => {
   it.each([
     ['LOGIN_BAD_CREDENTIALS', 'Email o contraseña inválidos'],
     ['REGISTER_USER_ALREADY_EXISTS', 'Este email ya está registrado'],
-    [
-      'REGISTER_INVALID_PASSWORD',
-      'La contraseña debe tener al menos 12 caracteres',
-    ],
+    ['REGISTER_INVALID_PASSWORD', 'La contraseña debe tener al menos 12 caracteres'],
   ])('maps known string code %p to Spanish copy', (code, expected) => {
     expect(messageFor(code)).toBe(expected)
   })
 
   it('maps an object detail with a known `code` to Spanish copy', () => {
-    expect(
-      messageFor({ code: 'REGISTER_INVALID_PASSWORD', reason: 'too short' }),
-    ).toBe('La contraseña debe tener al menos 12 caracteres')
+    expect(messageFor({ code: 'REGISTER_INVALID_PASSWORD', reason: 'too short' })).toBe(
+      'La contraseña debe tener al menos 12 caracteres',
+    )
   })
 
   it('falls back to the generic message for an unknown string code', () => {
@@ -62,12 +56,13 @@ describe('messageFor', () => {
     expect(messageFor({ reason: 'x' })).toBe(GENERIC)
   })
 
-  it.each([null, undefined, 42])(
-    'falls back to the generic message for non-object/non-string input: %p',
-    (input) => {
-      expect(messageFor(input)).toBe(GENERIC)
-    },
-  )
+  it.each([
+    null,
+    undefined,
+    42,
+  ])('falls back to the generic message for non-object/non-string input: %p', (input) => {
+    expect(messageFor(input)).toBe(GENERIC)
+  })
 
   it('maps a Pydantic email validation error to Spanish copy', () => {
     expect(
@@ -96,19 +91,15 @@ describe('messageFor', () => {
   })
 
   it('falls back to the generic message for validation errors on unknown fields', () => {
-    expect(
-      messageFor([{ type: 'value_error', loc: ['body', 'other'], msg: '...' }]),
-    ).toBe(GENERIC)
+    expect(messageFor([{ type: 'value_error', loc: ['body', 'other'], msg: '...' }])).toBe(GENERIC)
   })
 })
 
 describe('fieldErrorFromValidationArray', () => {
   it('reads the last segment of `loc` as the field name', () => {
-    expect(
-      fieldErrorFromValidationArray([
-        { loc: ['body', 'email'], msg: '...' },
-      ]),
-    ).toBe('La dirección de correo introducida no es válida')
+    expect(fieldErrorFromValidationArray([{ loc: ['body', 'email'], msg: '...' }])).toBe(
+      'La dirección de correo introducida no es válida',
+    )
   })
 
   it('returns null for non-array input', () => {
@@ -116,9 +107,7 @@ describe('fieldErrorFromValidationArray', () => {
   })
 
   it('returns null when no item targets a known field', () => {
-    expect(
-      fieldErrorFromValidationArray([{ loc: ['body', 'other'], msg: '...' }]),
-    ).toBeNull()
+    expect(fieldErrorFromValidationArray([{ loc: ['body', 'other'], msg: '...' }])).toBeNull()
   })
 
   it('skips items without a valid `loc` array', () => {

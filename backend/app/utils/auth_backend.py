@@ -1,6 +1,10 @@
 from fastapi import Response, status
 from fastapi.responses import RedirectResponse
-from fastapi_users.authentication import AuthenticationBackend, CookieTransport, JWTStrategy
+from fastapi_users.authentication import (
+    AuthenticationBackend,
+    CookieTransport,
+    JWTStrategy,
+)
 
 from app.config import settings
 
@@ -36,7 +40,9 @@ class CookieRedirectTransport(CookieTransport):
         self.login_redirect_url = login_redirect_url
 
     async def get_login_response(self, token: str) -> Response:
-        response = RedirectResponse(self.login_redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        response = RedirectResponse(
+            self.login_redirect_url, status_code=status.HTTP_303_SEE_OTHER
+        )
         return self._set_login_cookie(response, token)
 
 

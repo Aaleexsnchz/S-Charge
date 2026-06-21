@@ -2,7 +2,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from fastapi_users.db import SQLAlchemyBaseOAuthAccountTableUUID, SQLAlchemyBaseUserTableUUID
+from fastapi_users.db import (
+    SQLAlchemyBaseOAuthAccountTableUUID,
+    SQLAlchemyBaseUserTableUUID,
+)
 from fastapi_users_db_sqlalchemy.generics import GUID
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT
@@ -31,10 +34,14 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     if TYPE_CHECKING:
         email: str
     else:
-        email: Mapped[str] = mapped_column(CITEXT, unique=True, index=True, nullable=False)
+        email: Mapped[str] = mapped_column(
+            CITEXT, unique=True, index=True, nullable=False
+        )
 
     name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     picture_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
     oauth_accounts: Mapped[list[OAuthAccount]] = relationship(lazy="joined")

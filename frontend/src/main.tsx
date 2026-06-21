@@ -1,11 +1,12 @@
+import { registerSW } from 'virtual:pwa-register'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SnackbarProvider } from 'notistack'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
-import { SnackbarProvider } from 'notistack'
-import { registerSW } from 'virtual:pwa-register'
 import './index.css'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 import { router } from './router'
-import { CssBaseline, ThemeProvider } from '@mui/material';
 import { theme } from './theme'
 
 import '@fontsource/inter/400.css'
@@ -17,7 +18,20 @@ import '@fontsource/jetbrains-mono/500.css'
 
 registerSW({ immediate: true })
 
-createRoot(document.getElementById('root')!).render(
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+})
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Root element #root not found')
+
+createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -26,7 +40,9 @@ createRoot(document.getElementById('root')!).render(
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         autoHideDuration={4000}
       >
-        <RouterProvider router={router} />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
       </SnackbarProvider>
     </ThemeProvider>
   </StrictMode>,

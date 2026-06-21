@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -9,6 +8,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { useSnackbar } from 'notistack'
+import { useEffect, useRef, useState } from 'react'
 import {
   Form,
   Link as RouterLink,
@@ -16,7 +17,6 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import { useSnackbar } from 'notistack'
 import { apiClient } from '../api/client'
 import type { LoginActionData } from '../auth/actions'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
@@ -27,11 +27,8 @@ export function LoginPage() {
   const submitting = navigation.state === 'submitting'
 
   const unverifiedEmail =
-    actionData && 'unverifiedEmail' in actionData
-      ? actionData.unverifiedEmail
-      : null
-  const errorMessage =
-    actionData && 'error' in actionData ? actionData.error : null
+    actionData && 'unverifiedEmail' in actionData ? actionData.unverifiedEmail : null
+  const errorMessage = actionData && 'error' in actionData ? actionData.error : null
 
   const [searchParams, setSearchParams] = useSearchParams()
   const { enqueueSnackbar } = useSnackbar()
@@ -40,10 +37,9 @@ export function LoginPage() {
     if (oauthErrorHandled.current) return
     if (searchParams.get('error') !== 'oauth_failed') return
     oauthErrorHandled.current = true
-    enqueueSnackbar(
-      'No se pudo iniciar sesión con Google. Inténtalo de nuevo.',
-      { variant: 'error' },
-    )
+    enqueueSnackbar('No se pudo iniciar sesión con Google. Inténtalo de nuevo.', {
+      variant: 'error',
+    })
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams, enqueueSnackbar])
 
@@ -55,10 +51,9 @@ export function LoginPage() {
   async function handleResendVerify() {
     if (!unverifiedEmail) return
     setResending(true)
-    const { response } = await apiClient.POST(
-      '/api/auth/request-verify-token',
-      { body: { email: unverifiedEmail } },
-    )
+    const { response } = await apiClient.POST('/api/auth/request-verify-token', {
+      body: { email: unverifiedEmail },
+    })
     setResending(false)
     if (response.ok) {
       enqueueSnackbar('Correo reenviado. Revisa tu bandeja de entrada.', {
@@ -110,12 +105,7 @@ export function LoginPage() {
               </Button>
             </Alert>
           )}
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={submitting || !canSubmit}
-            fullWidth
-          >
+          <Button type="submit" variant="contained" disabled={submitting || !canSubmit} fullWidth>
             {submitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </Button>
         </Stack>
