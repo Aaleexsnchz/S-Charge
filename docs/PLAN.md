@@ -2,7 +2,9 @@
 
 ## Context
 
-Master's thesis (IoT): a **PWA** for managing EV charging. Combines the **REVE API** (real Spanish charging network: location, occupation, price) with **ACN-Data** (real historical sessions from Caltech, for analytics/simulation/algorithms). Users can also register their own private charging points.
+Master's thesis (IoT): a **PWA** for managing EV charging. It unifies, under one app, what is today fragmented across each operator's own application, and improves on the Spanish government's REVE app (which only lets you view points and plan a route). It seeds the real Spanish network from the **REVE API** (locations, EVSEs, connectors, tariffs) and adds the functionality REVE lacks: private charging points with paid use, bookings, price/time charging optimisation, charge simulation, and (candidate) AI/agent features. Alongside the app, the thesis includes a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (including the transition to a native mobile app).
+
+**The thesis pillar is the application itself** — its conception, design, full-stack development, deployment, and viability. The charging optimiser and the AI/agent features are *value-add functionalities of the app*, not separate cores standing apart from it.
 
 **Goal:** a real, deployed, usable application to demo at thesis defense, publicly accessible.
 
@@ -12,15 +14,16 @@ Master's thesis (IoT): a **PWA** for managing EV charging. Combines the **REVE A
 
 | Source | Role | Provides |
 | --- | --- | --- |
-| **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres; live availability is simulated, not relayed. |
-| **ACN-Data** | Modelling dataset (**internal only — never shown in the app**) | Real historical sessions used to fit the distributions behind occupancy simulation and session realism. Analysed in a thesis notebook, not a user-facing screen. |
+| **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres; live availability is simulated by a lightweight synthetic model (not grounded in external data), not relayed. |
 | **REE / PVPC** | Hourly electricity prices (Spain) | Drives owner dynamic pricing (PVPC + margin) and the smart home-charging optimiser. Public API, no token. |
 | **Vehicle catalogue** | Simulation input | Curated table of common EVs in Spain (battery capacity, max AC/DC charging power) seeded from public spec sheets. |
-| **User-generated** | Platform contribution | Private charging points with public/private toggle, bookings, recorded sessions |
+| **User-generated** | Platform contribution | Private charging points with public/private toggle, paid use, bookings, recorded sessions |
 
-REVE provides the real network presence; ACN provides the behavioural realism REVE lacks; PVPC provides the economics.
+REVE provides the real network presence; PVPC provides the economics; user-generated points provide the platform contribution.
 
-**Product framing (2026-06-12).** Two user roles. **Drivers** find points on the map, book them, navigate via Google Maps, simulate a charge for their car model before plugging in, charge their own point on an economically optimised schedule, and review their real session history. **Owners** register points for private or public use, price public ones (PVPC + margin, or fixed), and manage/monitor their points' usage. ACN data powers the simulation machinery behind all of this but is never user-facing content.
+> **ACN-Data was dropped (2026-06-21).** Caltech's historical-session dataset was originally to calibrate occupancy/session realism. It stayed internal-only, never landed (blocked on a token, only a smoke test ran), and added nothing user-facing. It now survives only as a documented *road not taken* in the thesis — see [thesis/indice.md](thesis/indice.md). Live availability is now a simple synthetic model, claimed only as illustrative.
+
+**Product framing (2026-06-12, updated 2026-06-21).** Two user roles. **Drivers** find points on the map, book them, navigate via Google Maps, simulate a charge for their car model before plugging in, charge their own point on an economically optimised schedule, pay for public sessions from a simulated wallet, and review their real session history. **Owners** register points for private or public use, price public ones (PVPC + margin, or fixed), and manage/monitor their points' usage and revenue.
 
 ---
 
@@ -55,13 +58,12 @@ REVE provides the real network presence; ACN provides the behavioural realism RE
   │  PostgreSQL                      │ ◄─────── │  ETL scripts          │
   │  users · bookings                │ one-shot │  (backend/scripts/)   │
   │  charging_points · connectors    │  writes  │   seed_reve.py        │
-  │  tariffs · evse_status · acn_*   │          │   import_acn.py       │
+  │  tariffs · vehicles · prices     │          │   fetch_pvpc.py       │
   └──────────────────────────────────┘         └───────────────────────┘
 ```
 
 - **REVE: seeded into Postgres via one-shot ETL.** REVE's public API caps at 5 requests/hour, which makes a live-mirror architecture impractical. We bootstrap the catalogue once into Postgres and own the data going forward.
-- **Live availability is simulated**, not relayed from REVE — driven by ACN-Data utilisation distributions in Phase 4.
-- **ACN: bulk-imported once via ETL** — same pattern as REVE seed.
+- **Live availability is simulated** by a lightweight synthetic model (Phase 4), not relayed from REVE and not grounded in any external dataset — presented as illustrative only.
 - **User-contributed points** stored in `charging_points` alongside REVE-seeded points, distinguished by a `source` column.
 - **OCPI 2.2.1-aligned schema** so future commercial CPO agreements plug in by extending the `source` enum.
 
@@ -71,12 +73,12 @@ REVE provides the real network presence; ACN provides the behavioural realism RE
 
 1. **Map** — REVE + public user points with filters (availability, connector, price), Google Maps redirect
 2. **Point detail** — real data from REVE + booking
-3. **Pre-charge simulation** — driver picks car model + connector (+ SoC range): predicted duration, energy, cost; session realism calibrated on ACN distributions
+3. **Pre-charge simulation** — driver picks car model + connector (+ SoC range): predicted duration, energy, cost (spec/physics-based: power = min(vehicle, connector), AC/DC-aware taper)
 4. **Smart home charging** — at an owned point: cheapest charging schedule for tonight given PVPC hourly prices and departure time
-5. **Private charging points** — user-registered, private or public; public ones priced as PVPC + margin or fixed (commission tracking: stretch)
-6. **Driver dashboard** — bookings + recorded session history (energy, duration, cost)
-7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue) and management
-8. **ACN analysis notebook** — thesis material (dataset validation + conclusions), outside the app
+5. **Private charging points + paid use** — user-registered, private or public; public ones priced as PVPC + margin or fixed; drivers pay from a simulated wallet/ledger, owners credited (real payment processing: stretch)
+6. **Driver dashboard** — bookings + recorded session history (energy, duration, cost) + wallet balance/transactions
+7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue from the ledger) and management
+8. **AI/agent assistant** — *candidate, time-gated* — value-add features over the app's own APIs (see [ideas-backlog.md](ideas-backlog.md))
 
 ---
 
@@ -105,6 +107,8 @@ Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief de
 
 **Revision (2026-06-16):** REVE operational-status mirror dropped. *Operational status* (working/broken) is now assumed always-operational and not modelled; *availability* (free/in use) becomes a `status` column on the EVSE (OCPI value, simulated in Phase 4), and the map's `aggregate_status` is now available/occupied/unknown. A post-seed incremental refresh (`refresh_reve.py`) keeps tariffs fresh under the rate cap. Pricing strategy fixed: serve the real REVE tariff; where none exists, estimate `PVPC + margin` (recommended default AC +0.22 / DC +0.32 €/kWh, owner-overridable). PVPC history backfilled. See [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md).
 
+**Revision (2026-06-21) — scope pivot: the application *is* the thesis.** ACN-Data is dropped entirely (code deleted; kept only as a documented road-not-taken). The thesis core is no longer a novel data combination or a real-session-grounded simulation — it is the **application itself**: a unified, multi-provider EV-charging PWA that improves on REVE, end-to-end built, deployed, and argued viable. The charging optimiser and the (candidate) AI/agent features are value-add functionalities, not separate cores. Concrete changes below: **Phase 3 dropped**; **Phase 4** loses ACN distribution-fitting (occupancy becomes a simple synthetic model) and is reframed as a feature, not "the academic core"; **Phase 5** gains a simulated **wallet/ledger** for paid use; **Phase 6** gains a deployment & scaling strategy; **Phase 7** gains business-plan, deployment and roadmap chapters; **new Phase 8** is a time-gated AI assistant. The thesis outline lives in [thesis/indice.md](thesis/indice.md); deferred ideas in [ideas-backlog.md](ideas-backlog.md).
+
 Slice-by-slice record: [phases](phases).
 
 ### Phase 1 — Foundation (22–28h) — done
@@ -129,33 +133,26 @@ REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap
 - [x] Map renders with filters (availability, connector, price band), point detail, Google Maps "Navegar" deep link
 - [x] Tested on real iPhone + Android
 
-### Phase 3 — ACN import + internal analysis (18–24h)
+### Phase 3 — ACN import + internal analysis — DROPPED (2026-06-21)
 
-ETL pipeline for ACN-Data plus a thesis analysis notebook. Reframed 2026-06-12: ACN is internal modelling data, so no user-facing analytics screen — the dashboard originally planned here was built, then deliberately removed in favour of a notebook (see phase doc).
+**Dropped in the scope pivot.** ACN-Data (Caltech's historical-session dataset, originally to calibrate occupancy/session realism) added nothing user-facing, never landed (blocked on a token; only a smoke test ran), and is no longer part of the thesis core. The phase doc and all ACN code were deleted; ACN survives only as a documented road-not-taken in [thesis/indice.md](thesis/indice.md).
 
-**Done when:**
+### Phase 4 — Simulation + Algorithm (28–36h)
 
-- [ ] ACN imported; row counts match source
-- [ ] Core tables populated and indexed
-- [ ] Analysis notebook (energy, arrivals heatmap, cross-site) produces thesis figures + conclusions
-- [ ] Data validation doc (nulls, gaps, ranges) written
-
-### Phase 4 — Simulation + Algorithm (40–50h)
-
-Vehicle catalogue, PVPC price ingest, distribution fitting, per-car simulation, smart home-charging optimiser. **The academic core of the thesis.**
+Vehicle catalogue, PVPC price ingest, per-car pre-charge simulation, smart home-charging optimiser, and a lightweight synthetic availability model. A **value-add feature** of the app — the optimiser deepens the product and gives the thesis an evaluable algorithm chapter, but it is not the thesis on its own.
 
 **Done when:**
 
 - [x] `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
 - [x] PVPC hourly prices ingested daily from REE's public API (cron, same tick pattern as REVE)
-- [ ] Distribution fitting on ACN produces occupancy/arrival parameters; simulated availability drives map status
-- [ ] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price)
+- [ ] Lightweight synthetic availability model drives the map's `aggregate_status` (illustrative only, not grounded in external data)
+- [ ] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price); spec/physics-based (power = min(vehicle, connector), AC/DC taper)
 - [ ] `/api/recommend`: owned point + departure time + energy needed → cheapest PVPC charging schedule + alternatives
 - [ ] Simulation UI shows the predicted session; 1–2 page algorithm write-up reusable in the thesis
 
-### Phase 5 — Private points, Bookings + Sessions (26–34h)
+### Phase 5 — Private points, Bookings, Sessions + Wallet (30–40h)
 
-Private point CRUD with owner pricing, bookings, session recording, driver history, owner dashboard. Re-expanded 2026-06-12: owner per-point stats are core product (commission tracking stays stretch).
+Private point CRUD with owner pricing, bookings, session recording, driver history, owner dashboard, and a **simulated wallet/ledger** for paid use. Re-expanded 2026-06-12 (owner per-point stats are core); 2026-06-21 adds the wallet (real payment processing stays stretch).
 
 **Done when:**
 
@@ -163,11 +160,12 @@ Private point CRUD with owner pricing, bookings, session recording, driver histo
 - [ ] Public points priced as PVPC + margin (live) or fixed €/kWh, owner's choice
 - [ ] Booking conflict detection rejects overlaps; user can view/cancel bookings
 - [ ] Completed bookings and home smart-charges record a session (energy, duration, cost); driver sees history in `/sessions`
-- [ ] Owner dashboard: per-point sessions, energy delivered, revenue
+- [ ] Wallet/ledger: per-user balance, top-up (simulated), a completed paid session debits the driver at the point's price and credits the owner; both see the transaction history
+- [ ] Owner dashboard: per-point sessions, energy delivered, revenue (sourced from the ledger)
 
-### Phase 6 — Polish + Deployment (20–25h)
+### Phase 6 — Polish + Deployment (22–28h)
 
-Responsive QA, error states, deploy, tests.
+Responsive QA, error states, deploy, tests, and a written deployment & scaling strategy.
 
 **Done when:**
 
@@ -177,19 +175,25 @@ Responsive QA, error states, deploy, tests.
 - [ ] Deployed at real HTTPS domain
 - [ ] PWA installable from production on iOS + Android
 - [ ] At least one external user registers + uses the app
+- [ ] Deployment & scaling strategy written: architecture-for-scale + cost/unit-economics model (the live deploy stays single-instance; the strategy is the thesis artifact)
 
-### Phase 7 — Thesis writing (40–60h)
+### Phase 7 — Thesis writing (45–65h)
 
-Document, diagram, defend.
+Document, diagram, defend. Includes the business and strategy chapters that elevate the work beyond a pure implementation.
 
 **Done when:**
 
 - [ ] Full draft: intro, SoTA, architecture, data, implementation, results, conclusions
 - [ ] Architecture + ER diagrams, UI screenshots included
-- [ ] Algorithm chapter: formulation, pseudocode, evaluation on ACN
+- [ ] Algorithm chapter: formulation, pseudocode, evaluation of the charging optimiser
+- [ ] Business plan & viability chapter; deployment/scaling chapter; future-roadmap chapter (incl. native mobile)
 - [ ] ≥20 references
 - [ ] Defense slides (15–20) + demo plan
 - [ ] Tutor approves final version
+
+### Phase 8 — AI/agent assistant (candidate, time-gated)
+
+A value-add feature, **not a pillar** — built only after Phase 6 ships and only if time allows; the defense demo must never depend on it. Concrete ideas (NL charging/trip assistant, explain-the-schedule, conversational point search, etc.) live in [ideas-backlog.md](ideas-backlog.md); depth is decided when reached, against remaining hours.
 
 ---
 
@@ -198,15 +202,17 @@ Document, diagram, defend.
 Only after Phase 6 (deployed, demo-ready) and only if hours remain. None of these are committed scope; the defense demo must not depend on them.
 
 - **Route optimisation (~10–15h, minimal version).** Given origin/destination, fetch the route polyline from a free routing API (OSRM / OpenRouteService), corridor-query seeded points along it, rank candidate stops by detour + price + Phase 4 predicted session. No consumption modelling, no custom routing engine — those would be 30–40h and are out of scope for this timeline.
-- **Owner analytics (from Phase 5 trim).** Revenue, utilisation, and commission tracking on the owner dashboard.
+- **Real payments.** Replace the simulated wallet/ledger with a real processor (e.g. Stripe test mode) + commission tracking on the owner dashboard.
+- **AI/agent assistant.** Tracked as Phase 8; the full idea list is in [ideas-backlog.md](ideas-backlog.md).
 
 ---
 
 ## What makes this thesis-worthy
 
-1. Two real data sources combined in a novel way (REVE + ACN)
-2. Real statistical simulation layer grounded in real sessions
-3. Optimisation algorithm with evaluable output
-4. Platform model (user-contributed infrastructure)
-5. Actually deployed at a real URL, installable as PWA
-6. Academically honest about what is real vs. simulated
+1. **The application itself** — a real, unified, multi-provider EV-charging PWA that improves on the government REVE app (which only views points and plans routes), built end-to-end: conception, design, full-stack implementation, deployment.
+2. **Platform model** — user-contributed charging infrastructure with paid use, bookings and a wallet/ledger economy.
+3. **Charging optimiser** — a price/time optimisation algorithm over real PVPC prices, with evaluable output (a value-add feature, written up in the algorithm chapter).
+4. **Deployed and usable** — at a real HTTPS URL, installable as a PWA, with at least one real external user.
+5. **Business & viability** — a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (incl. native mobile) that argue the product beyond the prototype.
+6. **Academically honest** — explicit about what is real vs. simulated (e.g. availability is illustrative, payments are a simulated ledger), and about the road not taken (ACN-Data).
+7. **Candidate AI/agent layer** — natural-language/agent features over the app's own APIs as a differentiator (time-gated; the defense never depends on it).
