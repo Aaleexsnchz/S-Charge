@@ -50,11 +50,12 @@ Concept-level write-ups (in Spanish) that feed the thesis document; each links o
 
 | Chapter | Covers |
 | --- | --- |
-| [thesis/auth.md](thesis/auth.md) | Identity, password storage, session, OAuth, verification, audit, rate limiting. |
-| [thesis/data-model.md](thesis/data-model.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
+| [thesis/indice.md](thesis/indice.md) | Thesis structure: chapter outline + the core idea of each chapter (the "memoria" table of contents). |
+| [thesis/autenticacion.md](thesis/autenticacion.md) | Identity, password storage, session, OAuth, verification, audit, rate limiting. |
+| [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
 | [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |
-| [thesis/seed-scheduling.md](thesis/seed-scheduling.md) | Why cron, the per-tick contract, bootstrap → steady state, the WSL2 idle caveat. |
-| [thesis/session-theft.md](thesis/session-theft.md) | Threat model for infostealer + cookie replay; what an app can and cannot defend. |
+| [thesis/planificacion-de-siembra.md](thesis/planificacion-de-siembra.md) | Why cron, the per-tick contract, bootstrap → steady state, the WSL2 idle caveat. |
+| [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) | Threat model for infostealer + cookie replay; what an app can and cannot defend. |
 
 ## Project management
 
@@ -63,7 +64,8 @@ Planning and status; not part of the Diátaxis taxonomy.
 | Doc | Covers |
 | --- | --- |
 | [PLAN.md](PLAN.md) | Scope, phases, acceptance criteria, estimates. Living doc. |
-| [phases/](phases/) | Per-phase task plans ([1](phases/phase-1.md) · [2](phases/phase-2.md) · [3](phases/phase-3.md) · [4](phases/phase-4.md)). Frozen once a phase ships. |
+| [phases/](phases/) | Per-phase task plans ([1](phases/phase-1.md) · [2](phases/phase-2.md) · [4](phases/phase-4.md); Phase 3 dropped). Frozen once a phase ships. |
+| [ideas-backlog.md](ideas-backlog.md) | Deferred ideas (AI/agent features, real payments, route optimisation) parked for the "decide later" moment. |
 | [NEXT-STEPS.md](NEXT-STEPS.md) | Working handoff — where to start next session. |
 
 ## Maintenance

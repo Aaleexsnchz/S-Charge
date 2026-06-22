@@ -1,18 +1,19 @@
 # TFM — EV Charging PWA
 
-A master's thesis project (IoT): a Progressive Web App for managing EV charging points. Combines real data from the **REVE API** (the Spanish public charging network) with historical sessions from **ACN-Data** (the Adaptive Charging Network research dataset, used internally for modelling), plus user-contributed private charging points with simulated occupation.
+A master's thesis project (IoT): a Progressive Web App for managing EV charging points. It unifies, under one app, what is today fragmented across each operator's own application, and improves on Spain's public **REVE** app (which only views points and plans routes). It seeds the real Spanish network from the **REVE API** and adds the functionality REVE lacks: user-contributed private charging points with paid use, bookings, price/time charging optimisation over real PVPC prices, charge simulation, and candidate AI/agent features. The thesis pillar is the application itself, alongside a business plan, a deployment/scaling strategy, and a roadmap.
 
 ## Status
 
 | Phase | Status |
 | --- | --- |
 | 1 — Foundation | `[x]` done |
-| 2 — REVE seed + Map | `[~]` shipped + QA'd on real devices; seed cron mid-run (tariffs); post-seed incremental refresh ready |
-| 3 — ACN import (internal) | `[~]` ingest backend shipped; real import + analysis notebook need `ACN_API_TOKEN` |
-| 4 — Simulation + Algorithm | `[~]` slices 1–2 shipped (vehicle catalogue + PVPC ingest); 3–5 pending |
-| 5 — Private points, Bookings + Sessions | `[ ]` not started |
+| 2 — REVE seed + Map | `[x]` shipped + QA'd on real devices; seed complete; tariff refresh on cron |
+| 3 — ACN import | `[-]` **dropped** (scope pivot 2026-06-21; ACN kept only as a documented road-not-taken) |
+| 4 — Simulation + Algorithm | `[~]` slices 1–2 shipped (vehicle catalogue + PVPC ingest); synthetic availability + simulate + recommend pending |
+| 5 — Private points, Bookings, Sessions + Wallet | `[ ]` not started |
 | 6 — Polish + Deployment | `[ ]` not started |
 | 7 — Thesis writing | `[ ]` not started |
+| 8 — AI/agent assistant | `[ ]` candidate, time-gated (never on the defense critical path) |
 
 See [docs/PLAN.md](docs/PLAN.md) for phase descriptions, acceptance criteria, and estimates.
 

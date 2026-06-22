@@ -1,8 +1,10 @@
 # Phase 4 — Simulation + Algorithm
 
+> **Revision (2026-06-21) — ACN dropped.** Slice 3 no longer fits distributions on ACN; occupancy becomes a **lightweight synthetic** availability model (deterministic-seedable, illustrative only, not grounded in external data). Slices 4–5 lose all ACN-calibration language — `/api/simulate` is spec/physics-based and `/api/recommend` runs purely on the PVPC curve, so both are unblocked (no token). The phase is reframed from "the academic core" to a value-add feature; it still yields the algorithm chapter. See [PLAN.md](../PLAN.md) revision 2026-06-21.
+
 > **Revision (2026-06-16).** PVPC history backfilled (2026-01-01 → today) via the existing `import_pvpc_prices`. Pricing strategy decided (input to Slices 4–5): serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin` with recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Slice 2 still open: install the daily PVPC cron and add gap-backfill to `fetch_pvpc.py`. See [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
 
-Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, distribution fitting on ACN, per-car pre-charge simulation, smart home-charging optimiser. The academic core. Slices 3–5 depend on the real ACN import (token) for calibration; slices 1–2 have no external dependency.
+Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, a lightweight synthetic availability model, per-car pre-charge simulation, smart home-charging optimiser. A value-add feature of the app (yields the algorithm chapter). No external dependency — `/api/simulate` is spec-based and `/api/recommend` runs on the PVPC curve; the original ACN-calibration plan (Slice 3) is superseded per the revision note above.
 
 ## Slice 1 — Vehicle catalogue
 
@@ -23,13 +25,15 @@ Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, distribution fi
 - [x] `GET /api/prices/today` (+ `?day=`, Madrid-local) + route tests
 - [ ] Daily cron line installed + documented in thesis seed-scheduling chapter
 
-## Slice 3 — Distribution fitting + occupancy simulation (needs ACN import)
+## Slice 3 — Synthetic availability simulation
 
-**Acceptance:** a fitting job derives arrival-rate and session-duration parameters from `acn_sessions` (per weekday × hour); a deterministic-seedable simulator drives per-EVSE availability so the map shows live-looking occupancy; parameters persisted, fitting reproducible.
+> Reframed 2026-06-21: no ACN. A lightweight synthetic model replaces distribution fitting; presented as illustrative only.
 
-- [ ] Fitting service over ACN sessions (arrivals by weekday×hour; duration + energy distributions)
+**Acceptance:** a deterministic-seedable simulator drives per-EVSE availability from a simple synthetic model (e.g. time-of-day utilisation curve + seeded noise) so the map shows live-looking occupancy; the model is reproducible and clearly labelled as illustrative, not grounded in real data.
+
+- [ ] Synthetic availability service (time-of-day utilisation; deterministic seed)
 - [ ] Occupancy simulator mapping utilisation to REVE/user EVSEs; map `aggregate_status` reflects it
-- [ ] Unit tests on synthetic data; write-up notes for the thesis algorithm chapter
+- [ ] Unit tests on the seeded model; brief write-up notes for the thesis
 
 ## Slice 4 — `/api/simulate` + UI
 

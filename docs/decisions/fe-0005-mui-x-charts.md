@@ -13,6 +13,7 @@ related: [fe-0001]
 **Revisions.**
 
 - *2026-06-12* — originally adopted for a user-facing ACN analytics dashboard (Phase 3 slice 3). That dashboard was removed the same day when ACN was demoted to internal modelling data; the library stays for the owner dashboard charts (Phase 5) and the simulation result view (Phase 4). ACN analysis moved to a Jupyter notebook outside the app.
+- *2026-06-21* — ACN dropped entirely (scope pivot; see [PLAN.md](../PLAN.md) revision 2026-06-21). The decision is unchanged: the library stays for the owner dashboard charts (Phase 5) and the simulation result view (Phase 4). No ACN/notebook consumer remains.
 
 **Decision.** In-app charts (owner per-point stats, predicted-session visualisation) render with [MUI X Charts](https://mui.com/x/react-charts/) (community edition, MIT). Small bespoke visuals (e.g. hour-grid heatmaps) are hand-rolled MUI components rather than Pro-tier chart features.
 

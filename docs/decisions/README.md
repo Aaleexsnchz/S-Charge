@@ -12,7 +12,7 @@ ADRs are append-only — when a decision is revised, append a dated revisions bl
 | [auth-0002](auth-0002-cookie-session.md) | Single HttpOnly cookie session, no refresh tokens | Slice 1 |
 | [auth-0003](auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation (verify gate + OAuth-link hash reset) | Slice 3 |
 
-Concept-level summary of what the library and these ADRs deliver: [thesis/auth.md](../thesis/auth.md).
+Concept-level summary of what the library and these ADRs deliver: [thesis/autenticacion.md](../thesis/autenticacion.md).
 
 ## Frontend
 
@@ -31,10 +31,10 @@ Concept-level summaries written for the thesis document, with links to the ADRs 
 
 | File | Coverage |
 | --- | --- |
-| [../thesis/auth.md](../thesis/auth.md) | Auth — identity, password storage, session, OAuth, verification, audit, rate limiting. |
-| [../thesis/data-model.md](../thesis/data-model.md) | Data model — the OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) as mirrored from REVE, and why we own the catalogue instead of proxying. |
-| [../thesis/seed-scheduling.md](../thesis/seed-scheduling.md) | Seed scheduling — why cron, how the per-tick contract works, the lifecycle from bootstrap to steady state, and the WSL2 idle caveat. |
-| [../thesis/session-theft.md](../thesis/session-theft.md) | Session theft and bearer-token replay — threat model for infostealer + cookie replay, what an application can and cannot defend against, DBSC / WebAuthn step-up as the defensive frontier, what this project's session does and explicitly does not. |
+| [../thesis/autenticacion.md](../thesis/autenticacion.md) | Auth — identity, password storage, session, OAuth, verification, audit, rate limiting. |
+| [../thesis/modelo-de-datos.md](../thesis/modelo-de-datos.md) | Data model — the OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) as mirrored from REVE, and why we own the catalogue instead of proxying. |
+| [../thesis/planificacion-de-siembra.md](../thesis/planificacion-de-siembra.md) | Seed scheduling — why cron, how the per-tick contract works, the lifecycle from bootstrap to steady state, and the WSL2 idle caveat. |
+| [../thesis/robo-de-sesion.md](../thesis/robo-de-sesion.md) | Session theft and bearer-token replay — threat model for infostealer + cookie replay, what an application can and cannot defend against, DBSC / WebAuthn step-up as the defensive frontier, what this project's session does and explicitly does not. |
 
 ## Adding a new ADR
 

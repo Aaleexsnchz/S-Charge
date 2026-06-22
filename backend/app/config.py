@@ -32,9 +32,6 @@ class Settings(BaseSettings):
     reve_api_key: str = ""
     reve_api_base_url: str = "https://www.mapareve.es/api/external/v1"
 
-    acn_api_token: str = ""
-    acn_api_base_url: str = "https://ev.caltech.edu/api/v1"
-
     ree_api_base_url: str = "https://apidatos.ree.es"
 
     model_config = SettingsConfigDict(

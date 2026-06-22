@@ -12,6 +12,7 @@ date: 2026-06
 **Revisions.**
 
 - *2026-06 — Biome replaces ESLint + Prettier ([fe-0006](fe-0006-biome.md)).* The per-path `@mui/icons-material` import rule described under *Implementation* below is now enforced by Biome's `noRestrictedImports`, not the ESLint rule referenced there.
+- *2026-06-21 — scope pivot ([PLAN.md](../PLAN.md) revision 2026-06-21).* The *Rationale* below frames the academic contribution as "Phases 3–4 (ACN import, distribution fitting, …)". That framing is superseded: ACN is dropped and the thesis core is now the application itself, with the charging optimiser and AI as value-add features. The MUI decision is unaffected.
 
 **Decision.** The PWA is built with [MUI](https://mui.com) (Material UI) as the component library, styled via [Emotion](https://emotion.sh) (`@emotion/react` + `@emotion/styled`). Theming, typography (Inter + JetBrains Mono via `@fontsource`), and a shared palette are centralised in a single MUI theme. Icons are imported per-path from `@mui/icons-material` (never from the barrel).
 

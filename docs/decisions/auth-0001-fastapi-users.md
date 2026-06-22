@@ -21,4 +21,4 @@ date: 2026-03
 
 - fastapi-users documentation
 - `pwdlib`, `httpx-oauth`
-- [thesis/auth.md](../thesis/auth.md) — concept-level summary of what the library buys us
+- [thesis/autenticacion.md](../thesis/autenticacion.md) — concept-level summary of what the library buys us

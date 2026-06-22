@@ -5,7 +5,7 @@ status: borrador (redacción de la memoria, nivel conceptual)
 
 # Robo de sesión y replay de bearer tokens
 
-La mecánica de sesión descrita en [auth.md](auth.md) defiende contra el modelo de amenazas estándar de una SPA: exfiltración por XSS, CSRF, credential stuffing y abuso de cuentas no verificadas. **No** defiende contra la vía de apropiación de cuentas que domina los informes de incidentes de cuentas de consumo desde 2024 — **el robo de la cookie de sesión por malware de tipo information stealer ejecutándose en la propia máquina del usuario, seguido de su replay desde un navegador controlado por el atacante**. Este capítulo registra por qué existe esa brecha, por qué no puede cerrarse dentro de una aplicación, y dónde se sitúa la frontera defensiva.
+La mecánica de sesión descrita en [auth.md](autenticacion.md) defiende contra el modelo de amenazas estándar de una SPA: exfiltración por XSS, CSRF, credential stuffing y abuso de cuentas no verificadas. **No** defiende contra la vía de apropiación de cuentas que domina los informes de incidentes de cuentas de consumo desde 2024 — **el robo de la cookie de sesión por malware de tipo information stealer ejecutándose en la propia máquina del usuario, seguido de su replay desde un navegador controlado por el atacante**. Este capítulo registra por qué existe esa brecha, por qué no puede cerrarse dentro de una aplicación, y dónde se sitúa la frontera defensiva.
 
 ## La amenaza
 

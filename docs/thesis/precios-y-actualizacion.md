@@ -7,7 +7,7 @@ status: borrador (redacción de la memoria, nivel conceptual)
 ## El problema
 
 REVE se siembra una sola vez en Postgres bajo el límite de 5 peticiones/hora
-(véase [seed-scheduling.md](seed-scheduling.md)). De ahí surgían tres dudas
+(véase [seed-scheduling.md](planificacion-de-siembra.md)). De ahí surgían tres dudas
 sobre el precio que mostramos:
 
 1. Si la tarifa se obtiene una vez, ¿no quedará permanentemente desactualizada?
