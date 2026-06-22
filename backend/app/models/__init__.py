@@ -1,4 +1,3 @@
-from app.models.acn import AcnSession
 from app.models.charging_point import (
     ChargingPoint,
     ChargingPointSource,
@@ -13,7 +12,6 @@ from app.models.user import OAuthAccount, User
 from app.models.vehicle import Vehicle
 
 __all__ = [
-    "AcnSession",
     "ChargingPoint",
     "ChargingPointSource",
     "Connector",
