@@ -101,7 +101,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             user_agent=request.headers.get("user-agent") if request else None,
         )
 
-    async def oauth_callback(  # type: ignore[override]  # noqa: PLR0913 — fastapi-users signature
+    async def oauth_callback(  # type: ignore[override]
         self,
         oauth_name: str,
         access_token: str,
