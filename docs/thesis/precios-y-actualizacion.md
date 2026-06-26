@@ -42,16 +42,38 @@ Una vez completada la siembra inicial, cada tick refresca **solo
 suficiente para importar. El catálogo físico (`/cpos`, `/locations`) se congela en
 la instantánea de la siembra —no contiene precios, varía rara vez y refrescarlo
 solo robaría presupuesto a las tarifas; el coste asumido es que las estaciones
-añadidas a REVE tras la siembra no aparecerán. El refresco usa una ventana
-temporal `[date_from, date_to]`: `date_from` es la marca de agua del último ciclo drenado;
-`date_to` se congela al iniciar el ciclo para que la paginación sea estable entre
-ticks. Como REVE permite filtrar por fecha de actualización, cada ciclo trae solo
-lo que cambió — decenas de tarifas al día frente a una capacidad de ~12 000/día.
-La marca de agua solo avanza cuando la ventana se drena por completo, así que un
-pico (p. ej. 600 cambios) simplemente se reparte en varios ticks sin perder nada;
-los `upsert` idempotentes absorben cualquier reproceso en el borde. El diseño es
-correcto aunque REVE ignore `date_to` o no ordene los resultados: lo que se escape
-de un ciclo lo recoge el siguiente, que arranca donde terminó el anterior.
+añadidas a REVE tras la siembra no aparecerán. El endpoint solo acepta `date_from`
+(más `page`/`limit`): **no existe `date_to`**, y devuelve todos los conectores cuya
+tarifa cambió desde ese instante. Cada tick fija `date_from` en la marca de agua,
+pagina el resultado (entre ticks bajo presupuesto) y, al drenarlo, avanza la marca
+de agua al instante en que arrancó el ciclo, de modo que el siguiente recoge todo
+lo posterior. Como solo trae lo cambiado, son decenas de tarifas al día frente a
+una capacidad de ~12 000/día; los `upsert` idempotentes absorben cualquier
+reproceso en el borde y una página mayor que el presupuesto se reanuda en el
+siguiente tick.
+
+**Por qué la marca de agua no puede quedarse atrás.** Lo que pesa no es la
+antigüedad absoluta de `date_from`, sino cuánto ha cambiado **entre `date_from` y
+ahora**: una marca de agua reciente es un resultado pequeño y barato; una que ha
+quedado días atrás obliga a REVE a recorrer/devolver demasiado y el gateway agota
+el tiempo (`504`). Lo confirmamos con pruebas controladas (mismas condiciones,
+variando un solo parámetro): `date_from` de hace ~100 h, ~20 h y horas intermedias
+daban `504`, mientras que `date_from = ahora − 3 h` respondía `200`; y `date_to`,
+al no ser un parámetro, no cambiaba nada. En junio de 2026 un fallo puntual de REVE
+congeló la marca de agua y, al no avanzar, el hueco creció día a día hasta volverse
+irrecuperable (cada consulta abarcaba ya días de cambios).
+
+**Recuperación sin bloqueo.** Como sin `date_to` no se puede trocear un rango
+antiguo, un `504` con la marca de agua vieja se resuelve **saltándola a
+`ahora − REVE_REFRESH_LOOKBACK_HOURS`** (2 h por defecto, un tamaño que sí responde
+`200`) y siguiendo; el tramo saltado es irrecuperable por este endpoint, pero es
+justo un periodo en el que apenas cambió nada. Un `504` con la marca de agua **ya
+reciente** se trata como un fallo transitorio de REVE: se deja igual para
+reintentar en el siguiente tick, sin saltar ni perder datos. Un `429` detiene el
+tick. El reintento del cliente se desactiva aquí (`max_retries=0`): bajo 5
+llamadas/hora no compensa gastar una segunda llamada en un `504`. Cada salto se
+audita (`reve_refresh_jumped_to_recent`). Así, el fallo puntual que en su día
+bloqueó el refresco para siempre ahora se autocorrige en el siguiente tick.
 
 Un matiz en el traspaso siembra→refresco: como la siembra es **no atómica** (con
 presupuesto de 5 llamadas/hora pagina durante días), una tarifa de la página 1

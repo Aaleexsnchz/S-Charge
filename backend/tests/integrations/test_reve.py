@@ -57,6 +57,45 @@ async def test_get_raises_after_second_429(httpx_mock: HTTPXMock) -> None:
             await client.get("/cpos")
 
 
+async def test_get_retries_once_on_504(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=504)
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos", json={"data": []})
+
+    async with ReveClient(
+        api_key=API_KEY, base_url=BASE_URL, max_retry_delay=0
+    ) as client:
+        result = await client.get("/cpos")
+
+    assert result == {"data": []}
+    assert len(httpx_mock.get_requests()) == 2
+
+
+async def test_get_raises_after_second_504(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=504)
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=504)
+
+    async with ReveClient(
+        api_key=API_KEY, base_url=BASE_URL, max_retry_delay=0
+    ) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.get("/cpos")
+
+    assert len(httpx_mock.get_requests()) == 2
+
+
+async def test_get_retries_once_on_timeout(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_exception(httpx.ReadTimeout("timed out"))
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos", json={"data": []})
+
+    async with ReveClient(
+        api_key=API_KEY, base_url=BASE_URL, max_retry_delay=0
+    ) as client:
+        result = await client.get("/cpos")
+
+    assert result == {"data": []}
+    assert len(httpx_mock.get_requests()) == 2
+
+
 async def test_get_raises_on_other_4xx(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}/cpos", status_code=404)
 

@@ -10,6 +10,15 @@ from app.utils.audit import audit
 
 MAX_PAGE_SIZE = 100
 
+TRANSIENT_STATUS = frozenset(
+    {
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT,
+    }
+)
+
 
 class ReveClient:
     def __init__(
@@ -19,6 +28,7 @@ class ReveClient:
         *,
         timeout: float = 30.0,
         max_retry_delay: float = 30.0,
+        max_retries: int = 1,
     ) -> None:
         key = api_key if api_key is not None else settings.reve_api_key
         url = base_url if base_url is not None else settings.reve_api_base_url
@@ -30,6 +40,7 @@ class ReveClient:
             timeout=timeout,
         )
         self._max_retry_delay = max_retry_delay
+        self._max_retries = max_retries
 
     async def __aenter__(self) -> "ReveClient":
         return self
@@ -41,16 +52,46 @@ class ReveClient:
         await self._client.aclose()
 
     async def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        response = await self._client.get(path.lstrip("/"), params=params)
-        if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-            delay = self._retry_after_seconds(response)
-            audit("reve_rate_limited_retry", path=path, delay=delay)
-            await asyncio.sleep(delay)
-            response = await self._client.get(path.lstrip("/"), params=params)
-        if response.is_error:
-            audit("reve_request_failed", path=path, status=response.status_code)
-            response.raise_for_status()
-        return response.json()
+        target = path.lstrip("/")
+        attempt = 0
+        while True:
+            try:
+                response = await self._client.get(target, params=params)
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                if attempt >= self._max_retries:
+                    audit("reve_request_failed", path=path, error=type(exc).__name__)
+                    raise
+                delay = self._backoff_seconds(attempt)
+                audit(
+                    "reve_transient_retry",
+                    path=path,
+                    error=type(exc).__name__,
+                    delay=delay,
+                )
+                await asyncio.sleep(delay)
+                attempt += 1
+                continue
+
+            if response.status_code in TRANSIENT_STATUS and attempt < self._max_retries:
+                if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+                    delay = self._retry_after_seconds(response)
+                    audit("reve_rate_limited_retry", path=path, delay=delay)
+                else:
+                    delay = self._backoff_seconds(attempt)
+                    audit(
+                        "reve_transient_retry",
+                        path=path,
+                        status=response.status_code,
+                        delay=delay,
+                    )
+                await asyncio.sleep(delay)
+                attempt += 1
+                continue
+
+            if response.is_error:
+                audit("reve_request_failed", path=path, status=response.status_code)
+                response.raise_for_status()
+            return response.json()
 
     async def get_paginated(
         self,
@@ -85,3 +126,6 @@ class ReveClient:
             return min(float(header), self._max_retry_delay)
         except ValueError:
             return 2.0
+
+    def _backoff_seconds(self, attempt: int) -> float:
+        return min(2.0 * (2**attempt), self._max_retry_delay)
