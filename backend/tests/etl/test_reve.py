@@ -302,6 +302,51 @@ async def test_import_tariffs_skips_unknown_connector(
     assert connector_count == 0
 
 
+async def test_import_tariffs_nulls_implausible_price(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=[
+            {
+                "evse_id": "evse-1",
+                "connector_id": "conn-1",
+                "tariffs": [
+                    {
+                        "id": "tariff-outlier",
+                        "currency": "EUR",
+                        "elements": [
+                            {
+                                "price_components": [
+                                    {"type": "ENERGY", "price": 8676.82, "step_size": 1}
+                                ]
+                            }
+                        ],
+                        "last_tariff_updated": "2026-04-20T12:00:00Z",
+                    }
+                ],
+                "last_tariff_updated": "2026-04-20T12:00:00Z",
+            }
+        ],
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+        await import_tariffs(client, db_session)
+
+    tariff = (await db_session.execute(select(Tariff))).scalar_one()
+    assert tariff.source_id == "tariff-outlier"
+    assert tariff.price_per_kwh is None
+
+    connector = (await db_session.execute(select(Connector))).scalar_one()
+    assert connector.tariff_id == tariff.id
+
+
 def _tariff_row(last_tariff_updated: str | None) -> dict[str, Any]:
     return {"tariffs": [{"id": "t", "last_tariff_updated": last_tariff_updated}]}
 

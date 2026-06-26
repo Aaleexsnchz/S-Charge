@@ -37,6 +37,17 @@ def _decimal_or_none(value: str | float | None) -> Decimal | None:
     return Decimal(str(value))
 
 
+MAX_PLAUSIBLE_TARIFF_EUR_PER_KWH = Decimal("2")
+
+
+def _plausible_price(value: Decimal | None) -> Decimal | None:
+    if value is None:
+        return None
+    if value < 0 or value > MAX_PLAUSIBLE_TARIFF_EUR_PER_KWH:
+        return None
+    return value
+
+
 def _ensure_list(value: Any) -> list[dict[str, Any]]:
     if value is None:
         return []
@@ -298,15 +309,22 @@ async def _upsert_connector_tariff(
     price_components = _energy_price_component(raw_tariff.get("elements"))
     is_energy = bool(price_components)
 
+    raw_price = _decimal_or_none(price_components.get("price")) if is_energy else None
+    price_per_kwh = _plausible_price(raw_price)
+    if raw_price is not None and price_per_kwh is None:
+        logger.warning(
+            "reve_tariff_implausible_price source_id=%s price=%s",
+            raw_tariff["id"],
+            raw_price,
+        )
+
     tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
         "source_id": raw_tariff["id"],
         "currency": raw_tariff["currency"],
         "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
         "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
-        "price_per_kwh": _decimal_or_none(price_components.get("price"))
-        if is_energy
-        else None,
+        "price_per_kwh": price_per_kwh,
         "price_component_type": price_components.get("type"),
         "vat_percentage": _decimal_or_none(price_components.get("vat")),
         "step_size": price_components.get("step_size"),
