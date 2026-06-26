@@ -1,7 +1,7 @@
 import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Form, Link as RouterLink, useActionData, useNavigation } from 'react-router'
-import type { ForgotPasswordActionData } from '../auth/actions'
+import type { ForgotPasswordActionData } from './actions'
 
 export function ForgotPasswordPage() {
   const actionData = useActionData() as ForgotPasswordActionData | undefined

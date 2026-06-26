@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
 import './index.css'
 import { CssBaseline, ThemeProvider } from '@mui/material'
-import { router } from './router'
+import { router } from './app/routes'
 import { theme } from './theme'
 
 import '@fontsource/inter/400.css'

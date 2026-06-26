@@ -2,7 +2,7 @@ import { Button, Stack, Typography } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
-import { apiClient } from '../api/client'
+import { apiClient } from '@/lib/api/client'
 
 export function CheckEmailPage() {
   const [searchParams] = useSearchParams()

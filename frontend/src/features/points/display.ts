@@ -1,4 +1,4 @@
-import type { AggregateStatus } from '../map/types'
+import type { AggregateStatus } from '@/features/map/types'
 
 export const STANDARD_LABELS: Record<string, string> = {
   IEC_62196_T2: 'Tipo 2',

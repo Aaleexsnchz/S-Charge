@@ -1,7 +1,7 @@
 import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Form, Link as RouterLink, useActionData, useNavigation } from 'react-router'
-import type { AuthActionError } from '../auth/actions'
+import type { AuthActionError } from './actions'
 
 export function RegisterPage() {
   const actionData = useActionData() as AuthActionError | undefined

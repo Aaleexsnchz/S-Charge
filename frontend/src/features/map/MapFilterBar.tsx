@@ -1,5 +1,5 @@
 import { Box, Chip } from '@mui/material'
-import { standardLabel } from '../points/display'
+import { standardLabel } from '@/features/points/display'
 import type { MapFilters } from './types'
 
 const STANDARD_OPTIONS = ['IEC_62196_T2', 'IEC_62196_T2_COMBO', 'CHADEMO']

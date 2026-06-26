@@ -1,6 +1,6 @@
 import { Box, Button, Container, Stack, Typography } from '@mui/material'
 import { Form, useRouteLoaderData } from 'react-router'
-import type { RootLoaderData } from '../auth/loaders'
+import type { RootLoaderData } from '@/features/auth/loaders'
 
 export function ProfilePage() {
   const data = useRouteLoaderData('root') as RootLoaderData | undefined

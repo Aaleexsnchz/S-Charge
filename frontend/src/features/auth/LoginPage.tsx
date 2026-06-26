@@ -17,9 +17,9 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import { apiClient } from '../api/client'
-import type { LoginActionData } from '../auth/actions'
-import { GoogleSignInButton } from '../components/GoogleSignInButton'
+import { apiClient } from '@/lib/api/client'
+import type { LoginActionData } from './actions'
+import { GoogleSignInButton } from './GoogleSignInButton'
 
 export function LoginPage() {
   const actionData = useActionData() as LoginActionData | undefined

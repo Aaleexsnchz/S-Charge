@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
-import '../styles/layout.css'
+import '@/styles/layout.css'
 
 export function RootLayout() {
   return (

@@ -2,7 +2,7 @@ import { CircularProgress, Stack, Typography } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { apiClient } from '../api/client'
+import { apiClient } from '@/lib/api/client'
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()

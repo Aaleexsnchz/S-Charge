@@ -1,6 +1,6 @@
 import { Container } from '@mui/material'
 import { Navigate, Outlet, useRouteLoaderData } from 'react-router'
-import type { RootLoaderData } from '../auth/loaders'
+import type { RootLoaderData } from './loaders'
 
 export function AuthLayout() {
   const data = useRouteLoaderData('root') as RootLoaderData | undefined

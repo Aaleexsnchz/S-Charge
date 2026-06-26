@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
-import { type ConnectorOption, SimulateDialog } from '../simulate/SimulateDialog'
+import { type ConnectorOption, SimulateDialog } from '@/features/simulate/SimulateDialog'
 import {
   googleMapsDirectionsUrl,
   powerLabel,

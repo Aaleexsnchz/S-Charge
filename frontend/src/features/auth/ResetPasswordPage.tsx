@@ -9,7 +9,7 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import type { ResetPasswordActionData } from '../auth/actions'
+import type { ResetPasswordActionData } from './actions'
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()

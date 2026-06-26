@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
-import type { components } from '../api/schema'
+import { apiClient } from '@/lib/api/client'
+import type { components } from '@/lib/api/schema'
 
 export type SimulationRequest = components['schemas']['SimulationRequest']
 export type SimulationResult = components['schemas']['SimulationResult']

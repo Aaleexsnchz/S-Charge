@@ -10,7 +10,7 @@
     "format": "biome check --write",
     "test": "vitest run --passWithNoTests",
     "preview": "vite preview",
-    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts --default-non-nullable false",
+    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/api/schema.d.ts --default-non-nullable false",
     "gen:pwa-assets": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
   },
   "dependencies": {

@@ -17,8 +17,8 @@ import {
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
   standardLabel,
-} from '../points/display'
-import { usePoint } from '../points/usePoint'
+} from '@/features/points/display'
+import { usePoint } from '@/features/points/usePoint'
 
 type Props = {
   pointId: string | null

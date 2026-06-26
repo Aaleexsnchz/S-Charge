@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs, redirect } from 'react-router'
-import { apiClient } from '../api/client'
+import { apiClient } from '@/lib/api/client'
 
 export type AuthActionError = { error: string }
 

@@ -113,6 +113,25 @@ React + Vite + TypeScript + MUI v7 (Emotion), in [frontend/](frontend/). Package
 
 Per-icon imports from `@mui/icons-material` (never the barrel — breaks tree-shaking). Frontend ADRs go under `fe-NNNN` in [docs/decisions/](docs/decisions/) at the point of each decision.
 
+### Layout
+
+**Feature-first**: a file lives with the feature that owns it; `components/` and `lib/` hold only what is shared across features. Cross-folder imports use the `@/` alias (`@/* → src/*`, configured in [frontend/tsconfig.app.json](frontend/tsconfig.app.json) and [frontend/vite.config.ts](frontend/vite.config.ts)); same-folder imports stay relative (`./`).
+
+```text
+frontend/src/
+├── app/          application shell: router (routes.tsx), root layout, error + not-found pages
+├── features/     one folder per domain (auth, map, points, simulate, home, profile)
+├── components/   shared UI reused across features (never feature-specific)
+├── lib/          library wrappers + HTTP client (lib/api: openapi-fetch client + generated schema)
+├── types/        shared cross-feature types
+├── styles/       global CSS
+├── assets/       static assets
+├── main.tsx      entry: providers (theme, query, snackbar) + RouterProvider
+└── theme.ts      MUI theme
+```
+
+Features stay **flat** until they grow; add a `components/`/`hooks/` subfolder inside a feature (or a top-level `hooks/`/`utils/`) only when the first file needs it — don't pre-create empty buckets. No per-feature barrel (`index.ts`) files: they work against tree-shaking (same reason as the icon rule above), so import modules directly.
+
 ### Lint and format
 
 [Biome](https://biomejs.dev) handles both lint and format (config in [frontend/biome.json](frontend/biome.json)). Must pass before commit:

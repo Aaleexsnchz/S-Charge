@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
-import type { components } from '../api/schema'
+import { apiClient } from '@/lib/api/client'
+import type { components } from '@/lib/api/schema'
 
 export type Point = components['schemas']['PointRead']
 

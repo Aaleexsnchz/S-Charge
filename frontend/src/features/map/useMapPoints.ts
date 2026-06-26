@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
+import { apiClient } from '@/lib/api/client'
 import type { MapFeatureCollection } from './types'
 
 const CATALOGUE_STALE_TIME = 5 * 60 * 1000

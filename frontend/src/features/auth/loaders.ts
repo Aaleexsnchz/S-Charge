@@ -1,5 +1,5 @@
-import { apiClient } from '../api/client'
-import type { User } from '../api/types'
+import { apiClient } from '@/lib/api/client'
+import type { User } from '@/types/api'
 
 export type RootLoaderData = { user: User | null }
 
