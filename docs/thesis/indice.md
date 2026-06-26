@@ -49,7 +49,7 @@ desplegar y argumentar la viabilidad del producto.
 
 7. **Funcionalidades de la aplicación** — mapa con filtros y navegación; detalle de punto;
    reservas; puntos de carga privados con uso de pago; **monedero/ledger** simulado;
-   simulación de recarga previa.
+   simulación de recarga previa ([simulacion-de-recarga.md](simulacion-de-recarga.md)).
 
 8. **Optimización de carga** — algoritmo de coste/tiempo sobre la curva PVPC: formulación,
    pseudocódigo y evaluación. Funcionalidad de valor añadido y capítulo algorítmico de la

@@ -233,6 +233,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/simulate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Simulate */
+    post: operations['simulate_api_simulate_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/users/me': {
     parameters: {
       query?: never
@@ -484,6 +501,59 @@ export interface components {
       hour_start: string
       /** Price Per Kwh */
       price_per_kwh: number
+    }
+    /** SimulationRequest */
+    SimulationRequest: {
+      /**
+       * Vehicle Id
+       * Format: uuid
+       */
+      vehicle_id: string
+      /**
+       * Connector Id
+       * Format: uuid
+       */
+      connector_id: string
+      /**
+       * Soc From
+       * @default 20
+       */
+      soc_from?: number
+      /**
+       * Soc To
+       * @default 80
+       */
+      soc_to?: number
+    }
+    /** SimulationResult */
+    SimulationResult: {
+      /**
+       * Charge Type
+       * @enum {string}
+       */
+      charge_type: 'AC' | 'DC'
+      /** Soc From */
+      soc_from: number
+      /** Soc To */
+      soc_to: number
+      /** Energy Kwh */
+      energy_kwh: number
+      /** Duration Minutes */
+      duration_minutes: number
+      /** Peak Power Kw */
+      peak_power_kw: number
+      /** Average Power Kw */
+      average_power_kw: number
+      /** Cost Eur */
+      cost_eur: number | null
+      /** Price Per Kwh */
+      price_per_kwh: number | null
+      /** Price Source */
+      price_source: ('reve_tariff' | 'pvpc_plus_margin') | null
+      /** Pvpc Per Kwh */
+      pvpc_per_kwh: number | null
+      /** Margin Per Kwh */
+      margin_per_kwh: number | null
     }
     /** TariffRead */
     TariffRead: {
@@ -1086,6 +1156,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PricePoint'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  simulate_api_simulate_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SimulationRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SimulationResult']
         }
       }
       /** @description Validation Error */

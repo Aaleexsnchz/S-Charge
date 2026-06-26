@@ -11,7 +11,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
+import { type ConnectorOption, SimulateDialog } from '../simulate/SimulateDialog'
 import {
   googleMapsDirectionsUrl,
   powerLabel,
@@ -28,6 +30,7 @@ export function PointDetailPage() {
   const { pointId } = useParams<{ pointId: string }>()
   const navigate = useNavigate()
   const { data: point, isPending, error } = usePoint(pointId ?? null)
+  const [simulateOpen, setSimulateOpen] = useState(false)
 
   if (isPending) {
     return (
@@ -51,6 +54,20 @@ export function PointDetailPage() {
       </Stack>
     )
   }
+
+  const connectorOptions: ConnectorOption[] = point.evses.flatMap((evse) =>
+    evse.connectors.map((connector) => ({
+      id: connector.id,
+      isDC: connector.power_type === 'DC',
+      label: [
+        standardLabel(connector.standard),
+        powerLabel(connector.max_electric_power),
+        connector.power_type === 'DC' ? 'DC' : 'AC',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })),
+  )
 
   return (
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
@@ -163,6 +180,12 @@ export function PointDetailPage() {
           </Stack>
         </Paper>
 
+        {connectorOptions.length > 0 && (
+          <Button variant="outlined" size="large" onClick={() => setSimulateOpen(true)}>
+            Simular carga
+          </Button>
+        )}
+
         <Button
           variant="contained"
           size="large"
@@ -177,6 +200,12 @@ export function PointDetailPage() {
           Navegar
         </Button>
       </Stack>
+
+      <SimulateDialog
+        open={simulateOpen}
+        onClose={() => setSimulateOpen(false)}
+        connectors={connectorOptions}
+      />
     </Box>
   )
 }

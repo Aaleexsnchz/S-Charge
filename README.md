@@ -9,7 +9,7 @@ A master's thesis project (IoT): a Progressive Web App for managing EV charging 
 | 1 — Foundation | `[x]` done |
 | 2 — REVE seed + Map | `[x]` shipped + QA'd on real devices; seed complete; tariff refresh on cron |
 | 3 — ACN import | `[-]` **dropped** (scope pivot 2026-06-21; ACN kept only as a documented road-not-taken) |
-| 4 — Simulation + Algorithm | `[~]` slices 1–2 shipped (vehicle catalogue + PVPC ingest); synthetic availability + simulate + recommend pending |
+| 4 — Simulation + Algorithm | `[~]` slices 1–2 + pricing service + simulate shipped (vehicle catalogue, PVPC ingest, `/api/simulate` + UI); synthetic availability + recommend pending |
 | 5 — Private points, Bookings, Sessions + Wallet | `[ ]` not started |
 | 6 — Polish + Deployment | `[ ]` not started |
 | 7 — Thesis writing | `[ ]` not started |

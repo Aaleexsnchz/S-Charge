@@ -146,9 +146,9 @@ Vehicle catalogue, PVPC price ingest, per-car pre-charge simulation, smart home-
 - [x] `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
 - [x] PVPC hourly prices ingested daily from REE's public API (cron, same tick pattern as REVE)
 - [ ] Lightweight synthetic availability model drives the map's `aggregate_status` (illustrative only, not grounded in external data)
-- [ ] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price); spec/physics-based (power = min(vehicle, connector), AC/DC taper)
+- [x] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price); spec/physics-based (power = min(vehicle, connector), AC/DC taper)
 - [ ] `/api/recommend`: owned point + departure time + energy needed → cheapest PVPC charging schedule + alternatives
-- [ ] Simulation UI shows the predicted session; 1–2 page algorithm write-up reusable in the thesis
+- [x] Simulation UI shows the predicted session ("Simular carga" dialog on point detail); algorithm write-up in [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md)
 
 ### Phase 5 — Private points, Bookings, Sessions + Wallet (30–40h)
 
