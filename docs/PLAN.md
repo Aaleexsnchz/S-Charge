@@ -88,14 +88,14 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Dashboard |
-| `/map` | Live map (REVE) |
-| `/points/:id` | Point detail + booking |
+| `/` | Dashboard (greeting, summary, nearby points) |
+| `/map` | Live map (REVE), centred on the user |
+| `/points/:id` | Point detail + pre-charge simulation dialog (booking: planned) |
 | `/sessions` | Driver session history |
-| `/simulate` | Pre-charge simulation (car + point) |
-| `/my-points` + `/new` | Private point management + owner stats |
-| `/bookings` | Reservations |
-| `/profile`, `/login` | Auth |
+| `/my-points` | Owner point management + stats (registration wizard: planned) |
+| `/profile`, `/login`, … | Profile (opened from the avatar) + auth |
+
+> Implemented vs. placeholder vs. planned, per screen: [features.md](features.md). `/bookings` is planned (Phase 5).
 
 ---
 
@@ -110,6 +110,8 @@ Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief de
 **Revision (2026-06-16):** REVE operational-status mirror dropped. *Operational status* (working/broken) is now assumed always-operational and not modelled; *availability* (free/in use) becomes a `status` column on the EVSE (OCPI value, simulated in Phase 4), and the map's `aggregate_status` is now available/occupied/unknown. A post-seed incremental refresh (`refresh_reve.py`) keeps tariffs fresh under the rate cap. Pricing strategy fixed: serve the real REVE tariff; where none exists, estimate `PVPC + margin` (recommended default AC +0.22 / DC +0.32 €/kWh, owner-overridable). PVPC history backfilled. See [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md).
 
 **Revision (2026-06-21) — scope pivot: the application *is* the thesis.** ACN-Data is dropped entirely (code deleted; kept only as a documented road-not-taken). The thesis core is no longer a novel data combination or a real-session-grounded simulation — it is the **application itself**: a unified, multi-provider EV-charging PWA that improves on REVE, end-to-end built, deployed, and argued viable. The charging optimiser and the (candidate) AI/agent features are value-add functionalities, not separate cores. Concrete changes below: **Phase 3 dropped**; **Phase 4** loses ACN distribution-fitting (occupancy becomes a simple synthetic model) and is reframed as a feature, not "the academic core"; **Phase 5** gains a simulated **wallet/ledger** for paid use; **Phase 6** gains a deployment & scaling strategy; **Phase 7** gains business-plan, deployment and roadmap chapters; **new Phase 8** is a time-gated AI assistant. The thesis outline lives in [thesis/indice.md](thesis/indice.md); deferred ideas in [ideas-backlog.md](ideas-backlog.md).
+
+**Revision (2026-06-28) — frontend redesign + deploy-early resequencing.** The frontend adopted the `s-charge` dark design system and a dashboard-first IA (bottom nav Inicio · Mapa · Sesiones · Mis puntos; profile via the avatar); unbuilt areas (sessions, owner points, stats, reservations) ship as badged placeholder UI tracked in [features.md](features.md). Sequencing change: **deployment (the Phase 6 infra portion) is pulled forward** ahead of completing Phase 5 — a secure, phone-accessible HTTPS instance + CI/CD + semver releases come first (decision [infra-0001](decisions/infra-0001-deployment.md)); remaining feature work (Phase 4 Slice 3, Phase 5) then ships as tagged releases toward **v1.0.0** = the evaluated build.
 
 Slice-by-slice record: [phases](phases).
 
@@ -179,7 +181,7 @@ Responsive QA, error states, deploy, tests, and a written deployment & scaling s
 - [ ] At least one external user registers + uses the app
 - [ ] Deployment & scaling strategy written: architecture-for-scale + cost/unit-economics model (the live deploy stays single-instance; the strategy is the thesis artifact)
 
-**Deployment approach (leaning, to confirm).** A single small always-on host running the existing Docker Compose, fronted by Caddy (automatic HTTPS via Let's Encrypt), with GitHub Actions CD on merge to `main`. The REVE/PVPC refresh crons move to that server, so they no longer depend on a laptop being open. Candidates: a Hetzner CX-class VPS (~€4/mo, EU — good data locality) or Oracle Cloud Always-Free (ARM, €0, more setup friction). Same-origin (frontend + `/api` behind one reverse proxy) to keep the HttpOnly cookie session simple and secure. Single-instance for the live demo (1–2 users); the *scaling* design (managed Postgres, multiple app instances, CDN, autoscaling, unit economics) is written, not built. **Pre-deploy security gate:** HTTPS + HSTS, host firewall (only 80/443/SSH, key-only), Postgres not published to the host, secrets rotated, OAuth redirect + cookie `Secure`/`SameSite` set for the prod origin, CORS locked to one origin, DB backups confirmed. To be promoted to an `infra-0001` deployment ADR once chosen.
+**Deployment approach (leaning, to confirm).** A single small always-on host running the existing Docker Compose, fronted by Caddy (automatic HTTPS via Let's Encrypt), with GitHub Actions CD on merge to `main`. The REVE/PVPC refresh crons move to that server, so they no longer depend on a laptop being open. Candidates: a Hetzner CX-class VPS (~€4/mo, EU — good data locality) or Oracle Cloud Always-Free (ARM, €0, more setup friction). Same-origin (frontend + `/api` behind one reverse proxy) to keep the HttpOnly cookie session simple and secure. Single-instance for the live demo (1–2 users); the *scaling* design (managed Postgres, multiple app instances, CDN, autoscaling, unit economics) is written, not built. **Pre-deploy security gate:** HTTPS + HSTS, host firewall (only 80/443/SSH, key-only), Postgres not published to the host, secrets rotated, OAuth redirect + cookie `Secure`/`SameSite` set for the prod origin, CORS locked to one origin, DB backups confirmed. Alternatives studied (Vercel, Supabase, container PaaS, …) and the approach recorded in [decisions/infra-0001](decisions/infra-0001-deployment.md).
 
 ### Phase 7 — Thesis writing (45–65h)
 

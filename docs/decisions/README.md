@@ -25,6 +25,12 @@ Concept-level summary of what the library and these ADRs deliver: [thesis/autent
 | [fe-0005](fe-0005-mui-x-charts.md) | MUI X Charts for in-app charts | Phase 5 (installed in Phase 3) |
 | [fe-0006](fe-0006-biome.md) | Use Biome for frontend linting and formatting | Phase 4 (tooling) |
 
+## Infrastructure
+
+| ID | Title | Phase |
+| --- | --- | --- |
+| [infra-0001](infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy | Phase 6 |
+
 ## Thesis-writeup chapters
 
 Concept-level summaries written for the thesis document, with links to the ADRs above for the deep rationale:

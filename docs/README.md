@@ -43,6 +43,7 @@ Append-only [MADR](https://adr.github.io/madr/)-style records. Full catalogue an
 | [fe-0004](decisions/fe-0004-tanstack-query.md) | TanStack Query for server state |
 | [fe-0005](decisions/fe-0005-mui-x-charts.md) | MUI X Charts for in-app charts |
 | [fe-0006](decisions/fe-0006-biome.md) | Biome for frontend linting and formatting |
+| [infra-0001](decisions/infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy |
 
 ### Thesis chapters
 

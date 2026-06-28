@@ -10,6 +10,10 @@ related: [fe-0002]
 
 > Append revisions below with date and reason rather than editing in place.
 
+**Revisions.**
+
+- *2026-06 (b).* Basemap style switched from **Positron** to OpenFreeMap's **Dark** style (`/styles/dark`) as part of the dark-mode app redesign; map controls are dark-styled and attribution is compact. Marker/cluster colours moved to the app's status palette, and the map now auto-centres on the user on open. The load-once GeoJSON model is unchanged; viewport/`bbox` loading remains future work (see [../features.md](../features.md)).
+
 **Decision.** The `/map` route renders with [MapLibre GL JS](https://maplibre.org/) (the open-source fork of Mapbox GL JS v1) over [OpenFreeMap](https://openfreemap.org/) vector tiles, using the hosted **Positron** style as the basemap. Charging points load once from `GET /api/points/map` (a slim GeoJSON FeatureCollection, ~770 KB gzipped for the full Spanish catalogue) into a MapLibre GeoJSON source with native clustering; filters compile to MapLibre filter expressions evaluated client-side.
 
 **Rationale.** Three constraints drive the choice: ~13,600 markers on a mid-range phone, zero budget, and no API-key management for a public thesis repo.

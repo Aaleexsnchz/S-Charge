@@ -5,16 +5,16 @@ _Working handoff: just enough to resume tomorrow. Keep it small. When a "Now" it
 ## State (2026-06-28)
 
 - **Phases:** 1–2 done · **3 dropped** · 4 slices 1–2 done (vehicle catalogue + PVPC on daily cron) **+ pricing/estimate service + `/api/simulate` + UI**, slices 3 & 5 pending · 5–8 not started. See [PLAN.md](PLAN.md).
-- **Last change — frontend redesign + IA restructure.** Adopted the `s-charge` dark design system (theme/tokens, mono-numeric type, app shell); restructured to a dashboard-first IA — bottom nav Inicio · Mapa · Sesiones · Mis puntos, profile via the avatar. Dashboard greeting + **real** nearby points (geolocation + `/api/points?bbox`); Sessions / My-points / stats / next-reservation are badged placeholder UI behind `*.mock.ts` (see [features.md](features.md)). On branch `feat/frontend-s-charge-design` (frontend + docs; **pending commit + merge to `main`**).
+- **Last change — frontend redesign + IA restructure.** Adopted the `s-charge` dark design system (theme/tokens, mono-numeric type, app shell); restructured to a dashboard-first IA — bottom nav Inicio · Mapa · Sesiones · Mis puntos, profile via the avatar. Dashboard greeting + **real** nearby points (geolocation + `/api/points?bbox`); Sessions / My-points / stats / next-reservation are badged placeholder UI behind `*.mock.ts` (see [features.md](features.md)). **Merged to `main`** (`1a1af2b`) together with the backend pricing/`simulate` commits; both feature branches deleted. `main` is ahead of `origin/main` — **not yet pushed**.
 - **Prior — pre-charge simulation (Slice 4).** `app/services/simulation.py` + `POST /api/simulate`: power = min(vehicle, connector), AC flat / DC taper above 80% SoC → energy, duration, cost (reuses the pricing service). UI is a "Simular carga" dialog on the point-detail page (`frontend/src/simulate/`). Model write-up: [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md). 104 backend tests, frontend lint/build/vitest green. On branch `feat/backend-pricing-estimate-service`.
 - **Prior — pricing/estimate service.** `app/services/pricing.py`: real REVE tariff else `PVPC(hour) + margin[AC 0.22 / DC 0.32]`. Ingest nulls implausible tariffs (`> 2 €/kWh`); live-DB garbage rows nulled.
 - **Data:** REVE seed complete (seed-once, serve-from-DB); tariff refresh + PVPC both on daily cron.
 
 ## Now (immediate)
 
-- [ ] **Commit + merge the redesign** — split `feat/frontend-s-charge-design` into logical commits, merge to `main`.
-- [ ] **Map viewport loading** (own slice) — open-on-position + zoom-gated `bbox` fetch + padded-bbox cache; needs a small backend `bbox` on `GET /api/points/map`. Design in [features.md](features.md).
-- [ ] **Deployment decision** (Phase 6) — pick the host (leaning single small VPS), write the `infra-0001` ADR + run the pre-deploy security checklist; this is what moves the refresh crons off the laptop.
+- [ ] **Deploy securely (Phase 6 — priority)** — provision the host (Hetzner CX22, or Oracle Always-Free for €0), Caddy auto-HTTPS, same-origin; run the pre-deploy security gate and move the refresh crons to the server. Goal: a phone-accessible HTTPS URL. Approach + alternatives: [infra-0001](decisions/infra-0001-deployment.md).
+- [ ] **CI/CD + releases** — push `main` to `origin`; GitHub Actions deploy-on-merge-to-`main`; begin semver tagging (`vX.Y.Z`), `main` always deployable; build toward **v1.0.0** = the evaluated version.
+- [ ] **Map viewport loading** (own slice) — open-on-position + zoom-gated `bbox` fetch + padded cache; needs a small backend `bbox` on `GET /api/points/map`. Design in [features.md](features.md).
 - [ ] **Synthetic availability** (Phase 4 Slice 3) — deterministic-seedable map occupancy; decide synthetic vs `unknown` (recommend synthetic, labelled illustrative).
 - [ ] **B2 lifecycle rule** (ops) — in the Backblaze UI on `tfm-db-backups`: keep-last-version + delete-older-than-N-days. (Optional: rotate the B2 app key.)
 
