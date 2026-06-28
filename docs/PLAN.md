@@ -71,6 +71,8 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 
 ## Features
 
+> Live implementation status for these features (implemented / mock UI / planned): [features.md](features.md).
+
 1. **Map** — REVE + public user points with filters (availability, connector, price), Google Maps redirect
 2. **Point detail** — real data from REVE + booking
 3. **Pre-charge simulation** — driver picks car model + connector (+ SoC range): predicted duration, energy, cost (spec/physics-based: power = min(vehicle, connector), AC/DC-aware taper)
@@ -176,6 +178,8 @@ Responsive QA, error states, deploy, tests, and a written deployment & scaling s
 - [ ] PWA installable from production on iOS + Android
 - [ ] At least one external user registers + uses the app
 - [ ] Deployment & scaling strategy written: architecture-for-scale + cost/unit-economics model (the live deploy stays single-instance; the strategy is the thesis artifact)
+
+**Deployment approach (leaning, to confirm).** A single small always-on host running the existing Docker Compose, fronted by Caddy (automatic HTTPS via Let's Encrypt), with GitHub Actions CD on merge to `main`. The REVE/PVPC refresh crons move to that server, so they no longer depend on a laptop being open. Candidates: a Hetzner CX-class VPS (~€4/mo, EU — good data locality) or Oracle Cloud Always-Free (ARM, €0, more setup friction). Same-origin (frontend + `/api` behind one reverse proxy) to keep the HttpOnly cookie session simple and secure. Single-instance for the live demo (1–2 users); the *scaling* design (managed Postgres, multiple app instances, CDN, autoscaling, unit economics) is written, not built. **Pre-deploy security gate:** HTTPS + HSTS, host firewall (only 80/443/SSH, key-only), Postgres not published to the host, secrets rotated, OAuth redirect + cookie `Secure`/`SameSite` set for the prod origin, CORS locked to one origin, DB backups confirmed. To be promoted to an `infra-0001` deployment ADR once chosen.
 
 ### Phase 7 — Thesis writing (45–65h)
 

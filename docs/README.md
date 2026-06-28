@@ -65,6 +65,7 @@ Planning and status; not part of the Diátaxis taxonomy.
 | Doc | Covers |
 | --- | --- |
 | [PLAN.md](PLAN.md) | Scope, phases, acceptance criteria, estimates. Living doc. |
+| [features.md](features.md) | Per-feature implementation status (implemented / mock UI / planned). Living doc. |
 | [phases/](phases/) | Per-phase task plans ([1](phases/phase-1.md) · [2](phases/phase-2.md) · [4](phases/phase-4.md); Phase 3 dropped). Frozen once a phase ships. |
 | [ideas-backlog.md](ideas-backlog.md) | Deferred ideas (AI/agent features, real payments, route optimisation) parked for the "decide later" moment. |
 | [NEXT-STEPS.md](NEXT-STEPS.md) | Working handoff — where to start next session. |
