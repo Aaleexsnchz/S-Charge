@@ -5,11 +5,11 @@ Pull from this list when a phase has slack or when deciding the AI layer's depth
 idea is promoted, move it into [PLAN.md](PLAN.md) (a phase + acceptance criteria) and
 remove it here.
 
-## AI / agent features (Phase 8 candidates)
+## AI / agent features (Phase 8 — pick from here)
 
-Depth is decided when reached, against remaining hours. The defense demo must never
-depend on any of these. All would call the app's own APIs (points, simulate, recommend,
-bookings, prices) as tools — no new data sources.
+AI is now a committed **Phase 8** (planned), but the **specific features are not yet decided** —
+this is the menu to choose from. All call the app's own APIs (points, simulate, recommend,
+bookings, prices) as tools — no new data sources. Depth scales to remaining hours.
 
 - **NL charging/trip assistant** — a tool-calling agent that plans a charge or trip
   end-to-end: find a point → simulate the session for the user's car → optimise the

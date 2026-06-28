@@ -4,7 +4,7 @@
 
 > **Revision (2026-06-16).** PVPC history backfilled (2026-01-01 → today) via the existing `import_pvpc_prices`. Pricing strategy decided (input to Slices 4–5): serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin` with recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Slice 2 still open: install the daily PVPC cron and add gap-backfill to `fetch_pvpc.py`. See [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
 
-Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, a lightweight synthetic availability model, per-car pre-charge simulation, smart home-charging optimiser. A value-add feature of the app (yields the algorithm chapter). No external dependency — `/api/simulate` is spec-based and `/api/recommend` runs on the PVPC curve; the original ACN-calibration plan (Slice 3) is superseded per the revision note above.
+Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, and per-car pre-charge simulation. A value-add feature of the app (yields the algorithm chapter). `/api/simulate` is spec-based, no external dependency. **Phase 4 is complete** — Slice 3 (synthetic availability) is **dropped** and Slice 5 (`/api/recommend`) **moved to Phase 7**; see the slice notes below.
 
 ## Slice 1 — Vehicle catalogue
 
@@ -23,30 +23,22 @@ Per [PLAN.md](../PLAN.md): vehicle catalogue, PVPC price ingest, a lightweight s
 - [x] `electricity_prices` model + migration (hour timestamp unique, €/kWh)
 - [x] Idempotent `import_pvpc_prices` ETL + `fetch_pvpc.py` script (verified live: 24 prices for 2026-06-12, 0.072–0.272 €/kWh)
 - [x] `GET /api/prices/today` (+ `?day=`, Madrid-local) + route tests
-- [ ] Daily cron line installed + documented in thesis seed-scheduling chapter
+- [ ] Daily cron line installed → **moves to Phase 6** (runs on the deployment server, not the laptop)
 
-## Slice 3 — Synthetic availability simulation
+## Slice 3 — Synthetic availability simulation — DROPPED (2026-06-28)
 
-> Reframed 2026-06-21: no ACN. A lightweight synthetic model replaces distribution fitting; presented as illustrative only.
+Removed. Live availability is **not modelled** — REVE has no constant status feed, so points show as **available by default** (illustrative); occupancy appears only for any artificial demo data added before the defense. The status plumbing (`Evse.status`, the `aggregate_status` rollup, marker colours) stays and supports a real source later. See [PLAN.md](../PLAN.md) Data strategy and [features.md](../features.md).
 
-**Acceptance:** a deterministic-seedable simulator drives per-EVSE availability from a simple synthetic model (e.g. time-of-day utilisation curve + seeded noise) so the map shows live-looking occupancy; the model is reproducible and clearly labelled as illustrative, not grounded in real data.
+## Slice 4 — `/api/simulate` + UI — done
 
-- [ ] Synthetic availability service (time-of-day utilisation; deterministic seed)
-- [ ] Occupancy simulator mapping utilisation to REVE/user EVSEs; map `aggregate_status` reflects it
-- [ ] Unit tests on the seeded model; brief write-up notes for the thesis
+**Acceptance:** given vehicle + connector (+ initial/target SoC), returns predicted duration, energy and cost (tariff from the point, or PVPC+margin/fixed for user points later); the UI renders the predicted session in Spanish.
 
-## Slice 4 — `/api/simulate` + UI
+- [x] Simulation service: power = min(vehicle, connector), AC/DC aware, simple taper above 80% SoC for DC
+- [x] `POST /api/simulate` + tests (happy path, AC vs DC, taper, cost)
+- [x] Simulation UI: vehicle picker, point/connector context, results metrics
 
-**Acceptance:** given vehicle + connector (+ initial/target SoC), returns predicted duration, energy and cost (tariff from the point, or PVPC+margin/fixed for user points later); `/simulate` page renders the predicted session (charging curve approximation) in Spanish.
+Deviations from the original spec: shipped as a **dialog on point detail** (not a standalone `/simulate` route); the **charging-curve chart is deferred** — the model can produce a real power-vs-SoC curve (a small `/api/simulate` addition + MUI X Charts), so it's a genuine enhancement to revisit, not a mock.
 
-- [ ] Simulation service: power = min(vehicle, connector), AC/DC aware, simple taper above 80% SoC for DC
-- [ ] `POST /api/simulate` + tests (happy path, AC vs DC, taper, cost)
-- [ ] `/simulate` lazy route: vehicle picker, point/connector context, results card + chart
+## Slice 5 — `/api/recommend` (smart home charging) — MOVED to Phase 7
 
-## Slice 5 — `/api/recommend` (smart home charging)
-
-**Acceptance:** given a charging power, vehicle, energy needed and departure time, returns the cheapest contiguous-or-split schedule over tonight's PVPC curve plus 1–2 alternatives with savings vs charging immediately; algorithm written up for the thesis.
-
-- [ ] Recommendation service (greedy over hourly PVPC slots; contiguous and split variants)
-- [ ] `POST /api/recommend` + tests
-- [ ] 1–2 page algorithm write-up (Spanish) in docs/thesis/
+Moved out of Phase 4: the optimiser targets an **owned** point's schedule, so it needs private points (Phase 7) to attach to. Acceptance unchanged — see [PLAN.md](../PLAN.md) Phase 7.

@@ -14,14 +14,14 @@ Master's thesis (IoT): a **PWA** for managing EV charging. It unifies, under one
 
 | Source | Role | Provides |
 | --- | --- | --- |
-| **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres; live availability is simulated by a lightweight synthetic model (not grounded in external data), not relayed. |
+| **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres; **live availability is not modelled** (no constant status feed) — points show as available by default, illustrative only. |
 | **REE / PVPC** | Hourly electricity prices (Spain) | Drives owner dynamic pricing (PVPC + margin) and the smart home-charging optimiser. Public API, no token. |
 | **Vehicle catalogue** | Simulation input | Curated table of common EVs in Spain (battery capacity, max AC/DC charging power) seeded from public spec sheets. |
 | **User-generated** | Platform contribution | Private charging points with public/private toggle, paid use, bookings, recorded sessions |
 
 REVE provides the real network presence; PVPC provides the economics; user-generated points provide the platform contribution.
 
-> **ACN-Data was dropped (2026-06-21).** Caltech's historical-session dataset was originally to calibrate occupancy/session realism. It stayed internal-only, never landed (blocked on a token, only a smoke test ran), and added nothing user-facing. It now survives only as a documented *road not taken* in the thesis — see [thesis/indice.md](thesis/indice.md). Live availability is now a simple synthetic model, claimed only as illustrative.
+> **ACN-Data was dropped (2026-06-21).** Caltech's historical-session dataset was originally to calibrate occupancy/session realism. It stayed internal-only, never landed (blocked on a token, only a smoke test ran), and added nothing user-facing. It now survives only as a documented *road not taken* in the thesis — see [thesis/indice.md](thesis/indice.md). Live availability is **not modelled** — points default to available (illustrative); occupancy appears only for any artificial demo data.
 
 **Product framing (2026-06-12, updated 2026-06-21).** Two user roles. **Drivers** find points on the map, book them, navigate via Google Maps, simulate a charge for their car model before plugging in, charge their own point on an economically optimised schedule, pay for public sessions from a simulated wallet, and review their real session history. **Owners** register points for private or public use, price public ones (PVPC + margin, or fixed), and manage/monitor their points' usage and revenue.
 
@@ -63,7 +63,7 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 ```
 
 - **REVE: seeded into Postgres via one-shot ETL.** REVE's public API caps at 5 requests/hour, which makes a live-mirror architecture impractical. We bootstrap the catalogue once into Postgres and own the data going forward.
-- **Live availability is simulated** by a lightweight synthetic model (Phase 4), not relayed from REVE and not grounded in any external dataset — presented as illustrative only.
+- **Live availability is not modelled** — REVE provides no constant status feed, so points show as available by default (illustrative); occupancy appears only for artificial demo data.
 - **User-contributed points** stored in `charging_points` alongside REVE-seeded points, distinguished by a `source` column.
 - **OCPI 2.2.1-aligned schema** so future commercial CPO agreements plug in by extending the `source` enum.
 
@@ -80,7 +80,7 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 5. **Private charging points + paid use** — user-registered, private or public; public ones priced as PVPC + margin or fixed; drivers pay from a simulated wallet/ledger, owners credited (real payment processing: stretch)
 6. **Driver dashboard** — bookings + recorded session history (energy, duration, cost) + wallet balance/transactions
 7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue from the ledger) and management
-8. **AI/agent assistant** — *candidate, time-gated* — value-add features over the app's own APIs (see [ideas-backlog.md](ideas-backlog.md))
+8. **AI/agent assistant** — *planned (Phase 8); specific features to be decided* — value-add features over the app's own APIs (see [ideas-backlog.md](ideas-backlog.md))
 
 ---
 
@@ -111,7 +111,7 @@ Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief de
 
 **Revision (2026-06-21) — scope pivot: the application *is* the thesis.** ACN-Data is dropped entirely (code deleted; kept only as a documented road-not-taken). The thesis core is no longer a novel data combination or a real-session-grounded simulation — it is the **application itself**: a unified, multi-provider EV-charging PWA that improves on REVE, end-to-end built, deployed, and argued viable. The charging optimiser and the (candidate) AI/agent features are value-add functionalities, not separate cores. Concrete changes below: **Phase 3 dropped**; **Phase 4** loses ACN distribution-fitting (occupancy becomes a simple synthetic model) and is reframed as a feature, not "the academic core"; **Phase 5** gains a simulated **wallet/ledger** for paid use; **Phase 6** gains a deployment & scaling strategy; **Phase 7** gains business-plan, deployment and roadmap chapters; **new Phase 8** is a time-gated AI assistant. The thesis outline lives in [thesis/indice.md](thesis/indice.md); deferred ideas in [ideas-backlog.md](ideas-backlog.md).
 
-**Revision (2026-06-28) — frontend redesign + deploy-early resequencing.** The frontend adopted the `s-charge` dark design system and a dashboard-first IA (bottom nav Inicio · Mapa · Sesiones · Mis puntos; profile via the avatar); unbuilt areas (sessions, owner points, stats, reservations) ship as badged placeholder UI tracked in [features.md](features.md). Sequencing change: **deployment (the Phase 6 infra portion) is pulled forward** ahead of completing Phase 5 — a secure, phone-accessible HTTPS instance + CI/CD + semver releases come first (decision [infra-0001](decisions/infra-0001-deployment.md)); remaining feature work (Phase 4 Slice 3, Phase 5) then ships as tagged releases toward **v1.0.0** = the evaluated build.
+**Revision (2026-06-28) — redesign shipped; phases renumbered; deploy-early.** Phase 4 is complete (synthetic availability **dropped** — status not modelled; `/api/recommend` moved to Phase 7). The `s-charge` dark redesign + dashboard-first IA shipped as **Phase 5**. The later phases were **renumbered for chronology**: deployment + CI/CD + releases is now **Phase 6 (in progress)**, pulled ahead of the feature work; old Phase 5 (private points/bookings/sessions/wallet, + the optimiser) → **Phase 7**; AI is promoted from a stretch candidate to a committed **Phase 8** (specific features TBD); polish gains a **security review + optimisation** plus the scaling write-up → **Phase 9**; thesis writing → **Phase 10**. Goal: a secure, phone-accessible instance first, then features shipped as tagged releases toward **v1.0.0** = the evaluated build (decision [infra-0001](decisions/infra-0001-deployment.md)). This supersedes the earlier pacing notes' phase numbers.
 
 Slice-by-slice record: [phases](phases).
 
@@ -143,47 +143,78 @@ REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap
 
 ### Phase 4 — Simulation + Algorithm (28–36h)
 
-Vehicle catalogue, PVPC price ingest, per-car pre-charge simulation, smart home-charging optimiser, and a lightweight synthetic availability model. A **value-add feature** of the app — the optimiser deepens the product and gives the thesis an evaluable algorithm chapter, but it is not the thesis on its own.
+Vehicle catalogue, PVPC price ingest, and per-car pre-charge simulation. A **value-add feature** of the app — gives the thesis an evaluable algorithm chapter, but is not the thesis on its own. Two original slices were re-scoped: the synthetic availability model is **dropped** (live status is not modelled — see [Data strategy](#data-strategy)), and the `/api/recommend` optimiser **moves to Phase 7** (it targets an *owned* point, so it needs private points to exist first).
 
 **Done when:**
 
 - [x] `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
 - [x] PVPC hourly prices ingested daily from REE's public API (cron, same tick pattern as REVE)
-- [ ] Lightweight synthetic availability model drives the map's `aggregate_status` (illustrative only, not grounded in external data)
 - [x] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price); spec/physics-based (power = min(vehicle, connector), AC/DC taper)
-- [ ] `/api/recommend`: owned point + departure time + energy needed → cheapest PVPC charging schedule + alternatives
-- [x] Simulation UI shows the predicted session ("Simular carga" dialog on point detail); algorithm write-up in [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md)
+- [x] Simulation UI: the "Simular carga" dialog on point detail; algorithm write-up in [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md)
 
-### Phase 5 — Private points, Bookings, Sessions + Wallet (30–40h)
+Re-scoped: synthetic availability **dropped** (status not modelled); `/api/recommend` **→ Phase 7**; the daily refresh cron is **installed on the server in Phase 6**. Phase 4 is otherwise complete.
 
-Private point CRUD with owner pricing, bookings, session recording, driver history, owner dashboard, and a **simulated wallet/ledger** for paid use. Re-expanded 2026-06-12 (owner per-point stats are core); 2026-06-21 adds the wallet (real payment processing stays stretch).
+### Phase 5 — Frontend redesign + dashboard-first IA — done
+
+Adopted the `s-charge` dark design system (theme tokens, mono-numeric typography, app shell) and restructured the app to a dashboard-first information architecture: bottom nav Inicio · Mapa · Sesiones · Mis puntos, profile via the avatar, map centred on the user. Unbuilt areas (sessions, owner points, stats, reservations) ship as clearly-badged placeholder UI tracked in [features.md](features.md).
+
+**Done when:**
+
+- [x] Dark theme + tokens + mono-numeric type system; all existing screens restyled
+- [x] Dashboard-first IA (4-tab nav, profile via avatar); real greeting + nearby points (geolocation + `/api/points?bbox`)
+- [x] Sessions / My-points / stats / next-reservation as badged placeholder UI behind `*.mock.ts`
+- [x] Lint + build green; merged to `main`
+
+### Phase 6 — Deployment + CI/CD + releases (15–22h) — in progress
+
+Deployment is **pulled forward** (ahead of the remaining feature phases) so there is a secure, phone-accessible HTTPS instance early, with the refresh crons on an always-on server instead of a laptop — then a CI/CD pipeline and semantic-version releases, building toward **`v1.0.0` = the build presented for evaluation**. Architecture + alternatives (Vercel, Supabase, PaaS, …) in [decisions/infra-0001](decisions/infra-0001-deployment.md).
+
+**Done when:**
+
+- [ ] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
+- [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
+- [ ] REVE/PVPC refresh crons run on the server (closes Phase 4's open cron item; no longer laptop-dependent)
+- [ ] CI/CD: GitHub Actions deploy-on-merge-to-`main`; `main` always deployable; branch protection (PR + green checks)
+- [ ] Semantic-version tagging/releases begin; `v1.0.0` cut once the evaluated scope is in
+- [ ] *(slice)* Map viewport loading — open-on-position + zoom-gated `bbox` fetch + padded cache (small backend `bbox` on `/api/points/map`); design in [features.md](features.md)
+
+### Phase 7 — Private points, Bookings, Sessions + Wallet + optimiser (30–40h)
+
+Private point CRUD with owner pricing, bookings, session recording, driver history, owner dashboard, a **simulated wallet/ledger** for paid use, and the **`/api/recommend`** smart home-charging optimiser (moved here from Phase 4 — it targets an *owned* point). Replaces the placeholder Sessions/My-points UIs with real data.
 
 **Done when:**
 
 - [ ] Private point creation works end-to-end; public/private toggle controls map visibility
 - [ ] Public points priced as PVPC + margin (live) or fixed €/kWh, owner's choice
 - [ ] Booking conflict detection rejects overlaps; user can view/cancel bookings
-- [ ] Completed bookings and home smart-charges record a session (energy, duration, cost); driver sees history in `/sessions`
-- [ ] Wallet/ledger: per-user balance, top-up (simulated), a completed paid session debits the driver at the point's price and credits the owner; both see the transaction history
-- [ ] Owner dashboard: per-point sessions, energy delivered, revenue (sourced from the ledger)
+- [ ] Completed bookings and home smart-charges record a session (energy, duration, cost); driver sees real history in `/sessions`
+- [ ] Wallet/ledger: per-user balance, top-up (simulated), a paid session debits the driver and credits the owner; both see the transaction history
+- [ ] Owner dashboard (`/my-points`): per-point sessions, energy delivered, revenue (from the ledger)
+- [ ] `/api/recommend`: owned point + departure + energy needed → cheapest PVPC schedule + 1–2 alternatives; algorithm write-up in [thesis/](thesis/)
 
-### Phase 6 — Polish + Deployment (22–28h)
+### Phase 8 — AI/agent assistant (planned; features to be decided)
 
-Responsive QA, error states, deploy, tests, and a written deployment & scaling strategy.
+A committed value-add layer (no longer a stretch candidate): natural-language / tool-calling features over the app's own APIs (points, simulate, recommend, bookings, prices). **The specific features are not yet decided** — to be picked from the menu in [ideas-backlog.md](ideas-backlog.md) (e.g. NL charging/trip assistant, explain-the-schedule, conversational point search) against remaining time. Keep money/optimisation deterministic; let the LLM orchestrate and explain. Default to the latest capable Claude model.
 
 **Done when:**
 
-- [ ] All pages tested on real phone
-- [ ] Every API call has loading/error/empty states
+- [ ] AI feature set **decided** and recorded (promoted from [ideas-backlog.md](ideas-backlog.md))
+- [ ] Implemented over existing APIs as tools; no new data sources
+- [ ] Algorithm/architecture write-up for the thesis
+
+### Phase 9 — Polish, security review + optimisation + scaling strategy (22–28h)
+
+Responsive QA, error/empty states, test coverage, a **full security review**, a **performance/optimisation pass**, and the written **deployment & scaling strategy** (the thesis artifact; the live deploy stays single-instance). (Distinct from Phase 6's focused pre-launch security gate — this is the broader audit before the evaluated release.)
+
+**Done when:**
+
+- [ ] All pages tested on a real phone; every API call has loading/error/empty states
 - [ ] Backend tests pass with ≥70% coverage on `services/`
-- [ ] Deployed at real HTTPS domain
-- [ ] PWA installable from production on iOS + Android
-- [ ] At least one external user registers + uses the app
-- [ ] Deployment & scaling strategy written: architecture-for-scale + cost/unit-economics model (the live deploy stays single-instance; the strategy is the thesis artifact)
+- [ ] Security review pass (`/security-review`; auth, secrets, headers, dependencies, rate limits)
+- [ ] Performance/optimisation pass (bundle/code-split, query + index review, map payload/viewport)
+- [ ] Deployment & scaling strategy written: architecture-for-scale + cost/unit-economics model
 
-**Deployment approach (leaning, to confirm).** A single small always-on host running the existing Docker Compose, fronted by Caddy (automatic HTTPS via Let's Encrypt), with GitHub Actions CD on merge to `main`. The REVE/PVPC refresh crons move to that server, so they no longer depend on a laptop being open. Candidates: a Hetzner CX-class VPS (~€4/mo, EU — good data locality) or Oracle Cloud Always-Free (ARM, €0, more setup friction). Same-origin (frontend + `/api` behind one reverse proxy) to keep the HttpOnly cookie session simple and secure. Single-instance for the live demo (1–2 users); the *scaling* design (managed Postgres, multiple app instances, CDN, autoscaling, unit economics) is written, not built. **Pre-deploy security gate:** HTTPS + HSTS, host firewall (only 80/443/SSH, key-only), Postgres not published to the host, secrets rotated, OAuth redirect + cookie `Secure`/`SameSite` set for the prod origin, CORS locked to one origin, DB backups confirmed. Alternatives studied (Vercel, Supabase, container PaaS, …) and the approach recorded in [decisions/infra-0001](decisions/infra-0001-deployment.md).
-
-### Phase 7 — Thesis writing (45–65h)
+### Phase 10 — Thesis writing (45–65h)
 
 Document, diagram, defend. Includes the business and strategy chapters that elevate the work beyond a pure implementation.
 
@@ -197,19 +228,14 @@ Document, diagram, defend. Includes the business and strategy chapters that elev
 - [ ] Defense slides (15–20) + demo plan
 - [ ] Tutor approves final version
 
-### Phase 8 — AI/agent assistant (candidate, time-gated)
-
-A value-add feature, **not a pillar** — built only after Phase 6 ships and only if time allows; the defense demo must never depend on it. Concrete ideas (NL charging/trip assistant, explain-the-schedule, conversational point search, etc.) live in [ideas-backlog.md](ideas-backlog.md); depth is decided when reached, against remaining hours.
-
 ---
 
 ## Stretch goals
 
-Only after Phase 6 (deployed, demo-ready) and only if hours remain. None of these are committed scope; the defense demo must not depend on them.
+Only if hours remain after the evaluated build (`v1.0.0`). Not committed scope; the defense demo must not depend on them.
 
 - **Route optimisation (~10–15h, minimal version).** Given origin/destination, fetch the route polyline from a free routing API (OSRM / OpenRouteService), corridor-query seeded points along it, rank candidate stops by detour + price + Phase 4 predicted session. No consumption modelling, no custom routing engine — those would be 30–40h and are out of scope for this timeline.
 - **Real payments.** Replace the simulated wallet/ledger with a real processor (e.g. Stripe test mode) + commission tracking on the owner dashboard.
-- **AI/agent assistant.** Tracked as Phase 8; the full idea list is in [ideas-backlog.md](ideas-backlog.md).
 
 ---
 
@@ -220,5 +246,5 @@ Only after Phase 6 (deployed, demo-ready) and only if hours remain. None of thes
 3. **Charging optimiser** — a price/time optimisation algorithm over real PVPC prices, with evaluable output (a value-add feature, written up in the algorithm chapter).
 4. **Deployed and usable** — at a real HTTPS URL, installable as a PWA, with at least one real external user.
 5. **Business & viability** — a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (incl. native mobile) that argue the product beyond the prototype.
-6. **Academically honest** — explicit about what is real vs. simulated (e.g. availability is illustrative, payments are a simulated ledger), and about the road not taken (ACN-Data).
-7. **Candidate AI/agent layer** — natural-language/agent features over the app's own APIs as a differentiator (time-gated; the defense never depends on it).
+6. **Academically honest** — explicit about what is real vs. not modelled vs. simulated (live availability is not modelled — points show available by default; payments are a simulated ledger), and about the road not taken (ACN-Data).
+7. **AI/agent layer** — natural-language/agent features over the app's own APIs as a differentiator (Phase 8; specific features to be decided).

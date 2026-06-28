@@ -1,6 +1,6 @@
 # TFM — EV Charging PWA
 
-A master's thesis project (IoT): a Progressive Web App for managing EV charging points. It unifies, under one app, what is today fragmented across each operator's own application, and improves on Spain's public **REVE** app (which only views points and plans routes). It seeds the real Spanish network from the **REVE API** and adds the functionality REVE lacks: user-contributed private charging points with paid use, bookings, price/time charging optimisation over real PVPC prices, charge simulation, and candidate AI/agent features. The thesis pillar is the application itself, alongside a business plan, a deployment/scaling strategy, and a roadmap.
+A master's thesis project (IoT): a Progressive Web App for managing EV charging points. It unifies, under one app, what is today fragmented across each operator's own application, and improves on Spain's public **REVE** app (which only views points and plans routes). It seeds the real Spanish network from the **REVE API** and adds the functionality REVE lacks: user-contributed private charging points with paid use, bookings, price/time charging optimisation over real PVPC prices, charge simulation, and AI/agent features. The thesis pillar is the application itself, alongside a business plan, a deployment/scaling strategy, and a roadmap.
 
 ## Status
 
@@ -9,11 +9,13 @@ A master's thesis project (IoT): a Progressive Web App for managing EV charging 
 | 1 — Foundation | `[x]` done |
 | 2 — REVE seed + Map | `[x]` shipped + QA'd on real devices; seed complete; tariff refresh on cron |
 | 3 — ACN import | `[-]` **dropped** (scope pivot 2026-06-21; ACN kept only as a documented road-not-taken) |
-| 4 — Simulation + Algorithm | `[~]` slices 1–2 + pricing service + simulate shipped (vehicle catalogue, PVPC ingest, `/api/simulate` + UI); synthetic availability + recommend pending |
-| 5 — Private points, Bookings, Sessions + Wallet | `[ ]` not started |
-| 6 — Polish + Deployment | `[ ]` not started |
-| 7 — Thesis writing | `[ ]` not started |
-| 8 — AI/agent assistant | `[ ]` candidate, time-gated (never on the defense critical path) |
+| 4 — Simulation + Algorithm | `[x]` done (vehicle catalogue, PVPC ingest, `/api/simulate` + UI); synthetic availability dropped, `/api/recommend` → Phase 7 |
+| 5 — Frontend redesign + dashboard-first IA | `[x]` done (s-charge dark design system; 4-tab IA; real nearby points; placeholder UIs) |
+| 6 — Deployment + CI/CD + releases | `[~]` in progress (secure phone-accessible instance, then releases toward v1.0.0) |
+| 7 — Private points, Bookings, Sessions + Wallet + optimiser | `[ ]` not started |
+| 8 — AI/agent assistant | `[ ]` planned; specific features to be decided |
+| 9 — Polish, security review + optimisation + scaling strategy | `[ ]` not started |
+| 10 — Thesis writing | `[ ]` not started |
 
 See [docs/PLAN.md](docs/PLAN.md) for phase descriptions, acceptance criteria, and estimates.
 
