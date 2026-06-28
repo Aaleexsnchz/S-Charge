@@ -67,10 +67,9 @@ export function LoginPage() {
   }
 
   return (
-    <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
-        Iniciar sesión
-      </Typography>
+    <Stack spacing={2.5}>
+      <GoogleSignInButton label="Continuar con Google" />
+      <Divider sx={{ color: 'text.disabled', fontSize: 13 }}>o</Divider>
       <Form method="post" noValidate>
         <Stack spacing={2}>
           <TextField
@@ -105,21 +104,25 @@ export function LoginPage() {
               </Button>
             </Alert>
           )}
-          <Button type="submit" variant="contained" disabled={submitting || !canSubmit} fullWidth>
+          <Box sx={{ textAlign: 'right' }}>
+            <MuiLink component={RouterLink} to="/forgot-password" variant="body2" underline="hover">
+              ¿Olvidaste tu contraseña?
+            </MuiLink>
+          </Box>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={submitting || !canSubmit}
+            fullWidth
+          >
             {submitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </Button>
         </Stack>
       </Form>
-      <Typography variant="body2" align="right">
-        <MuiLink component={RouterLink} to="/forgot-password">
-          ¿Olvidaste tu contraseña?
-        </MuiLink>
-      </Typography>
-      <Divider>o</Divider>
-      <GoogleSignInButton label="Iniciar sesión con Google" />
-      <Typography variant="body2">
+      <Typography variant="body2" align="center" color="text.secondary">
         ¿No tienes cuenta?{' '}
-        <MuiLink component={RouterLink} to="/register">
+        <MuiLink component={RouterLink} to="/register" sx={{ fontWeight: 500 }}>
           Regístrate
         </MuiLink>
       </Typography>

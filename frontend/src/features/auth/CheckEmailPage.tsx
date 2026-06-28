@@ -1,4 +1,4 @@
-import { Button, Stack, Typography } from '@mui/material'
+import { Button, Link as MuiLink, Stack, Typography } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
@@ -28,7 +28,7 @@ export function CheckEmailPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
+      <Typography variant="h3" component="h1">
         Revisa tu email
       </Typography>
       <Typography variant="body1">
@@ -39,8 +39,10 @@ export function CheckEmailPage() {
       <Button variant="outlined" onClick={handleResend} disabled={!email || resending} fullWidth>
         {resending ? 'Reenviando…' : 'Reenviar correo'}
       </Button>
-      <Typography variant="body2">
-        <RouterLink to="/login">Volver al inicio de sesión</RouterLink>
+      <Typography variant="body2" align="center">
+        <MuiLink component={RouterLink} to="/login">
+          Volver al inicio de sesión
+        </MuiLink>
       </Typography>
     </Stack>
   )

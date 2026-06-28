@@ -26,9 +26,10 @@ export function GoogleSignInButton({ label }: { label: string }) {
       fullWidth
       startIcon={<GoogleIcon />}
       sx={{
-        color: 'text.primary',
-        borderColor: 'divider',
-        textTransform: 'none',
+        bgcolor: '#ffffff',
+        color: '#0A0E13',
+        borderColor: 'transparent',
+        '&:hover': { bgcolor: '#e8eaed', borderColor: 'transparent' },
       }}
     >
       {label}

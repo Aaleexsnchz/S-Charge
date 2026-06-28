@@ -16,7 +16,7 @@ import { rootLoader } from '@/features/auth/loaders'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
-import { HomePage } from '@/features/home/HomePage'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { NotFoundPage } from './NotFoundPage'
 import { RootLayout } from './RootLayout'
@@ -60,11 +60,23 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <HomePage /> },
+          { index: true, element: <DashboardPage /> },
           {
             path: 'map',
             lazy: async () => ({
               Component: (await import('@/features/map/MapPage')).MapPage,
+            }),
+          },
+          {
+            path: 'sessions',
+            lazy: async () => ({
+              Component: (await import('@/features/sessions/SessionsPage')).SessionsPage,
+            }),
+          },
+          {
+            path: 'my-points',
+            lazy: async () => ({
+              Component: (await import('@/features/my-points/MyPointsPage')).MyPointsPage,
             }),
           },
           {

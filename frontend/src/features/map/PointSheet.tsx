@@ -48,6 +48,17 @@ export function PointSheet({ pointId, onClose }: Props) {
         },
       }}
     >
+      <Box
+        sx={{
+          width: 36,
+          height: 4,
+          bgcolor: 'divider',
+          borderRadius: 2,
+          mx: 'auto',
+          mt: 1,
+          mb: -0.5,
+        }}
+      />
       <Box sx={{ p: 2.5 }}>
         {isPending && pointId !== null && (
           <Stack spacing={1}>
@@ -107,7 +118,7 @@ export function PointSheet({ pointId, onClose }: Props) {
                       ? ` · ${powerLabel(connector.max_electric_power)}`
                       : ''}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
                     {priceLabel(connector.tariff?.price_per_kwh) ?? '—'}
                   </Typography>
                 </Stack>

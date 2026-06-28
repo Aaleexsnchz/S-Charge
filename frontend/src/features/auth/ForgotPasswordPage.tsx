@@ -15,7 +15,7 @@ export function ForgotPasswordPage() {
   if (actionData && 'submitted' in actionData) {
     return (
       <Stack spacing={3}>
-        <Typography variant="h4" component="h1">
+        <Typography variant="h3" component="h1">
           Revisa tu email
         </Typography>
         <Alert severity="info">
@@ -32,7 +32,7 @@ export function ForgotPasswordPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
+      <Typography variant="h3" component="h1">
         Restablecer contraseña
       </Typography>
       <Typography variant="body2">

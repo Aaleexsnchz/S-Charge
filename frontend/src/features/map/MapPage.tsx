@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Alert, Box, CircularProgress, Paper, Typography } from '@mui/material'
+import { tokens } from '@/theme'
 import { filterFeatures } from './filters'
 import { MapFilterBar } from './MapFilterBar'
 import { MAP_STYLE_URL, SPAIN_CENTER, SPAIN_ZOOM, STATUS_COLORS } from './mapConfig'
@@ -29,10 +30,10 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
     source: SOURCE_ID,
     filter: ['has', 'point_count'],
     paint: {
-      'circle-color': ['step', ['get', 'point_count'], '#42a5f5', 50, '#1e88e5', 250, '#1565c0'],
+      'circle-color': tokens.surface2,
       'circle-radius': ['step', ['get', 'point_count'], 16, 50, 21, 250, 27],
       'circle-stroke-width': 2,
-      'circle-stroke-color': '#ffffff',
+      'circle-stroke-color': tokens.accent,
     },
   })
 
@@ -46,7 +47,7 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
       'text-font': ['Noto Sans Regular'],
       'text-size': 12,
     },
-    paint: { 'text-color': '#ffffff' },
+    paint: { 'text-color': tokens.text },
   })
 
   map.addLayer({
@@ -65,8 +66,8 @@ function addPointLayers(map: maplibregl.Map, onSelect: (id: string) => void) {
         STATUS_COLORS.unknown,
       ],
       'circle-radius': 7,
-      'circle-stroke-width': 1.5,
-      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 2,
+      'circle-stroke-color': tokens.bg,
     },
   })
 
@@ -119,18 +120,18 @@ export function MapPage() {
       style: MAP_STYLE_URL,
       center: SPAIN_CENTER,
       zoom: SPAIN_ZOOM,
+      attributionControl: { compact: true },
+    })
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-    map.addControl(
-      new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-      }),
-      'top-right',
-    )
+    map.addControl(geolocate, 'top-right')
     map.on('load', () => {
       addPointLayers(map, setSelectedId)
       setMapLoaded(true)
+      geolocate.trigger()
     })
 
     mapRef.current = map
@@ -148,7 +149,22 @@ export function MapPage() {
   }, [mapLoaded, filtered])
 
   return (
-    <Box sx={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        height: '100%',
+        overflow: 'hidden',
+        '& .maplibregl-ctrl-group': {
+          background: tokens.surface,
+          border: `1px solid ${tokens.border}`,
+          boxShadow: 'none',
+        },
+        '& .maplibregl-ctrl-group button + button': { borderTopColor: tokens.border },
+        '& .maplibregl-ctrl button .maplibregl-ctrl-icon': { filter: 'invert(1) brightness(0.85)' },
+        '& .maplibregl-ctrl-attrib': { background: 'rgba(10,14,19,0.6)' },
+        '& .maplibregl-ctrl-attrib a': { color: tokens.text2 },
+      }}
+    >
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
       <MapFilterBar filters={filters} onChange={setFilters} />

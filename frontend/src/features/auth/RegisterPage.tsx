@@ -15,7 +15,7 @@ export function RegisterPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
+      <Typography variant="h3" component="h1">
         Crear cuenta
       </Typography>
       <Form method="post" noValidate>

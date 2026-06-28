@@ -1,12 +1,12 @@
 import {
   Alert,
+  Box,
   Button,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -152,31 +152,41 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
           )}
 
           {result && (
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1} divider={<Divider flexItem />}>
-                <ResultRow label="Energía" value={energyLabel(result.energy_kwh)} />
-                <ResultRow label="Duración" value={durationLabel(result.duration_minutes)} />
-                <ResultRow
-                  label="Potencia media"
-                  value={`${result.average_power_kw.toLocaleString('es-ES', { maximumFractionDigits: 1 })} kW`}
-                />
-                <ResultRow label="Coste" value={costLabel(result.cost_eur)} />
-              </Stack>
-              {result.price_source && (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ mt: 1, display: 'block' }}
+            <Stack spacing={1.5}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+                <Metric label="Duración" value={durationLabel(result.duration_minutes)} />
+                <Metric label="Energía" value={energyLabel(result.energy_kwh)} />
+                <Metric label="Coste" value={costLabel(result.cost_eur)} />
+              </Box>
+              <Paper sx={{ p: 1.5 }}>
+                <Stack
+                  direction="row"
+                  sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}
                 >
-                  Precio:{' '}
-                  {result.price_per_kwh?.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}{' '}
-                  €/kWh · {PRICE_SOURCE_LABELS[result.price_source]}
-                </Typography>
-              )}
-            </Paper>
+                  <Typography variant="body2" color="text.secondary">
+                    Potencia media
+                  </Typography>
+                  <Typography variant="numeric" sx={{ fontSize: 14, fontWeight: 600 }}>
+                    {result.average_power_kw.toLocaleString('es-ES', { maximumFractionDigits: 1 })}{' '}
+                    kW
+                  </Typography>
+                </Stack>
+                {result.price_source && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, display: 'block' }}
+                  >
+                    Precio:{' '}
+                    {result.price_per_kwh?.toLocaleString('es-ES', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    €/kWh · {PRICE_SOURCE_LABELS[result.price_source]}
+                  </Typography>
+                )}
+              </Paper>
+            </Stack>
           )}
         </Stack>
       </DialogContent>
@@ -195,15 +205,18 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
   )
 }
 
-function ResultRow({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-      <Typography variant="body2" color="text.secondary">
+    <Paper sx={{ p: 1.5, bgcolor: (t) => t.palette.tokens.surface2 }}>
+      <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+      <Typography
+        variant="numeric"
+        sx={{ display: 'block', fontSize: 17, fontWeight: 700, mt: 0.5 }}
+      >
         {value}
       </Typography>
-    </Stack>
+    </Paper>
   )
 }

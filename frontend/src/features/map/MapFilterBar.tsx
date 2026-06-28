@@ -24,8 +24,16 @@ export function MapFilterBar({ filters, onChange }: Props) {
         px: 1.5,
         overflowX: 'auto',
         scrollbarWidth: 'none',
-        '& .MuiChip-root': { bgcolor: 'background.paper', flexShrink: 0 },
-        '& .MuiChip-root.MuiChip-colorPrimary': { bgcolor: 'primary.main' },
+        '& .MuiChip-root': {
+          flexShrink: 0,
+          bgcolor: 'rgba(18,24,33,0.9)',
+          backdropFilter: 'blur(12px)',
+          border: (t) => `1px solid ${t.palette.tokens.border}`,
+        },
+        '& .MuiChip-root.MuiChip-colorPrimary': {
+          bgcolor: 'primary.main',
+          border: 'none',
+        },
       }}
     >
       <Chip

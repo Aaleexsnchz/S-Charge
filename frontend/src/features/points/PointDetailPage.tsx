@@ -69,6 +69,11 @@ export function PointDetailPage() {
     })),
   )
 
+  const prices = point.evses
+    .flatMap((evse) => evse.connectors.map((connector) => connector.tariff?.price_per_kwh))
+    .filter((price): price is number => price != null)
+  const minPrice = prices.length > 0 ? Math.min(...prices) : null
+
   return (
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
       <Stack spacing={2} sx={{ p: 2, maxWidth: 600, mx: 'auto', pb: 4 }}>
@@ -99,6 +104,33 @@ export function PointDetailPage() {
             <Chip size="small" label={point.parking_type} variant="outlined" />
           )}
         </Stack>
+
+        {minPrice !== null && (
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="overline" color="text.secondary">
+              Desde
+            </Typography>
+            <Typography
+              variant="numeric"
+              sx={{
+                display: 'block',
+                fontSize: 32,
+                fontWeight: 700,
+                color: 'primary.main',
+                lineHeight: 1.1,
+              }}
+            >
+              {minPrice.toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{' '}
+              €
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              por kWh
+            </Typography>
+          </Paper>
+        )}
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
@@ -169,7 +201,7 @@ export function PointDetailPage() {
                           : ''}
                         {` · ${connector.power_type === 'DC' ? 'DC' : 'AC'}`}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
                         {priceLabel(connector.tariff?.price_per_kwh) ?? '—'}
                       </Typography>
                     </Stack>
