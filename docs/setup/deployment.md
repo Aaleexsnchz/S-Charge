@@ -33,7 +33,7 @@ Point an A record (domain, or a free DuckDNS subdomain) at the VPS IP. Caddy nee
 
 ```bash
 sudo mkdir -p /opt/tfm && sudo chown deploy:deploy /opt/tfm
-git clone https://github.com/Aaleexsnchz/tfm.git /opt/tfm
+git clone https://github.com/Aaleexsnchz/EV-Charging-Management-App.git /opt/tfm
 cd /opt/tfm
 ```
 
