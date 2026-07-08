@@ -12,7 +12,8 @@ Task-oriented, step-by-step.
 | --- | --- |
 | [setup/google-oauth.md](setup/google-oauth.md) | Enable Google sign-in: Cloud Console client, People API, the env-snapshot gotcha. |
 | [setup/email.md](setup/email.md) | Wire up Resend for verification/reset email; sandbox sender limits; production DNS. |
-| [DOCKER.md](DOCKER.md) | When to rebuild vs. recreate vs. do nothing after a change; database backup & restore. |
+| [setup/deployment.md](setup/deployment.md) | Provision the production VPS: hardening, DNS, env files, DB bootstrap from seed dump, CD secrets, security gate. |
+| [DOCKER.md](DOCKER.md) | When to rebuild vs. recreate vs. do nothing after a change; the production stack; database backup & restore. |
 
 ## Reference
 
