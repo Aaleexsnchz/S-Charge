@@ -6,11 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # TODO: wire into prod/dev branching (CORS, /docs visibility) at Phase 6 deploy
+    # TODO: wire into prod/dev branching (/docs visibility) when needed
     environment: str = "development"
     # TODO: pass to FastAPI(debug=...) or gate verbose SQL logging when needed
     debug: bool = Field(default=True, validation_alias="APP_DEBUG")
     secret_key: str = ""
+    # Comma-separated. Prod is same-origin behind Caddy, so it sets this empty.
+    cors_allow_origins: str = "http://localhost:5173"
     database_url: str = (
         "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db"
     )
