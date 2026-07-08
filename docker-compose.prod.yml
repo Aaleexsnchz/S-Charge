@@ -1,0 +1,81 @@
+# Production stack (VPS): Caddy (TLS, single origin) -> nginx frontend + FastAPI
+# backend, Postgres on the internal network only, supercronic scheduler for the
+# refresh ETLs. Standalone file, NOT an override of docker-compose.yml — its own
+# project name keeps images/volumes/networks separate from the dev stack.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Reads SITE_ADDRESS from a root .env (see .env.example) and app secrets from
+# backend/.env — both server-side only, never committed.
+name: ev-charging-app-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: scheduler
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      TZ: Europe/Madrid
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2.11-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?define SITE_ADDRESS in the server-side root .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
