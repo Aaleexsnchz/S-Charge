@@ -30,6 +30,8 @@ docker compose up -d
 docker compose exec backend uv run alembic upgrade head    # apply migrations
 ```
 
+Common tasks are wrapped in the root [justfile](justfile): install the runner once with `uv tool install rust-just`, then the two lines above become `just up && just migrate` — and `just --list` shows everything else (`just ci` runs the full CI gate before pushing).
+
 Services:
 
 - **Backend API** — <http://localhost:8000> (OpenAPI docs at `/docs`)
@@ -58,7 +60,11 @@ tfm/
 ├── backend/             FastAPI + Postgres backend
 ├── frontend/            React + Vite + MUI v7 PWA
 ├── docs/                all project docs — see docs/README.md for the index
-├── docker-compose.yml
+├── scripts/             host-level ops (DB backup to Backblaze B2)
+├── docker-compose.yml       dev stack (hot reload)
+├── docker-compose.prod.yml  prod stack (Caddy TLS + prod images + scheduler)
+├── Caddyfile            reverse-proxy config for the prod stack
+├── justfile             task runner recipes — `just --list`
 ├── README.md
 └── CLAUDE.md            project memory for Claude Code (also covers git workflow)
 ```

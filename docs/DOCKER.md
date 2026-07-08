@@ -14,19 +14,27 @@ Always run commands from the project root (`/home/aaleexsnchz/tfm`).
 
 ## Multi-stage builds: `dev` vs `prod`
 
-Both Dockerfiles are multi-stage with two final targets:
+Both Dockerfiles are multi-stage:
 
-- **`dev`** — what Compose builds (`target: dev` in [docker-compose.yml](../docker-compose.yml)). Full dependencies incl. test/lint tooling, source bind-mounted, hot reload. Everything else in this guide assumes the `dev` target.
-- **`prod`** — lean deployment image, built explicitly (Compose never builds it):
+- **`dev`** — what the dev Compose builds (`target: dev` in [docker-compose.yml](../docker-compose.yml)). Full dependencies incl. test/lint tooling, source bind-mounted, hot reload. Everything else in this guide assumes the `dev` target unless it says otherwise.
+- **`prod`** — lean deployment image, built by [docker-compose.prod.yml](../docker-compose.prod.yml):
   - **Backend** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB vs ~860 MB for `dev`.
-  - **Frontend** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for React Router. ~80 MB vs ~1.1 GB for `dev`. Serves static assets only — API proxying is deployment-specific.
+  - **Frontend** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for React Router. ~80 MB vs ~1.1 GB for `dev`. Serves static assets only — Caddy does the API routing in prod.
+- **`scheduler`** (backend only) — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); runs the REVE/PVPC refresh ETLs in prod (no host cron, per [infra-0001](decisions/infra-0001-deployment.md) rev. 2026-06-30).
 
-Build the prod images directly (outside Compose):
+---
+
+## Production stack
+
+[docker-compose.prod.yml](../docker-compose.prod.yml) is **standalone** (own project name `ev-charging-app-prod`, not an override): Caddy terminates TLS on 80/443 ([Caddyfile](../Caddyfile), `SITE_ADDRESS` from the root `.env`) and proxies `/api/*` to the backend and everything else to nginx; Postgres has **no published port**. Provisioning: [setup/deployment.md](setup/deployment.md).
 
 ```bash
-docker build --target prod -t tfm-backend ./backend
-docker build --target prod -t tfm-frontend ./frontend
+docker compose -f docker-compose.prod.yml up -d --build        # deploy / redeploy
+docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+docker compose -f docker-compose.prod.yml logs -f scheduler    # ETL job output
 ```
+
+Every CD deploy rebuilds all images (cheap when nothing changed — cache hits), so the dev-side rebuild-vs-recreate distinctions above don't apply. ETL logs ride the container log stream; no `~/.reve-seed.log`-style host files. The stack can be smoke-tested locally next to the dev stack with `SITE_ADDRESS=localhost` in a root `.env` (self-signed cert warning is expected).
 
 ---
 

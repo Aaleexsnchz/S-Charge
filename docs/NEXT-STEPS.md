@@ -1,24 +1,21 @@
 # Next steps — where to start
 
-_Working handoff: just enough to resume tomorrow. Keep it small. When a "Now" item lands, delete it, update **State**, and pull the next item up._
+_Working handoff: just enough to resume after time away. Keep it small. When a "Now" item lands, delete it, update **State**, and pull the next item up._
 
-## State (2026-06-28)
+## State (2026-07-08)
 
-- **Phases (renumbered 2026-06-28):** 1–2 done · 3 dropped · **4 done** (Slice 3 synthetic availability dropped; Slice 5 `/api/recommend` → Phase 7) · **5 done** (frontend redesign + IA) · **6 in progress** (deployment + CI/CD + releases → v1.0.0) · 7 features+optimiser · 8 AI (planned, TBD) · 9 polish/security/scaling · 10 thesis. See [PLAN.md](PLAN.md).
-- **Last change — frontend redesign + IA restructure.** Adopted the `s-charge` dark design system (theme/tokens, mono-numeric type, app shell); restructured to a dashboard-first IA — bottom nav Inicio · Mapa · Sesiones · Mis puntos, profile via the avatar. Dashboard greeting + **real** nearby points (geolocation + `/api/points?bbox`); Sessions / My-points / stats / next-reservation are badged placeholder UI behind `*.mock.ts` (see [features.md](features.md)). **Merged + pushed to `main`** with the backend pricing/`simulate` commits; both feature branches deleted. Deployment approach recorded in [infra-0001](decisions/infra-0001-deployment.md); phases renumbered (PLAN revision 2026-06-28).
-- **Prior — pre-charge simulation (Slice 4).** `app/services/simulation.py` + `POST /api/simulate`: power = min(vehicle, connector), AC flat / DC taper above 80% SoC → energy, duration, cost (reuses the pricing service). UI is a "Simular carga" dialog on the point-detail page (`frontend/src/simulate/`). Model write-up: [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md). 104 backend tests, frontend lint/build/vitest green. (Now on `main`.)
-- **Prior — pricing/estimate service.** `app/services/pricing.py`: real REVE tariff else `PVPC(hour) + margin[AC 0.22 / DC 0.32]`. Ingest nulls implausible tariffs (`> 2 €/kWh`); live-DB garbage rows nulled.
-- **Data:** REVE seed complete (seed-once, serve-from-DB); tariff refresh + PVPC both on daily cron.
+- **Phases:** 1–2 done · 3 dropped · 4 done · 5 done (redesign + dashboard IA) · **6 in progress (deployment)** · 7 features+optimiser · 8 AI · 9 polish/security/scaling · 10 thesis. Detail: [PLAN.md](PLAN.md); history: git log.
+- **Where things stand:** the repo side of Phase 6 is **built, verified, and merged to `main`** (2026-07-08) — prod compose stack (Caddy TLS, Postgres unpublished, supercronic scheduler replacing the host refresh crons), CI-gated CD workflow, env-driven CORS, root justfile, provisioning runbook. Decision trail: [infra-0001](decisions/infra-0001-deployment.md).
+- **Nothing is deployed yet.** The app runs locally (dev stack via `just up`); the refresh/PVPC/backup crons still run from the laptop's crontab until the VPS exists. The CD workflow is **disabled** in the Actions tab (no server to deploy to) — re-enabling it is part of step 1 below.
 
-## Now (immediate)
+## Now (in order)
 
-- [ ] **Deploy securely (Phase 6 — priority)** — provision the host (Hetzner CX22, or Oracle Always-Free for €0), Caddy auto-HTTPS, same-origin; run the pre-deploy security gate and move the refresh crons to the server. Goal: a phone-accessible HTTPS URL. Approach + alternatives: [infra-0001](decisions/infra-0001-deployment.md).
-- [ ] **CI/CD + releases** — GitHub Actions deploy-on-merge-to-`main`; branch protection (PR + green checks); begin semver tagging (`vX.Y.Z`); build toward **v1.0.0** = the evaluated version.
-- [ ] **Default availability to "available"** (small backend change) — `aggregate_status` returns "available" instead of "unknown" when no `Evse.status`, so points show free until artificial demo data / a real source lands. Honesty note already in PLAN Data strategy.
-- [ ] **Map viewport loading** (Phase 6 slice) — open-on-position + zoom-gated `bbox` fetch + padded cache; needs a small backend `bbox` on `GET /api/points/map`. Design in [features.md](features.md).
-- [ ] **B2 lifecycle rule** (ops) — in the Backblaze UI on `tfm-db-backups`: keep-last-version + delete-older-than-N-days. (Optional: rotate the B2 app key.)
-
-**Deferred:** `/api/recommend` (the PVPC optimiser + algorithm write-up) is folded into **Phase 7** — it targets an *owned* point's schedule, so it attaches once private points exist.
+1. [ ] **Provision + deploy** — follow [setup/deployment.md](setup/deployment.md) top to bottom: Hetzner CX22, DNS, server-side `.env`s with **rotated** secrets, restore a fresh seed dump (`just backup-seed` — never re-seed, ~12 days), first `up -d --build`, OAuth/Resend on the prod origin, CD secrets + re-enable the CD workflow, branch protection. Budget an evening.
+2. [ ] **Security gate** before sharing the URL — checklist in [infra-0001](decisions/infra-0001-deployment.md); run `/security-review`. Then retire the laptop crontab lines and flip infra-0001 to `accepted`.
+3. [ ] **Start semver tagging** (`vX.Y.Z`) toward **v1.0.0** = the evaluated build.
+4. [ ] **Default availability to "available"** (small backend change) — `aggregate_status` returns "available" instead of "unknown" when no `Evse.status`. Honesty note already in PLAN Data strategy.
+5. [ ] **Map viewport loading** (Phase 6 slice) — open-on-position + zoom-gated `bbox` fetch + padded cache; needs a small backend `bbox` on `GET /api/points/map`. Design in [features.md](features.md).
+6. [ ] **B2 lifecycle rule** (ops) — in the Backblaze UI on `tfm-db-backups`: keep-last-version + delete-older-than-N-days. (Optional: rotate the B2 app key.)
 
 ## Remaining (project arc)
 
@@ -31,8 +28,4 @@ Carry-forward invariants (price cascade, refresh watermark gotcha) live in [PLAN
 
 ## Commands
 
-```bash
-docker compose exec backend uv run python -m scripts.refresh_reve --status   # refresh cursor state
-docker compose exec backend uv run pytest -q                                 # backend tests
-docker compose exec frontend sh -c "pnpm run lint && pnpm run build"         # frontend lint + build
-```
+`just --list` (task runner: `uv tool install rust-just` once). Day-to-day: `just up` · `just ci` before pushing · `just prod-up`/`prod-down` for a local prod smoke test.

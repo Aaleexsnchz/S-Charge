@@ -1,0 +1,4 @@
+# Runs under supercronic in the `scheduler` service (TZ=Europe/Madrid via
+# compose); job stdout/stderr land in the container log stream.
+30 * * * * python -m scripts.refresh_reve
+0 9 * * * python -m scripts.fetch_pvpc

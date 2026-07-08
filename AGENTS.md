@@ -32,6 +32,8 @@ docker compose exec backend uv run alembic upgrade head    # apply migrations
 
 Hot reload is on for both backend (`.py`) and frontend (`.ts`/`.tsx`) edits. See [docs/DOCKER.md](docs/DOCKER.md) for when a rebuild vs. recreate is needed.
 
+Common commands are wrapped as recipes in the root [justfile](justfile) — `just --list` shows them (`just ci` runs everything CI gates on). Install the runner once with `uv tool install rust-just`. The raw commands below still work; the justfile is a convenience for humans, and nothing in CI/CD depends on it.
+
 ## Working style
 
 - **Responsive UI.** Mobile-first, 360px reference width.
@@ -44,7 +46,7 @@ Hot reload is on for both backend (`.py`) and frontend (`.ts`/`.tsx`) edits. See
 - **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`.
 - **Scopes**: `backend`, `frontend`, `root`, `infra`.
 - **Pre-commit hooks** ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run `check-yaml`, `betterleaks` (secret scan), backend `ruff check` + `ruff format --check`, and frontend `biome` (lint + format). Install with `pre-commit install` once per clone. No secrets or credentials in the diff.
-- **`basedpyright` and the test suites are NOT in pre-commit** — they gate only in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)), which runs ruff + `basedpyright` + `pytest` (backend) and biome + `vitest` + `build` (frontend). Run `basedpyright` and the tests yourself before pushing, or CI will fail on a commit that committed cleanly.
+- **`basedpyright` and the test suites are NOT in pre-commit** — they gate only in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)), which runs ruff + `basedpyright` + `pytest` (backend) and biome + `vitest` + `build` (frontend). Run `basedpyright` and the tests yourself before pushing, or CI will fail on a commit that committed cleanly — `just ci` runs the whole gate in one command.
 
 ## Backend
 

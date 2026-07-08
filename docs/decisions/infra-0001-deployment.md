@@ -10,6 +10,22 @@ related: [auth-0002, fe-0002]
 
 > Append revisions below with date and reason rather than editing in place.
 
+## Revisions
+
+**2026-06-30 — Scheduling moves from host cron into an in-container scheduler service.** Supersedes the "host cron / systemd timer" choice in **Decision** and **Implementation** (the `Cron:` bullet). The refresh ETL will run from a dedicated `scheduler` service in `docker-compose.prod.yml` — the same backend image, running [supercronic](https://github.com/aptible/supercronic) (or a small APScheduler entrypoint) and invoking `python -m scripts.refresh_reve` / the PVPC ingest **directly inside the container** (no `docker compose exec` hop) — logging to **stdout**.
+
+*Why.* With host cron, the job runs via `docker compose exec`, whose output attaches to the host caller, not the container: ETL logs never appear in `docker compose logs` and instead accumulate in a host file (`~/.reve-seed.log`) that **no one rotates** (it grows unbounded) and that lives separately from the app's own logs. Moving the scheduler into a service means: (1) ETL logs ride the container log stream (`docker compose logs -f scheduler`), one place, with the platform's logging driver handling rotation/retention; (2) **no host crontab to provision** on the VPS — the stack is self-contained and portable (survives a host move or a future migration to Fly/k8s). Cost is one extra small container plus a cron-syntax file checked into the repo. Surfaced while investigating a REVE-side 504 regression where the host-file log was the only window into the cron's behaviour.
+
+*Unchanged:* single VPS + Caddy + GitHub Actions CD, and the host-level ops scripts (DB backup) per [DOCKER.md](../DOCKER.md) stay on the host. Only the **REVE/PVPC refresh scheduling** moves into the container.
+
+**2026-07-08 — Implementation choices, as built.** Three refinements to the letter (not the substance) of **Implementation**:
+
+- *Scheduler = supercronic* (not APScheduler): a `scheduler` Docker stage extends the backend `prod` image with the pinned supercronic binary and a repo-committed [crontab](../../backend/crontab); no Python scheduler code to write or keep alive. The unused `apscheduler` dependency was removed.
+- *`docker-compose.prod.yml` is a standalone file, not an override.* Compose file merging appends to `ports:` rather than replacing, so an override cannot cleanly *unpublish* Postgres's `5432` (the security gate's hard requirement) without recent-compose `!reset` tags. A standalone file with its own project name is unambiguous and lets the prod stack be smoke-tested next to the dev stack locally.
+- CD is gated on CI: `deploy.yml` became [cd.yml](../../.github/workflows/cd.yml) triggered by `workflow_run` on a **successful** CI run on `main` (push-triggered deploy would race the tests).
+
+Provisioning runbook: [setup/deployment.md](../setup/deployment.md).
+
 **Status note.** Proposed — the architecture (single always-on VPS + Caddy + GitHub Actions CD + host cron) is decided; the specific host (Hetzner vs. Oracle Always-Free) is confirmed at provisioning. The thesis *scaling* strategy (how this would grow to many users) is a separate written artifact; this ADR governs the live demo deployment only.
 
 **Decision.** Run the existing `docker compose` stack (Postgres + FastAPI backend + built frontend) on **one small always-on Linux VPS**. A reverse proxy ([Caddy](https://caddyserver.com/)) terminates TLS with automatic Let's Encrypt certificates and serves the frontend and `/api/*` from a **single origin**. The REVE/PVPC refresh ETL runs from the server's own cron (or a systemd timer), independent of any laptop. CI/CD is GitHub Actions: the existing test matrix gates every push; merging to `main` triggers an SSH deploy (`git pull` → `docker compose up -d --build` → `alembic upgrade head`). Default host: **Hetzner CX22** (~€4/mo, EU); fallback **Oracle Cloud Always-Free** (ARM Ampere, €0) if a zero-cost requirement dominates.
