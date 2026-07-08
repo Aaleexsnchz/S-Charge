@@ -1,17 +1,44 @@
 name: CD
 
+# Deploys to the VPS when CI goes green on main (infra-0001). The deploy is a
+# git pull + compose rebuild + alembic upgrade, executed over SSH.
+#
+# Required repository secrets:
+#   DEPLOY_HOST         VPS hostname or IP
+#   DEPLOY_USER         SSH user (non-root, in the docker group)
+#   DEPLOY_SSH_KEY      private key authorized on the VPS (deploy-only key)
+#   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <host>` (pins the host key)
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy (configure target)
+    name: Deploy to VPS
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Deployment target not configured
+      - name: Set up SSH
         run: |
-          echo "CD scaffold is enabled, but no deployment target is configured yet."
-          echo "Choose your provider (Render, Railway, Fly.io, AWS, etc.) and replace this job."
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Pull, rebuild, migrate
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /opt/tfm
+          git pull --ff-only
+          docker compose -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+          docker image prune -f
+          REMOTE
