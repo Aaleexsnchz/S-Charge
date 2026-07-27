@@ -40,13 +40,29 @@ Common commands are wrapped as recipes in the root [justfile](justfile) — `jus
 
 ## Git workflow
 
-- `main` stays stable. Direct commits to `main` are fine for small low-risk changes (docs typos, single-line fixes). Use a branch for features, multi-file fixes, refactors, dependency upgrades, or anything that could break behaviour.
+- **GitHub Flow: every change reaches `main` through a pull request.** Branch off `main`, push, open a PR, merge once CI is green. `main` is protected — no direct commits, no force-pushes — and it is what production runs, so it must stay deployable at all times.
 - **Branch naming**: `<type>/<scope>-<short-description>`, e.g. `feat/backend-user-profile`, `fix/frontend-navbar-overlap`.
 - **Commit message format**: Conventional Commits — `<type>(<scope>): <imperative summary>`. One logical change per commit; no mixing unrelated changes.
 - **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`.
 - **Scopes**: `backend`, `frontend`, `root`, `infra`.
 - **Pre-commit hooks** ([.pre-commit-config.yaml](.pre-commit-config.yaml)) run `check-yaml`, `betterleaks` (secret scan), backend `ruff check` + `ruff format --check`, and frontend `biome` (lint + format). Install with `pre-commit install` once per clone. No secrets or credentials in the diff.
 - **`basedpyright` and the test suites are NOT in pre-commit** — they gate only in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)), which runs ruff + `basedpyright` + `pytest` (backend) and biome + `vitest` + `build` (frontend). Run `basedpyright` and the tests yourself before pushing, or CI will fail on a commit that committed cleanly — `just ci` runs the whole gate in one command.
+
+## Releases
+
+Semantic versioning, tagged **manually** — the version number is a deliberate statement about scope, never derived from commit types. Rationale and the rejected alternatives: [docs/phases/phase-6.md](docs/phases/phase-6.md).
+
+- **Bump rules**: minor (`v0.7.0`) when a phase or a meaningful feature set ships; patch (`v0.7.1`) for fixes on top; `v0.1.0` was the first production deploy and **`v1.0.0` is the build presented for the thesis**.
+- **Cutting a release** — from a green `main` that is already deployed:
+
+  ```bash
+  git checkout main && git pull
+  git tag -a v0.7.0 -m "Phase 7: private points, bookings, wallet"
+  git push --tags
+  ```
+
+  A tag push triggers the release workflow (`.github/workflows/release.yml` — lands with Phase 6 Slice D), which creates the GitHub Release with notes generated from the merged PR titles. Nothing else to update by hand.
+- **The running version is derived from the tag.** `git describe --tags` feeds an `APP_VERSION` build arg at image build; it surfaces in `/api/health` and on the profile screen. Between tags it reads `v0.7.0-3-gabc1234`, so production always says how far ahead of the last release it is. Do **not** hand-edit version strings in `backend/pyproject.toml` or `frontend/package.json` — they are not the source of truth.
 
 ## Backend
 

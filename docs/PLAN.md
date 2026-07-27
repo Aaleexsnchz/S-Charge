@@ -113,6 +113,8 @@ Total: **~195–260h** over 12 weeks (~16–22h/week). Each phase has a brief de
 
 **Revision (2026-06-28) — redesign shipped; phases renumbered; deploy-early.** Phase 4 is complete (synthetic availability **dropped** — status not modelled; `/api/recommend` moved to Phase 7). The `s-charge` dark redesign + dashboard-first IA shipped as **Phase 5**. The later phases were **renumbered for chronology**: deployment + CI/CD + releases is now **Phase 6 (in progress)**, pulled ahead of the feature work; old Phase 5 (private points/bookings/sessions/wallet, + the optimiser) → **Phase 7**; AI is promoted from a stretch candidate to a committed **Phase 8** (specific features TBD); polish gains a **security review + optimisation** plus the scaling write-up → **Phase 9**; thesis writing → **Phase 10**. Goal: a secure, phone-accessible instance first, then features shipped as tagged releases toward **v1.0.0** = the evaluated build (decision [infra-0001](decisions/infra-0001-deployment.md)). This supersedes the earlier pacing notes' phase numbers.
 
+**Revision (2026-07-27) — Phase 6 open choices closed.** Host confirmed as **Hetzner CX22** (GCP reconsidered and rejected — expired trial, US-only 1 GB free tier, no EU locality); a **registered domain** over a free DuckDNS subdomain (public-suffix friction with Google OAuth authorised domains); **prod images build in CI**; releases are **tagged manually** with the version derived from the tag (`release-please` evaluated and rejected); `main` moves to **PR-required** branch protection. Full plan: [phases/phase-6.md](phases/phase-6.md).
+
 Slice-by-slice record: [phases](phases).
 
 ### Phase 1 — Foundation (22–28h) — done
@@ -174,9 +176,11 @@ Deployment is **pulled forward** (ahead of the remaining feature phases) so ther
 - [ ] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
 - [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
 - [ ] REVE/PVPC refresh crons run on the server (closes Phase 4's open cron item; no longer laptop-dependent)
-- [ ] CI/CD: GitHub Actions deploy-on-merge-to-`main`; `main` always deployable; branch protection (PR + green checks)
-- [ ] Semantic-version tagging/releases begin; `v1.0.0` cut once the evaluated scope is in
-- [ ] *(slice)* Map viewport loading — open-on-position + zoom-gated `bbox` fetch + padded cache (small backend `bbox` on `/api/points/map`); design in [features.md](features.md)
+- [ ] CI/CD: GitHub Actions deploy-on-merge-to-`main`; `main` always deployable; branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
+- [ ] Semantic-version tagging/releases begin — manual tags, version derived from `git describe` and shown in `/api/health`; `v0.1.0` = first production deploy, `v1.0.0` cut once the evaluated scope is in
+- [ ] *(deferred out of the phase)* Map viewport loading — open-on-position + zoom-gated `bbox` fetch + padded cache (small backend `bbox` on `/api/points/map`); no deployment dependency, tracked in [features.md](features.md)
+
+Step-by-step plan, decisions and rationale: [phases/phase-6.md](phases/phase-6.md).
 
 ### Phase 7 — Private points, Bookings, Sessions + Wallet + optimiser (30–40h)
 

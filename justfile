@@ -31,6 +31,11 @@ lint:
     cd backend && uv run ruff check && uv run ruff format --check
     docker compose exec -T frontend pnpm run lint
 
+# Auto-fix what `just lint` reports (linter before formatter, per ruff's guidance)
+fix:
+    cd backend && uv run ruff check --fix && uv run ruff format
+    docker compose exec -T frontend pnpm run format
+
 # Backend type check — NOT in pre-commit, CI gates it
 typecheck:
     cd backend && uv run basedpyright
