@@ -30,9 +30,11 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        # Pinned to a full version: setup-uv stopped publishing floating major
+        # tags after v7, so `@v9` does not resolve.
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: '3.12'
       - name: Install backend dependencies
@@ -55,13 +57,13 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 11
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Install dependencies
