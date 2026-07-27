@@ -54,6 +54,17 @@ Recorded here and in [AGENTS.md](../../AGENTS.md); this section is the rationale
 - [ ] CD hardening: `git fetch --tags`, export `APP_VERSION`, `pg_dump` before `alembic upgrade head`
 - [ ] Documented rollback (`git checkout <tag>` + rebuild) in [setup/deployment.md](../setup/deployment.md)
 - [ ] `release.yml`: tag push → `gh release create --generate-notes`
+- [ ] Drop the "lands with Phase 6 Slice D" qualifier in [AGENTS.md](../../AGENTS.md) once `release.yml` exists, and make it a link
+
+### Toolchain hygiene
+
+Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to fold in here.
+
+- [x] GitHub Actions bumped off the deprecated Node 20 runtime (2026-07-27) — checkout v7, setup-node v7, pnpm/action-setup v6, setup-uv v9.0.0. **setup-uv must be pinned to a full version**: it stopped publishing floating major tags after v7 as a supply-chain measure, so `@v9` does not resolve.
+- [x] pnpm aligned at 11 across CI and `frontend/Dockerfile` (2026-07-27) — CI was on 10.
+- [x] uv pinned to the same version in CI and `backend/Dockerfile` (2026-07-27) — CI installed the latest uv while the image pinned 0.11.22, so `uv.lock` was resolved by a different uv than the one building the images. Bump both together.
+- [ ] **Decide on `pnpm install --no-frozen-lockfile` in CI.** It defeats lockfile integrity checking, so a green CI does not prove the lockfile is honest; `frontend/Dockerfile` already uses `--frozen-lockfile`. Left alone because flipping it breaks CI if the lockfile is genuinely out of sync — verify locally first.
+- [ ] *(optional)* `packageManager` field in `frontend/package.json` to single-source the pnpm version instead of repeating it in `ci.yml` and the Dockerfile. Note `pnpm/action-setup` errors when both `packageManager` and the `version` input are set, so the input must go at the same time.
 
 ## Slice E — First deploy
 
