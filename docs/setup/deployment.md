@@ -78,7 +78,9 @@ Verify: `https://<domain>` loads the app on a phone, PWA installs, `https://<dom
 
 Repository secrets (Settings → Secrets and variables → Actions): `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (a dedicated key authorized on the VPS, not your personal one), `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`). CD runs on every **green** CI run on `main` (and manually via *Run workflow*).
 
-Protect `main`: require a PR and the CI checks before merge.
+Protect `main` with a ruleset: **require a pull request**, require the CI checks to pass, and block force-pushes and deletion. `main` is what production runs, so every change goes through a PR ([AGENTS.md](../../AGENTS.md) → Git workflow).
+
+Then **test the loop end to end** — a trivial PR, merged, should turn CI green and leave a changed version string in production. That round trip is the only proof the pipeline works; do it before trusting it.
 
 ## 8. Security gate
 
