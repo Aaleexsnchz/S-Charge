@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/app/.venv
-COPY --from=ghcr.io/astral-sh/uv:0.11.22 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /bin/
 WORKDIR /app
 
 # ---------- build-prod: runtime dependencies only ----------

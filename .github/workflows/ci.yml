@@ -36,6 +36,9 @@ jobs:
         # tags after v7, so `@v9` does not resolve.
         uses: astral-sh/setup-uv@v9.0.0
         with:
+          # Keep in lockstep with the uv pinned in backend/Dockerfile, so CI
+          # resolves uv.lock with the same uv that builds the images.
+          version: '0.11.32'
           python-version: '3.12'
       - name: Install backend dependencies
         run: uv sync --locked --all-groups
