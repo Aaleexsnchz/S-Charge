@@ -2,51 +2,80 @@
 default:
     @just --list
 
-# Start the dev stack (db + backend + frontend)
+# ---------- dev ----------
+
+# Install/refresh both toolchains
+install:
+    cd backend && uv sync --locked --all-groups
+    cd frontend && pnpm install --frozen-lockfile
+
+# Start Postgres (the only containerised piece in dev)
 up:
     docker compose up -d
 
-# Stop the dev stack
+# Stop Postgres
 down:
     docker compose down
 
-# Tail dev logs (optionally one service: just logs backend)
-logs service="":
-    docker compose logs -f {{ service }}
+# Tail Postgres logs
+logs:
+    docker compose logs -f db
+
+# Destroy the dev database, volume included, and start it fresh — DELETES ALL LOCAL DATA
+db-reset:
+    docker compose down -v
+    docker compose up -d
+
+# Start Postgres, then run the API with reload (http://localhost:8000)
+dev: up api
+
+# Run the API with reload (http://localhost:8000)
+api:
+    cd backend && uv run uvicorn app.main:app --reload
+
+# Run the Vite dev server (http://localhost:5173) — second terminal
+web:
+    cd frontend && pnpm run dev
+
+# ---------- database ----------
 
 # Apply pending migrations
 migrate:
-    docker compose exec -T backend uv run alembic upgrade head
+    cd backend && uv run alembic upgrade head
 
 # Autogenerate a migration — always review the diff before applying
 revision msg:
-    docker compose exec -T backend uv run alembic revision --autogenerate -m "{{ msg }}"
+    cd backend && uv run alembic revision --autogenerate -m "{{ msg }}"
 
-# Backend tests (in-container; dev stack must be up)
+# ---------- checks ----------
+
+# Backend tests
 test:
-    docker compose exec -T backend uv run pytest
+    cd backend && uv run pytest
 
-# Lint + format check, backend + frontend (same as pre-commit)
+# Lint + format check, backend + frontend
 lint:
     cd backend && uv run ruff check && uv run ruff format --check
-    docker compose exec -T frontend pnpm run lint
+    cd frontend && pnpm run lint
 
 # Auto-fix what `just lint` reports (linter before formatter, per ruff's guidance)
 fix:
     cd backend && uv run ruff check --fix && uv run ruff format
-    docker compose exec -T frontend pnpm run format
+    cd frontend && pnpm run format
 
-# Backend type check — NOT in pre-commit, CI gates it
+# Backend type check — CI gates it
 typecheck:
     cd backend && uv run basedpyright
 
 # Everything CI runs — run before pushing
 ci: lint typecheck test
-    docker compose exec -T frontend sh -c "pnpm run test && pnpm run build"
+    cd frontend && pnpm run test && pnpm run build
 
-# Regenerate frontend API types from the running backend (+ biome re-format)
+# Regenerate frontend API types from the backend schema (+ biome re-format)
 gen-api:
     cd frontend && pnpm run gen:api && pnpm run format
+
+# ---------- ops ----------
 
 # PII-safe seed dump (also the prod bootstrap artifact)
 backup-seed:
@@ -56,7 +85,7 @@ backup-seed:
 # not only up — locally there is no root .env, so each recipe supplies it.
 prod_compose := "SITE_ADDRESS=${SITE_ADDRESS:-localhost} docker compose -f docker-compose.prod.yml"
 
-# Local prod smoke test: build + run the prod stack next to dev (https://localhost, self-signed)
+# Local prod smoke test: build + run the full containerised stack (https://localhost, self-signed)
 prod-up:
     {{ prod_compose }} up -d --build
 
