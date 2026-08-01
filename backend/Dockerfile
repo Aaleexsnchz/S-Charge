@@ -48,12 +48,3 @@ COPY --chown=appuser:appuser crontab ./crontab
 USER appuser
 HEALTHCHECK NONE
 CMD ["supercronic", "/app/crontab"]
-
-# ---------- dev: full deps incl. tooling; source bind-mounted by compose ----------
-FROM base AS dev
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked
-COPY . .
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]

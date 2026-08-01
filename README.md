@@ -1,44 +1,48 @@
 # TFM — EV Charging PWA
 
-A master's thesis project (IoT): a Progressive Web App for managing EV charging points. It unifies, under one app, what is today fragmented across each operator's own application, and improves on Spain's public **REVE** app (which only views points and plans routes). It seeds the real Spanish network from the **REVE API** and adds the functionality REVE lacks: user-contributed private charging points with paid use, bookings, price/time charging optimisation over real PVPC prices, charge simulation, and AI/agent features. The thesis pillar is the application itself, alongside a business plan, a deployment/scaling strategy, and a roadmap.
+A Progressive Web App for managing EV charging in Spain. It unifies in one app what is today fragmented across each operator's own application: the real charging network seeded from the public **REVE** API, plus what REVE does not offer — user-registered private charging points with paid use, bookings, charge simulation for your car model, and charging schedules optimised against real hourly electricity prices.
 
-## Status
-
-| Phase | Status |
-| --- | --- |
-| 1 — Foundation | `[x]` done |
-| 2 — REVE seed + Map | `[x]` shipped + QA'd on real devices; seed complete; tariff refresh on cron |
-| 3 — ACN import | `[-]` **dropped** (scope pivot 2026-06-21; ACN kept only as a documented road-not-taken) |
-| 4 — Simulation + Algorithm | `[x]` done (vehicle catalogue, PVPC ingest, `/api/simulate` + UI); synthetic availability dropped, `/api/recommend` → Phase 7 |
-| 5 — Frontend redesign + dashboard-first IA | `[x]` done (s-charge dark design system; 4-tab IA; real nearby points; placeholder UIs) |
-| 6 — Deployment + CI/CD + releases | `[~]` in progress (secure phone-accessible instance, then releases toward v1.0.0) |
-| 7 — Private points, Bookings, Sessions + Wallet + optimiser | `[ ]` not started |
-| 8 — AI/agent assistant | `[ ]` planned; specific features to be decided |
-| 9 — Polish, security review + optimisation + scaling strategy | `[ ]` not started |
-| 10 — Thesis writing | `[ ]` not started |
-
-See [docs/PLAN.md](docs/PLAN.md) for phase descriptions, acceptance criteria, and estimates.
+Master's thesis project (IoT), solo developer. Scope and roadmap: [docs/plan.md](docs/plan.md).
 
 ## Quick start
+
+Needs [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io), and Docker with the Compose plugin (for Postgres). The task runner is optional but assumed below: `uv tool install rust-just`.
 
 ```bash
 git clone <repo> tfm && cd tfm
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 
-docker compose up -d
-docker compose exec backend uv run alembic upgrade head    # apply migrations
+just install     # uv sync + pnpm install
+just up          # start Postgres
+just migrate     # apply migrations
+just api         # backend  → http://localhost:8000
+just web         # frontend → http://localhost:5173   (second terminal)
 ```
 
-Common tasks are wrapped in the root [justfile](justfile): install the runner once with `uv tool install rust-just`, then the two lines above become `just up && just migrate` — and `just --list` shows everything else (`just ci` runs the full CI gate before pushing).
+| Service | URL | Notes |
+| --- | --- | --- |
+| Frontend | <http://localhost:5173> | Vite dev server; proxies `/api/*` to the backend so the session cookie stays first-party |
+| Backend | <http://localhost:8000> | FastAPI, `--reload` |
+| API docs | <http://localhost:8000/docs> | OpenAPI / Swagger UI |
+| Postgres | `localhost:5432` | the one containerised piece in dev |
 
-Services:
+**Only Postgres runs in Docker.** The backend and frontend run natively so the toolchain that gates commits and runs in CI is the same one that runs the app — and so reloads are instant. The full containerised stack is what production runs; `just prod-up` smoke-tests it locally. See [docs/operations.md](docs/operations.md).
 
-- **Backend API** — <http://localhost:8000> (OpenAPI docs at `/docs`)
-- **Frontend** — <http://localhost:5173> (Vite proxies `/api/*` to the backend so the session cookie stays first-party)
-- **Postgres** — exposed on `:5432` for host-side tools
+## Commands
 
-Hot reload is on for both backend (`.py`) and frontend (`.ts`/`.tsx`) edits. See [docs/DOCKER.md](docs/DOCKER.md) for when a rebuild vs. recreate is needed.
+The ones used daily. `just --list` has the rest, with descriptions.
+
+| Command | Does |
+| --- | --- |
+| `just up` / `just down` | start / stop Postgres |
+| `just api` | backend with reload |
+| `just web` | Vite dev server |
+| `just migrate` | apply migrations |
+| `just revision "msg"` | autogenerate a migration — always review the diff |
+| `just ci` | the full CI gate: lint, typecheck, tests, build. Run before pushing |
+| `just prod-up` / `just prod-down` | the production stack locally, for a deploy smoke test |
+| `just backup-seed` | PII-safe database dump, also the production bootstrap artifact |
 
 Optional integrations (the app runs without them):
 
@@ -47,36 +51,49 @@ Optional integrations (the app runs without them):
 
 ## Tech stack
 
-**Backend** — Python 3.12+, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, `fastapi-users` for authentication. Package manager: `uv`. Lint/format/typecheck: `ruff` + `basedpyright`.
+**Backend** — Python 3.13, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, `fastapi-users`. Managed with `uv`; linted by Ruff, type-checked by basedpyright, tested with pytest.
 
-**Frontend** — React + Vite + TypeScript + MUI v7 (Emotion), in `frontend/`. Package manager: `pnpm`. Lint/format: [Biome](https://biomejs.dev).
+**Frontend** — React + Vite + TypeScript, TanStack (Query · Router · Form) + Zod, Tailwind CSS v4 + shadcn/ui, MapLibre GL JS, installable as a PWA. Managed with `pnpm`; linted and formatted by Biome, tested with Vitest.
 
-**Database** — PostgreSQL 17 with the `citext` extension (case-insensitive email lookup).
+**Database** — PostgreSQL 18 (with `citext` for case-insensitive email).
+
+**Production** — the same Compose stack on one EU VPS behind Caddy (automatic HTTPS), deployed by GitHub Actions on merge to `main`.
+
+> **The frontend is mid-migration.** What is in the tree today is MUI v9 + Emotion and React Router; Tailwind + shadcn/ui, TanStack Router and TanStack Form + Zod land in Phase 6. [docs/tech-stack.md](docs/tech-stack.md) marks every row *shipped* / *Phase 6* / *leaving*, and [docs/thesis/migracion-del-stack.md](docs/thesis/migracion-del-stack.md) argues this and the other stack changes (PostgreSQL 18, Python 3.13, native dev, tooling).
+
+Every library and the reason it was chosen: [docs/tech-stack.md](docs/tech-stack.md).
 
 ## Repo layout
 
 ```text
 tfm/
 ├── backend/             FastAPI + Postgres backend
-├── frontend/            React + Vite + MUI v7 PWA
+├── frontend/            React + Vite PWA
 ├── docs/                all project docs — see docs/README.md for the index
 ├── scripts/             host-level ops (DB backup to Backblaze B2)
-├── docker-compose.yml       dev stack (hot reload)
+├── docker-compose.yml       dev Postgres
 ├── docker-compose.prod.yml  prod stack (Caddy TLS + prod images + scheduler)
 ├── Caddyfile            reverse-proxy config for the prod stack
 ├── justfile             task runner recipes — `just --list`
-├── README.md
-└── CLAUDE.md            project memory for Claude Code (also covers git workflow)
+├── CONTRIBUTING.md      branch, commit and doc-update conventions
+└── AGENTS.md            code conventions and documentation discipline
 ```
+
+## Contributing
+
+Every change reaches `main` through a pull request, and `just ci` must be green before pushing. Install the commit hooks once per clone with `pre-commit install`. Branch naming, commit conventions and what to update before opening the PR: **[CONTRIBUTING.md](CONTRIBUTING.md)**. The code-level conventions — layout, testing, migrations, documentation discipline — are in [AGENTS.md](AGENTS.md).
+
+**Agent skills.** `.claude/skills/` is gitignored, so on a fresh clone materialise them from [skills-lock.json](skills-lock.json), which pins each skill to its `source`, `skillPath` and a content hash: install with the skill manager that wrote the lockfile, or copy the upstream `skillPath` to `.claude/skills/<name>/SKILL.md` by hand. Which skills this project uses, and what for: [docs/thesis/skills.md](docs/thesis/skills.md) — add a row the first time you use a new one.
 
 ## Documentation
 
-The full, categorized index lives at **[docs/README.md](docs/README.md)**. Start there. Most-reached entries:
+The categorized index is at **[docs/README.md](docs/README.md)**. Most-reached entries:
 
-- [docs/PLAN.md](docs/PLAN.md) — phases, acceptance criteria, estimates
-- [docs/DOCKER.md](docs/DOCKER.md) — when to rebuild, recreate, or do nothing
-- [docs/decisions/](docs/decisions/) — architectural decision records (ADRs)
-- [docs/thesis/](docs/thesis/) — concept-level chapters for the thesis writeup
+- [docs/plan.md](docs/plan.md) — scope, phases, acceptance criteria
+- [docs/features/](docs/features/) — one document per feature, with implementation status
+- [docs/operations.md](docs/operations.md) — deploying, backups and restores, Postgres upgrades
+- [docs/decisions/](docs/decisions/) — architectural decision records
+- [docs/setup/deployment.md](docs/setup/deployment.md) — production provisioning runbook
 
 ## License
 

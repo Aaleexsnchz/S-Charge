@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // Inside Docker the backend is reachable by service name; host-side runs
 // (pnpm preview for Lighthouse) override via VITE_PROXY_TARGET.
-const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://backend:8000'
+const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000'
 
 // https://vite.dev/config/
 export default defineConfig({

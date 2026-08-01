@@ -1,21 +1,20 @@
 ---
 id: auth-0002
 status: accepted
-phase: Phase 1 / Slice 1
+phase: 1
 date: 2026-03
 related: [auth-0001]
 ---
 
 # auth-0002: Single HttpOnly cookie session — no refresh tokens
 
-> Slice 1 decision. Append revisions below with date and reason rather than editing in place.
 
 **Decision.** Authentication state is a single JWT in an `HttpOnly; Secure; SameSite=Lax` cookie at path `/`, 14-day lifetime. No access/refresh pair, no bearer tokens, no `/auth/refresh` endpoint.
 
 ## Rationale — cookie transport
 
 - *`HttpOnly`* makes the token unreadable by JavaScript, neutralising the dominant SPA credential-loss vector: XSS exfiltration from `localStorage` / `sessionStorage`. XSS can still issue authenticated requests while the page is open, but cannot persist or exfiltrate the credential.
-- *`SameSite=Lax`* blocks the cookie from cross-site sub-requests, addressing CSRF for a same-origin app behind the same Nginx as the API. `Strict` would break the OAuth callback redirect (Slice 2).
+- *`SameSite=Lax`* blocks the cookie from cross-site sub-requests, addressing CSRF for a same-origin app served with the API behind one reverse proxy. `Strict` would break the OAuth callback redirect (Slice 2).
 - *`Secure`* enforces TLS in production (relaxed in local dev).
 - A PWA is a same-origin web app; cookies are sent automatically by the browser, including on service-worker fetches and after a cold start — no client-side token management.
 
@@ -32,6 +31,13 @@ The dual-token pattern (in-memory access + cookie refresh + periodic `/auth/refr
 ## Implementation
 
 Slice 1. fastapi-users' `CookieTransport` configured with our security flags, composed with a single `JWTStrategy` (HS256, 14-day lifetime, audience `tfm:session`) into one `AuthenticationBackend`. Logout is `CookieTransport.get_logout_response()` (library-provided), which clears the cookie with `Max-Age=0`. No custom endpoints.
+
+## Consequences
+
+- **Sessions cannot be revoked.** The JWT is stateless, so a stolen cookie stays valid until it expires — up to 14 days. Nothing in the app can log another device out. Accepted for a thesis demo; the upgrade path is a session table, which is the same work as DB-backed refresh rotation.
+- XSS can act as the user while the page is open, but cannot exfiltrate the credential. That is the ceiling this design buys, and it is the honest answer to "is this resistant to session theft?" — see [thesis/robo-de-sesion.md](../thesis/robo-de-sesion.md).
+- `SameSite=Lax` rather than `Strict` is a requirement of the OAuth callback redirect, not a preference.
+- Everything must stay same-origin. A split frontend/API origin would force `SameSite=None` and reintroduce the CSRF surface this avoids — which is why [infra-0001](infra-0001-deployment.md) puts both behind one reverse proxy.
 
 ## Rejected alternatives
 

@@ -1,18 +1,16 @@
 ---
 id: fe-0006
 status: accepted
-phase: Phase 4 (tooling)
+phase: 3
 date: 2026-06
 related: [fe-0001]
 ---
 
 # fe-0006: Use Biome for frontend linting and formatting
 
-> Append revisions below with date and reason rather than editing in place.
-
 **Decision.** The frontend uses [Biome](https://biomejs.dev) (v2, pinned) as the single tool for linting, formatting, and import sorting, replacing ESLint + Prettier. Configuration lives in [frontend/biome.json](../../frontend/biome.json); `pnpm run lint` runs `biome check` (lint + format check + import sort) and `pnpm run format` runs `biome check --write`.
 
-**Rationale.** Same framing as [fe-0001](fe-0001-mui.md): this is a solo thesis whose contribution is the backend (Phases 3–4), and the frontend toolchain should be low-maintenance, not a project in itself. Biome is a single fast Rust binary that does lint + format + import-organize from one config — the same consolidation the backend already gets from Ruff and uv, so the mental model is consistent across both halves of the repo. The trigger was concrete: Prettier had never actually worked here (config files were present but the package was never installed, and the pre-commit `format:check` hook called a script that did not exist), so a decision was forced rather than merely available.
+**Rationale.** Same framing as [fe-0001](fe-0001-mui.md): this is a solo thesis whose contribution is the application as a whole, and the frontend toolchain should be low-maintenance, not a project in itself. Biome is a single fast Rust binary that does lint + format + import-organize from one config — the same consolidation the backend already gets from Ruff and uv, so the mental model is consistent across both halves of the repo. The trigger was concrete: Prettier had never actually worked here (config files were present but the package was never installed, and the pre-commit `format:check` hook called a script that did not exist), so a decision was forced rather than merely available.
 
 The migration was low-risk because the existing ESLint setup avoided Biome's known weak spots: it used no type-aware rules (where Biome, lacking a TypeScript-compiler backend, is weakest), and its two React plugins map onto Biome rules — `useExhaustiveDependencies` / `useHookAtTopLevel` (react-hooks) and `useComponentExportOnlyModules` (react-refresh). The load-bearing per-path `@mui/icons-material` import ban from fe-0001 ports directly to Biome's `noRestrictedImports`, error message intact. Biome's `recommended` set is also stricter than the prior config (a11y rules, `noArrayIndexKey`), which surfaced and fixed a handful of pre-existing issues on adoption.
 

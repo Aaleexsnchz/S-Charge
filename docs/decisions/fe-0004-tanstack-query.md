@@ -1,14 +1,12 @@
 ---
 id: fe-0004
 status: accepted
-phase: Phase 2 / Slice 2
+phase: 2
 date: 2026-06
 related: [fe-0003]
 ---
 
 # fe-0004: TanStack Query for server state
-
-> Append revisions below with date and reason rather than editing in place.
 
 **Decision.** Server state (everything fetched from `/api/*` except the auth bootstrap) is managed with [TanStack Query](https://tanstack.com/query) v5. Queries wrap the existing typed `openapi-fetch` client in small hooks (`useMapPoints`, `usePoint(id)`, …) colocated with the feature that owns them. The React Router root loader keeps owning the initial `/api/users/me` call; auth actions keep using the client directly.
 

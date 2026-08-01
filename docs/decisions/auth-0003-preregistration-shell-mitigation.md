@@ -1,7 +1,7 @@
 ---
 id: auth-0003
 status: accepted
-phase: Phase 1 / Slice 3
+phase: 1
 date: 2026-04
 related: [auth-0001]
 ---
@@ -29,7 +29,7 @@ Two complementary fixes, applied together.
 
 ## Why Resend
 
-SMTP at this stage means SPF/DKIM/DMARC for a domain we don't yet own (production domain lands in Phase 6). Resend's sandbox sender (`onboarding@resend.dev`) delivers without DNS setup, the free 100/day tier covers a thesis demo, and the Python SDK is a one-line swap when we cut over to a verified domain. Provider lock-in is minimal — the call sits in one helper module.
+SMTP at this stage means SPF/DKIM/DMARC for a domain we don't yet own (production domain lands in Phase 5). Resend's sandbox sender (`onboarding@resend.dev`) delivers without DNS setup, the free 100/day tier covers a thesis demo, and the Python SDK is a one-line swap when we cut over to a verified domain. Provider lock-in is minimal — the call sits in one helper module.
 
 ## Implementation
 

@@ -27,8 +27,9 @@ Una muestra re-descargada de REVE y el catálogo ya sembrado resuelven las dudas
   referencia de ~0.12 €/kWh: AC ≈ +0.22 €/kWh, DC ≈ +0.32 €/kWh (mediana sobre
   ~27 000 tarifas reales). Varía entre CPO, pero el valor por tipo basta como
   estimación.
-- **El estado operativo no aporta valor:** la disponibilidad se simula (Fase 4),
-  así que gastar cuota en `/evses/operational_status` no se justifica.
+- **El estado operativo no aporta valor:** la disponibilidad no se modela
+  (véase [modelo-de-datos.md](modelo-de-datos.md)), así que gastar cuota en
+  `/evses/operational_status` no se justifica.
 
 ## La solución
 
@@ -103,9 +104,11 @@ margen que quiera (PVPC + margen, o precio fijo).
 operativo* (funciona / averiado) se asume siempre operativo y no se modela: se
 elimina `/evses/operational_status` del ETL y su cursor. La *disponibilidad*
 (libre / en uso) la da en REVE el endpoint por EVSE `/evses/{evse_id}/status`,
-que tampoco se consulta — es justo lo que vamos a simular (Fase 4). El EVSE guarda
-esa disponibilidad en la columna `status` (valor OCPI, p. ej. `AVAILABLE`); el
-mapa la agrega a *disponible* / *ocupado* / *desconocido*.
+que tampoco se consulta por coste de cuota. El plan original era simularla;
+finalmente **no se modela** y los puntos se muestran disponibles por defecto —el
+razonamiento completo, en [modelo-de-datos.md](modelo-de-datos.md)—. El EVSE
+conserva la columna `status` (valor OCPI, p. ej. `AVAILABLE`) y el mapa la sigue
+agregando a *disponible* / *ocupado* / *desconocido*, lista para una fuente real.
 
 ## Operación
 

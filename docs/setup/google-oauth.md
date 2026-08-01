@@ -16,8 +16,8 @@ The backend supports Google sign-in side by side with email/password; both flows
    GOOGLE_REDIRECT_URI=http://localhost:5173/api/auth/google/callback
    ```
 
-6. Recreate the backend so it reads the new env vars: `docker compose up -d --force-recreate backend`. (`docker compose restart` is **not** sufficient — Compose snapshots env vars at container creation, so a restart keeps the old empty values and Google rejects the authorize request with `Missing required parameter: client_id`.)
+6. Restart the backend so it reads the new env vars — stop `just api` and start it again. On the **production** stack the backend is a container, and there it must be `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`: Compose snapshots env vars at container creation, so a plain restart keeps the old empty values and Google rejects the authorize request with `Missing required parameter: client_id`.
 
-"Iniciar sesión con Google" on `/login` will now bounce through Google and return you to the app authenticated. The redirect URI points at the Vite dev server (`:5173`), not the backend directly (`:8000`); Vite proxies `/api/*` to the backend so the session cookie lands on the same origin as the SPA. Phase 6 will swap these localhost URLs for the production domain.
+"Iniciar sesión con Google" on `/login` will now bounce through Google and return you to the app authenticated. The redirect URI points at the Vite dev server (`:5173`), not the backend directly (`:8000`); Vite proxies `/api/*` to the backend so the session cookie lands on the same origin as the SPA. The production deploy ([Phase 5](../phases/phase-5.md)) swaps these localhost URLs for the production domain.
 
 **Browser note for testing.** Run the OAuth flow from a regular browser tab. Google's "secure browsers" policy returns `403 disallowed_useragent` when the user-agent looks like an embedded webview — including Edge/Chrome DevTools' device-emulation toolbar (e.g. iPhone 12 Pro), in-IDE preview panels, and mobile in-app browsers. Toggle device emulation off for the consent step, then re-enable it for layout testing once you're authenticated.

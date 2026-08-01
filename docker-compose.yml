@@ -1,7 +1,15 @@
 name: ev-charging-app
 
+# Dev stack: backing services only. The backend and frontend run natively on the
+# host (`just api` / `just web`) so the toolchain that gates commits and CI is the
+# same one that runs the app. The full containerised stack lives in
+# docker-compose.prod.yml — `just prod-up` smoke-tests it locally.
+
 services:
   db:
+    # Still 17 while CI and production run 18: this volume holds the REVE seed and
+    # the data directory is not compatible across majors. Cutting over is a dump +
+    # `down -v` + restore, planned in docs/phases/phase-5.md.
     image: postgres:17-alpine
     container_name: ev-charging-app-db
     restart: unless-stopped
@@ -16,48 +24,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: dev
-    container_name: ev-charging-app-backend
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env
-    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
-      - ./backend/scripts:/app/scripts
-      - ./backend/tests:/app/tests
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: dev
-    container_name: ev-charging-app-frontend
-    restart: unless-stopped
-    env_file:
-      - ./frontend/.env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      CI: "true"
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
 volumes:
   ev_charging_app_postgres_data:

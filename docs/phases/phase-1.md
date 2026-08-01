@@ -1,8 +1,17 @@
 # Phase 1 — Foundation
 
-Per [PLAN.md](../PLAN.md): Docker Compose, FastAPI + Postgres + Alembic, auth (email/password + Google OAuth) with email verification + password reset via Resend, audit logging, plus a React + Vite + MUI frontend scaffold with auth pages and PWA installability.
+Per [plan.md](../plan.md): Docker Compose, FastAPI + Postgres + Alembic, auth (email/password + Google OAuth) with email verification + password reset via Resend, audit logging, plus a React + Vite + MUI frontend scaffold with auth pages and PWA installability.
 
-Backend slices (1–3) ship the auth backend. Slice 4 is the frontend scaffold.
+Slices 1–3 ship the auth backend; Slice 4 is the frontend scaffold.
+
+| Slice | Scope | Status | PR |
+| --- | --- | --- | --- |
+| 1 | Email/password auth | Done | #1 |
+| 2 | Google OAuth | Done | direct to `main` |
+| 3 | Email verification + password reset | Done | direct to `main` |
+| 4 | Frontend scaffold | Done | #2 |
+
+Decisions: [auth-0001](../decisions/auth-0001-fastapi-users.md) · [auth-0002](../decisions/auth-0002-cookie-session.md) · [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) · [fe-0002](../decisions/fe-0002-pwa.md).
 
 ## Slice 1 — Email/password auth [x]
 
@@ -36,8 +45,8 @@ Backend slices (1–3) ship the auth backend. Slice 4 is the frontend scaffold.
 **Acceptance:** `pnpm dev` serves a Vite-built React + MUI app at `:5173`. The auth pages (login, register, check-email, verify-email, forgot-password, reset-password) call the backend and surface its error codes in Spanish. Auth state available via a router-level loader. PWA installable on iOS Safari and Chrome.
 
 - [x] Vite + React + TypeScript scaffold with ESLint + Prettier; dev proxy forwarding `/api/*` to the backend container
-- [x] MUI v7 (Emotion) theme set up; Inter + JetBrains Mono fonts; per-icon imports preserved
+- [x] MUI v9 (Emotion) theme set up; self-hosted fonts; per-icon imports preserved
 - [x] Typed API client (openapi-typescript + openapi-fetch); `pnpm gen:api` regenerates from the backend's `/openapi.json`
-- [x] React Router v7 with an auth-aware root loader (`GET /api/users/me`); public / protected layout split
+- [x] React Router v8 with an auth-aware root loader (`GET /api/users/me`); public / protected layout split
 - [x] Six auth pages wired to backend error codes (`LOGIN_BAD_CREDENTIALS`, `LOGIN_USER_NOT_VERIFIED`, `REGISTER_USER_ALREADY_EXISTS`, `RESET_PASSWORD_BAD_TOKEN`, etc.); Spanish copy throughout
 - [x] PWA manifest + service worker; install prompt on Chrome, "Add to Home Screen" launches standalone on iOS Safari
