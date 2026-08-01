@@ -29,9 +29,19 @@ desplegar y argumentar la viabilidad del producto.
 3. **Análisis y requisitos** — roles **conductor** y **propietario**; casos de uso;
    requisitos funcionales y no funcionales (PWA mobile-first, 360px de referencia).
 
-4. **Arquitectura del sistema** — PWA React + Vite + MUI, backend FastAPI, Postgres,
-   Docker Compose; el modelo OCPI 2.2.1; decisiones de diseño (enlaza a los ADRs en
-   [decisions/](../decisions/)).
+4. **Arquitectura del sistema** — visión de conjunto: PWA, backend FastAPI, Postgres y el
+   modelo OCPI 2.2.1; decisiones de diseño (enlaza a los ADRs en [decisions/](../decisions/)).
+
+   4.1. **Stack tecnológico** — qué se usa en ejecución y por qué: React + Vite + Tailwind y
+   shadcn/ui en el cliente; FastAPI, SQLAlchemy y PostgreSQL 18 en el servidor; Caddy y Docker
+   Compose en producción. Se redacta como narrativa, no como inventario: el listado completo y
+   vivo, con una línea de justificación por herramienta, vive en
+   [tech-stack.md](../tech-stack.md) y no se duplica aquí.
+
+   4.2. **Decisiones revisadas** — la **migración del stack**
+   ([migracion-del-stack.md](migracion-del-stack.md)): frontend de MUI a Tailwind + shadcn/ui,
+   PostgreSQL 18, Python 3.13, entorno de desarrollo nativo y cadena de herramientas. Por qué
+   las decisiones iniciales fueron correctas, por qué caducan y cómo se verifica cada cambio.
 
 5. **Datos y modelo** — REVE como _mirror_ sembrado una sola vez y servido desde Postgres
    ([data-model.md](modelo-de-datos.md)); precios PVPC de REE y estrategia de estimación
@@ -40,8 +50,9 @@ desplegar y argumentar la viabilidad del producto.
    vehículos. Incluye **"camino no tomado: ACN-Data"**: el dataset histórico de Caltech
    se consideró para calibrar la simulación de ocupación y el realismo de las sesiones;
    se descartó porque no aportaba nada de cara al usuario, quedaba como dato interno y no
-   llegó a integrarse. Se documenta como decisión razonada (qué prometía, por qué se
-   abandonó, qué lo sustituye: un modelo sintético ligero, solo ilustrativo).
+   llegó a integrarse. Se documenta como decisión razonada, junto con el segundo paso del
+   mismo camino: el modelo sintético ligero que iba a sustituirlo y que también se abandonó.
+   La disponibilidad **no se modela** y la memoria lo declara explícitamente.
 
 6. **Autenticación y seguridad** — identidad, almacenamiento de contraseñas, sesión por
    cookie, OAuth, verificación, auditoría y _rate limiting_ ([auth.md](autenticacion.md)); modelo
@@ -60,7 +71,15 @@ desplegar y argumentar la viabilidad del producto.
    no depende de este capítulo.
 
 10. **Despliegue, escalado y operación** — despliegue real (HTTPS, PWA instalable);
-    arquitectura para escalar y operar a muchos usuarios; costes.
+    **cadena de herramientas de desarrollo y entrega**: gestores de paquetes y bloqueo de
+    versiones, linters y comprobación de tipos, hooks de git, integración y despliegue
+    continuos, versionado y releases, actualización de dependencias. Va aquí, y no en el
+    capítulo de arquitectura, porque es proceso de ingeniería y no estructura del sistema.
+    Después: **arquitectura para escalar**, argumentada y no implementada — dónde se rompe
+    primero un único servidor, qué lo sustituye en cada escalón (Postgres gestionado, registro
+    de imágenes, segundo nodo tras un balanceador) y por qué la orquestación de contenedores
+    (Kubernetes) solo se justifica cuando hay una flota que planificar. Justificar que **no**
+    se usa a esta escala es tan resultado como describir cuándo se usaría. Y costes.
 
 11. **Modelo de negocio y viabilidad** — propuesta de valor, modelo de ingresos
     (comisión sobre sesiones de puntos públicos), economía unitaria y rentabilidad.
@@ -69,12 +88,19 @@ desplegar y argumentar la viabilidad del producto.
 
 13. **Conclusiones** — resultados, aprendizajes y líneas de trabajo futuras.
 
+**Anexo — Metodología de desarrollo asistido** ([skills.md](skills.md)): qué skills de agente se
+han usado, para qué, y cómo se reproducen desde el *lockfile*. Transparencia metodológica y
+reproducibilidad.
+
 ## Capítulos ya redactados (nivel conceptual)
 
 Estos documentos existen y alimentan los capítulos anteriores:
 [auth.md](autenticacion.md) · [data-model.md](modelo-de-datos.md) ·
 [precios-y-actualizacion.md](precios-y-actualizacion.md) ·
-[seed-scheduling.md](planificacion-de-siembra.md) · [session-theft.md](robo-de-sesion.md).
+[seed-scheduling.md](planificacion-de-siembra.md) · [session-theft.md](robo-de-sesion.md) ·
+[simulacion-de-recarga.md](simulacion-de-recarga.md) ·
+[migracion-del-stack.md](migracion-del-stack.md) · [skills.md](skills.md).
 
-Los capítulos de negocio, despliegue/escalado y hoja de ruta se redactan en la Fase 7
-(`modelo-de-negocio.md`, `despliegue-y-escalado.md`, `hoja-de-ruta.md`); aún no existen.
+Los capítulos de negocio, despliegue/escalado y hoja de ruta se redactan en la fase de
+redacción (`modelo-de-negocio.md`, `despliegue-y-escalado.md`, `hoja-de-ruta.md`); aún no
+existen.

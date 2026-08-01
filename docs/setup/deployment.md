@@ -1,12 +1,14 @@
 # Production deployment — VPS provisioning runbook
 
-One-time setup of the production host, from zero to a phone-accessible HTTPS URL with CI-gated auto-deploys. Architecture and rationale: [infra-0001](../decisions/infra-0001-deployment.md). Day-2 operations (logs, rebuilds, backups): [DOCKER.md](../DOCKER.md).
+**One-time provisioning: from nothing to a running server.** Everything recurring afterwards — redeploying, logs, backups and restores, major Postgres upgrades — is [operations.md](../operations.md).
+
+Takes the production host from zero to a phone-accessible HTTPS URL with CI-gated auto-deploys. Architecture and rationale: [infra-0001](../decisions/infra-0001-deployment.md).
 
 The repo side is already in place: `docker-compose.prod.yml` (Caddy + prod images + scheduler, Postgres unpublished), `Caddyfile`, `backend/crontab`, and `.github/workflows/cd.yml`. What remains is host- and account-level, in order:
 
 ## 1. Provision the host
 
-- Hetzner **CX22** (2 vCPU / 4 GB, EU), Ubuntu 24.04 LTS, with your SSH public key set at creation. (Fallback: Oracle Always-Free ARM — needs an arm64 supercronic binary in `backend/Dockerfile` first.)
+- Hetzner **CX23** (~€7/mo) or **CPX22** if the CX line is out of stock — **2 vCPU / 4 GB / ≥40 GB, x86-64, EU**, Ubuntu 24.04 LTS, with your SSH public key set at creation. 4 GB is the floor because the deploy builds the prod images on the host. Spec rationale and fallback providers: [infra-0001](../decisions/infra-0001-deployment.md). (arm64 hosts — Oracle Always-Free, Hetzner CAX, Scaleway ARM — need an arm64 supercronic binary in `backend/Dockerfile` first.)
 - Create a non-root user and disable root/password SSH:
 
   ```bash
@@ -27,7 +29,7 @@ The repo side is already in place: `docker-compose.prod.yml` (Caddy + prod image
 
 ## 2. DNS
 
-Point an A record (domain, or a free DuckDNS subdomain) at the VPS IP. Caddy needs the name resolving to the host before it can obtain the Let's Encrypt certificate.
+Point an A record for the **registered domain** at the VPS IP (AAAA too if IPv6 is enabled). Caddy needs the name resolving to the host before it can obtain the Let's Encrypt certificate. A free DuckDNS subdomain was considered and rejected — it sits on the Public Suffix List, which Google's OAuth authorised-domain check trips over ([infra-0001](../decisions/infra-0001-deployment.md)).
 
 ## 3. Clone + configure
 
@@ -53,12 +55,16 @@ Create the two server-side env files (never committed):
 
 The REVE catalogue took ~12 days to seed under the 5 req/hr cap — **never re-seed in prod; restore the latest seed dump** (it excludes `users`/`oauth_account` rows and carries the ETL cursors, so the refresh watermark survives intact and users register fresh).
 
+**The server's `POSTGRES_USER` / `POSTGRES_DB` must match the database the dump was taken from** (`ev_charging_app` / `ev_charging`) — the placeholders in `.env.example` are `app_user` / `app_db`, and restoring into names that disagree with the archive is the fastest way to lose a 12-day seed to a confusing error.
+
 ```bash
 docker compose -f docker-compose.prod.yml up -d db
 rclone copy b2:tfm-db-backups/<latest seed>.dump .   # or scp it from the laptop
 docker compose -f docker-compose.prod.yml exec -T db pg_restore \
-  -U app_user -d app_db --clean --if-exists --no-owner < <latest seed>.dump
+  -U ev_charging_app -d ev_charging --clean --if-exists --no-owner < <latest seed>.dump
 ```
+
+Verify before moving on: the row counts should match the source (`select count(*) from charging_points` ≈ 13.7k).
 
 ## 5. First deploy
 

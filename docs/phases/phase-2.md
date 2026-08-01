@@ -1,8 +1,17 @@
 # Phase 2 — REVE seed + Map
 
-> **Revision (2026-06-16).** REVE operational-status mirror removed from the ETL — operational status (working/broken) is assumed always-operational. EVSE *availability* (free/in use) is now the `status` column (OCPI value, e.g. `AVAILABLE`), to be simulated in Phase 4; the map's `aggregate_status` changes from operational/partial/inoperative to **available/occupied/unknown**, and the seed runs three endpoints instead of four. A post-seed incremental refresh (`refresh_reve.py`) keeps the catalogue fresh under the 5 req/hr cap. See [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+Per [plan.md](../plan.md): REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap. The frontend renders a map of Spanish charging points with filters and a detail view.
 
-Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap. Frontend renders a map of Spanish charging points with filters and a detail view. Live availability is a static stub from the seed snapshot until Phase 4 wires ACN-driven simulation.
+The ETL mirrors three endpoints, not four: operational status (working/broken) is assumed always-operational and not fetched. EVSE *availability* is the `status` column (OCPI value, e.g. `AVAILABLE`) and the map's `aggregate_status` rolls up to available/occupied/unknown; live availability is not modelled ([plan.md](../plan.md) → Data strategy). A post-seed incremental refresh (`refresh_reve.py`) keeps the catalogue fresh under the cap — see [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+
+| Slice | Scope | Status | PR |
+| --- | --- | --- | --- |
+| 1 | REVE seed ETL + mirror schema + `/api/points` | Done | #6 |
+| 2 | Map shell | Done | #6 |
+| 3 | Markers, clustering, point sheet | Done | #6 |
+| 4 | Filters + `/points/:id` + Lighthouse | Done | #6 |
+
+Decisions: [fe-0003](../decisions/fe-0003-maplibre-openfreemap.md) (MapLibre + OpenFreeMap).
 
 ## Slice 1 — REVE seed ETL + mirror schema + `/api/points`
 
@@ -45,7 +54,7 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 - [x] Filter applied client-side, no extra API calls; empty-state card when zero match
 - [x] `/points/:id` route, lazy-loaded
 - [x] `usePoint(id)` hook via the typed API client
-- [x] Mobile testing on real devices via tunnel — map loads and flows well (user-confirmed 2026-06-13). Google OAuth and email links over a tunnel are structurally blocked in local dev (both point at `localhost`); real-device OAuth + email flows get tested on the production domain in Phase 6
+- [x] Mobile testing on real devices via tunnel — map loads and flows well (user-confirmed 2026-06-13). Google OAuth and email links over a tunnel are structurally blocked in local dev (both point at `localhost`); real-device OAuth + email flows get tested on the production domain in [Phase 5](phase-5.md)
 
 ## Lighthouse audit (2026-06-13, production build via `pnpm preview`, mobile preset)
 
@@ -57,5 +66,9 @@ Per [PLAN.md](../PLAN.md): REVE seeded into Postgres via cursor-based ETL under 
 Sub-90 lines:
 
 - **SEO 82 (both)** — *fixed*: missing meta description added to `index.html`.
-- **`/map` Performance 31** — *partially fixed, rest deferred*: unused `name`/`cpo_name` properties dropped from the map GeoJSON (772 → 503 KB gzipped, −35%). The remaining cost is inherent to map pages under Lighthouse's mobile throttling (MapLibre engine + WebGL first paint + 13.6k-point source); map products routinely score in this range. Further options if Phase 6 QA wants them: service-worker runtime caching of `/api/points/map` (planned in fe-0002), fetching the source after first paint.
+- **`/map` Performance 31** — *partially fixed, rest deferred*: unused `name`/`cpo_name` properties dropped from the map GeoJSON (772 → 503 KB gzipped, −35%). The remaining cost is inherent to map pages under Lighthouse's mobile throttling (MapLibre engine + WebGL first paint + 13.6k-point source); map products routinely score in this range. Further options, carried into the polish phase: service-worker runtime caching of `/api/points/map`, and fetching the source after first paint.
 - **Re-audit after the payload fix (2026-06-13):** FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map` under mobile throttling — measurably improved; remaining gap accepted as inherent and deferred per the line above.
+
+## Pending
+
+- **Map viewport loading** — the load-once model is unchanged; open-on-position, zoom-gated `bbox` fetch and a padded cache are designed in [features/map.md](../features/map.md) and scheduled for the polish phase.

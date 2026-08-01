@@ -2,12 +2,12 @@
 
 Deferred ideas parked for the "decide later" moment — nothing here is committed scope.
 Pull from this list when a phase has slack or when deciding the AI layer's depth. When an
-idea is promoted, move it into [PLAN.md](PLAN.md) (a phase + acceptance criteria) and
+idea is promoted, move it into [plan.md](plan.md) (a phase + acceptance criteria) and
 remove it here.
 
-## AI / agent features (Phase 8 — pick from here)
+## AI / agent features (Phase 11 — pick from here)
 
-AI is now a committed **Phase 8** (planned), but the **specific features are not yet decided** —
+AI is a committed **Phase 11** (planned), but the **specific features are not yet decided** —
 this is the menu to choose from. All call the app's own APIs (points, simulate, recommend,
 bookings, prices) as tools — no new data sources. Depth scales to remaining hours.
 
@@ -48,7 +48,7 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
   ([AGENTS.md](../AGENTS.md) → Releases), so there is no changelog file in the repo. If the
   thesis wants a changelog appendix, git-cliff renders one from the existing Conventional
   Commits on demand — no bot, no release PRs, nothing to maintain until the day it is
-  wanted. Reasoning for the manual-tagging baseline: [phases/phase-6.md](phases/phase-6.md).
+  wanted. Reasoning for the manual-tagging baseline: [phases/phase-5.md](phases/phase-5.md).
 
 ## Notes
 

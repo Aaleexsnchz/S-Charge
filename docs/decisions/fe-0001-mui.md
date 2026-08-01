@@ -1,22 +1,18 @@
 ---
 id: fe-0001
-status: accepted
-phase: Phase 1 / Slice 4
+status: superseded
+superseded_by: fe-0007
+phase: 1
 date: 2026-06
 ---
 
 # fe-0001: Use MUI (Material UI) as the frontend component library
 
-> Foundational frontend decision. Append revisions below with date and reason rather than editing in place.
+> **Superseded by [fe-0007](fe-0007-frontend-stack-migration.md).** Kept because it explains why the codebase looks the way it does today, and because the reversal is itself thesis material. The record below is the decision as taken; it is not current.
 
-**Revisions.**
+**Decision.** The PWA is built with [MUI](https://mui.com) (Material UI) as the component library, styled via [Emotion](https://emotion.sh) (`@emotion/react` + `@emotion/styled`). Theming, typography (Inter + JetBrains Mono via `@fontsource`), and a shared palette are centralised in a single MUI theme. Icons are imported per-path from `@mui/icons-material` (never from the barrel), enforced by Biome's `noRestrictedImports` ([fe-0006](fe-0006-biome.md)).
 
-- *2026-06 — Biome replaces ESLint + Prettier ([fe-0006](fe-0006-biome.md)).* The per-path `@mui/icons-material` import rule described under *Implementation* below is now enforced by Biome's `noRestrictedImports`, not the ESLint rule referenced there.
-- *2026-06-21 — scope pivot ([PLAN.md](../PLAN.md) revision 2026-06-21).* The *Rationale* below frames the academic contribution as "Phases 3–4 (ACN import, distribution fitting, …)". That framing is superseded: ACN is dropped and the thesis core is now the application itself, with the charging optimiser and AI as value-add features. The MUI decision is unaffected.
-
-**Decision.** The PWA is built with [MUI](https://mui.com) (Material UI) as the component library, styled via [Emotion](https://emotion.sh) (`@emotion/react` + `@emotion/styled`). Theming, typography (Inter + JetBrains Mono via `@fontsource`), and a shared palette are centralised in a single MUI theme. Icons are imported per-path from `@mui/icons-material` (never from the barrel).
-
-**Rationale.** This is a solo thesis project on a fixed timeline, and the academic contribution sits in Phases 3–4 (ACN import, distribution fitting, smart-charging algorithm). The frontend exists to demo that work, not to be a CSS exercise. MUI ships the surface the app actually needs out of the box: form controls with validation styling, data grid, dialogs and bottom sheets, navigation primitives, snackbars (via [notistack](https://notistack.com/)), accessible focus rings, ARIA defaults and keyboard handling. Spanish copy is component-prop driven — no i18n library required at this stage. Emotion's runtime CSS-in-JS carries a measurable bundle and parse cost vs. zero-runtime alternatives, accepted as the price of MUI's documented happy path.
+**Rationale.** This is a solo thesis project on a fixed timeline, and the contribution is the application as a whole, not its styling layer. The frontend exists to demo the product, not to be a CSS exercise. MUI ships the surface the app actually needs out of the box: form controls with validation styling, data grid, dialogs and bottom sheets, navigation primitives, snackbars (via [notistack](https://notistack.com/)), accessible focus rings, ARIA defaults and keyboard handling. Spanish copy is component-prop driven — no i18n library required at this stage. Emotion's runtime CSS-in-JS carries a measurable bundle and parse cost vs. zero-runtime alternatives, accepted as the price of MUI's documented happy path.
 
 The per-icon import rule is load-bearing: a single `import { Foo } from '@mui/icons-material'` pulls the entire icon manifest into the chunk and silently kills tree-shaking.
 
@@ -33,4 +29,4 @@ The per-icon import rule is load-bearing: a single `import { Foo } from '@mui/ic
 
 - MUI v7 documentation
 - Emotion documentation
-- [thesis/frontend.md](../thesis/frontend.md) — concept-level summary (written when the chapter is needed).
+- [thesis/migracion-del-stack.md](../thesis/migracion-del-stack.md) — why this decision was right when taken, and why it expired.

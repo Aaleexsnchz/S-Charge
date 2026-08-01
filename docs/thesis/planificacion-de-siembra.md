@@ -32,7 +32,7 @@ Cada tick está **acotado** (≤5 llamadas a REVE, elige el siguiente endpoint n
 crontab -l
 
 # Consultar progreso (sin llamada a la API)
-docker compose exec backend uv run python -m scripts.seed_reve --status
+cd backend && uv run python -m scripts.seed_reve --status
 tail -n 20 ~/.reve-seed.log
 
 # Detener

@@ -1,8 +1,12 @@
 # Documentation index
 
-Everything under `docs/` lives here, grouped by purpose. This is the single source of truth for the doc list — the root [README](../README.md) links here rather than duplicating it.
+Everything under `docs/` lives here, grouped by purpose — the root [README](../README.md) links here rather than duplicating it. The index is two levels: this file lists the top-level docs and the folders; the per-item lists for [features/](features/) and [phases/](phases/) live in their own READMEs. Add a new doc to whichever of the two is its home, in the same commit.
 
 The grouping follows [Diátaxis](https://diataxis.fr/): docs are sorted by what the reader needs — to *do* a task (how-to), *look up* a fact (reference), or *understand* a decision (explanation) — plus a project-management group for planning docs.
+
+Filenames inside `docs/` are lowercase kebab-case; uppercase is reserved for the files convention expects at a repo root (`README`, `AGENTS`, `CLAUDE`, `CONTRIBUTING`).
+
+Two project docs live at the root rather than here, because tooling and habit expect them there: [CONTRIBUTING.md](../CONTRIBUTING.md) (branch, commit and doc-update conventions — GitHub surfaces it when a PR is opened) and [AGENTS.md](../AGENTS.md) (conventions for agents working in the repo).
 
 ## How-to guides
 
@@ -13,7 +17,7 @@ Task-oriented, step-by-step.
 | [setup/google-oauth.md](setup/google-oauth.md) | Enable Google sign-in: Cloud Console client, People API, the env-snapshot gotcha. |
 | [setup/email.md](setup/email.md) | Wire up Resend for verification/reset email; sandbox sender limits; production DNS. |
 | [setup/deployment.md](setup/deployment.md) | Provision the production VPS: hardening, DNS, env files, DB bootstrap from seed dump, CD secrets, security gate. |
-| [DOCKER.md](DOCKER.md) | When to rebuild vs. recreate vs. do nothing after a change; the production stack; database backup & restore. |
+| [operations.md](operations.md) | Day-2 operations: the production stack and its image stages, deploying, major Postgres upgrades, database backup & restore (local + offsite). |
 
 ## Reference
 
@@ -21,6 +25,8 @@ Information-oriented; look up a fact.
 
 | Doc | Covers |
 | --- | --- |
+| [tech-stack.md](tech-stack.md) | Every library and tool in the project, and the reason it is there. |
+| [features/](features/) | One document per feature: what it does, what exists today, what is pending. |
 | [reve-api-spec.json](reve-api-spec.json) | REVE external API v1 OpenAPI spec (the seed source). |
 
 The live backend API reference is the OpenAPI/Swagger UI at <http://localhost:8000/docs>.
@@ -31,20 +37,23 @@ Understanding-oriented; the *why* behind the design.
 
 ### Architectural decision records
 
-Append-only [MADR](https://adr.github.io/madr/)-style records. Full catalogue and authoring rules: [decisions/README.md](decisions/README.md).
+Authoring rules, the local convention and what belongs here rather than in [tech-stack.md](tech-stack.md): [decisions/README.md](decisions/README.md).
 
 | ID | Title |
 | --- | --- |
 | [auth-0001](decisions/auth-0001-fastapi-users.md) | Use `fastapi-users` as the authentication library |
 | [auth-0002](decisions/auth-0002-cookie-session.md) | Single HttpOnly cookie session, no refresh tokens |
 | [auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation |
-| [fe-0001](decisions/fe-0001-mui.md) | MUI (Material UI) as the component library |
+| [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it |
+| [be-0002](decisions/be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so |
+| [fe-0001](decisions/fe-0001-mui.md) | MUI as the component library *(superseded by fe-0007)* |
 | [fe-0002](decisions/fe-0002-pwa.md) | Ship the frontend as an installable PWA |
 | [fe-0003](decisions/fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles |
 | [fe-0004](decisions/fe-0004-tanstack-query.md) | TanStack Query for server state |
-| [fe-0005](decisions/fe-0005-mui-x-charts.md) | MUI X Charts for in-app charts |
-| [fe-0006](decisions/fe-0006-biome.md) | Biome for frontend linting and formatting |
+| [fe-0006](decisions/fe-0006-biome.md) | Biome for linting and formatting |
+| [fe-0007](decisions/fe-0007-frontend-stack-migration.md) | Migrate to Tailwind + shadcn/ui and TanStack Router + Form |
 | [infra-0001](decisions/infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy |
+| [infra-0002](decisions/infra-0002-manual-release-tagging.md) | Tag releases by hand; derive the running version from the tag |
 
 ### Thesis chapters
 
@@ -57,8 +66,10 @@ Concept-level write-ups (in Spanish) that feed the thesis document; each links o
 | [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
 | [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |
 | [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md) | Pre-charge simulation: spec-based power/energy/duration model (AC flat, DC taper) and cost. |
+| [thesis/migracion-del-stack.md](thesis/migracion-del-stack.md) | The mid-project stack changes as revised decisions: frontend (MUI → Tailwind + shadcn/ui + TanStack), PostgreSQL 18, Python 3.13, native dev, tooling. Alternatives and how each is verified. |
 | [thesis/planificacion-de-siembra.md](thesis/planificacion-de-siembra.md) | Why cron, the per-tick contract, bootstrap → steady state, the WSL2 idle caveat. |
 | [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) | Threat model for infostealer + cookie replay; what an app can and cannot defend. |
+| [thesis/skills.md](thesis/skills.md) | Which agent skills the project uses and what for; how to materialise them on a fresh clone. Add a row the first time you use a new one. |
 
 ## Project management
 
@@ -66,12 +77,11 @@ Planning and status; not part of the Diátaxis taxonomy.
 
 | Doc | Covers |
 | --- | --- |
-| [PLAN.md](PLAN.md) | Scope, phases, acceptance criteria, estimates. Living doc. |
-| [features.md](features.md) | Per-feature implementation status (implemented / mock UI / planned). Living doc. |
-| [phases/](phases/) | Per-phase task plans ([1](phases/phase-1.md) · [2](phases/phase-2.md) · [4](phases/phase-4.md) · [6](phases/phase-6.md); Phase 3 dropped). Frozen once a phase ships. |
+| [plan.md](plan.md) | The project definition: scope, architecture, phases, acceptance criteria. Living doc, current state only. |
+| [phases/](phases/) | Per-phase slice plans, written just before each phase starts. Conventions and the structure a plan follows: [phases/README.md](phases/README.md). |
+| [features/](features/) | Per-feature status and pending work. Also listed under Reference above. |
 | [ideas-backlog.md](ideas-backlog.md) | Deferred ideas (AI/agent features, real payments, route optimisation) parked for the "decide later" moment. |
-| [NEXT-STEPS.md](NEXT-STEPS.md) | Working handoff — where to start next session. |
 
 ## Maintenance
 
-Documentation discipline (which docs to update when a slice ships; which are append-only) lives in the root [CLAUDE.md](../CLAUDE.md). When you add a doc, add a row here in the same commit — this index is the one place the list is maintained.
+Which docs to update when a slice ships is in [AGENTS.md](../AGENTS.md) → Documentation discipline. In short: docs state **current reality only** — no dated revision blocks, no superseded prose left in place. Two exceptions: [decisions/](decisions/), where a reversed decision is superseded by a new ADR rather than edited away, and [thesis/](thesis/), where an abandoned approach is narrated as a *camino no tomado* because that is academic content.
