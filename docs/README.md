@@ -81,6 +81,7 @@ Planning and status; not part of the Diátaxis taxonomy.
 | [phases/](phases/) | Per-phase slice plans, written just before each phase starts. Conventions and the structure a plan follows: [phases/README.md](phases/README.md). |
 | [features/](features/) | Per-feature status and pending work. Also listed under Reference above. |
 | [ideas-backlog.md](ideas-backlog.md) | Deferred ideas (AI/agent features, real payments, route optimisation) parked for the "decide later" moment. |
+| [production-readiness.md](production-readiness.md) | Known gaps against production-grade operation: what serving real users would require that this deployment deliberately omits, and why. Not a feature backlog — a register of conscious omissions. |
 
 ## Maintenance
 
