@@ -82,9 +82,7 @@ gen-api:
 backup-seed:
     ./scripts/backup_db.sh --seed
 
-# SITE_ADDRESS is required by compose interpolation for EVERY prod command,
-# not only up — locally there is no root .env, so each recipe supplies it.
-prod_compose := "SITE_ADDRESS=${SITE_ADDRESS:-localhost} docker compose -f docker-compose.prod.yml"
+prod_compose := "docker compose -f docker-compose.prod.yml"
 
 # Local prod smoke test: build + run the full containerised stack (https://localhost, self-signed)
 prod-up:

@@ -6,7 +6,7 @@ Run every command from the project root.
 
 Docker has two jobs here, and they are separate:
 
-- **In dev it runs Postgres, nothing else.** The backend and frontend run natively (`just api`, `just web`), so the toolchain that gates commits and runs in CI is the same one that runs the app. `backend/.env` therefore points `DATABASE_URL` at `@localhost:5432`, and Alembic, pytest and `python -m scripts.X` all run on the host.
+- **In dev it runs Postgres, nothing else.** The backend and frontend run natively (`just api`, `just web`), so the toolchain that gates commits and runs in CI is the same one that runs the app. The root `.env` therefore points `DATABASE_URL` at `@localhost:5432`, and Alembic, pytest and `python -m scripts.X` all run on the host.
 - **In production it runs everything** — the stack in [docker-compose.prod.yml](../docker-compose.prod.yml), built from this repo and deployed by CI.
 
 ## Production stack
@@ -33,7 +33,7 @@ Tunnel over SSH instead — it publishes nothing and the port exists only on you
 ssh -L 5432:localhost:5432 deploy@s-charge.app
 ```
 
-Leave that session open and point any client (DBeaver, `psql`) at `localhost:5432` on your laptop. Credentials are the server-side `backend/.env`. If the dev stack is already using 5432 locally, map a different local port instead — `-L 55432:localhost:5432` — and connect to `localhost:55432`.
+Leave that session open and point any client (DBeaver, `psql`) at `localhost:5432` on your laptop. Credentials are the server-side `.env`. If the dev stack is already using 5432 locally, map a different local port instead — `-L 55432:localhost:5432` — and connect to `localhost:55432`.
 
 ### Image stages
 

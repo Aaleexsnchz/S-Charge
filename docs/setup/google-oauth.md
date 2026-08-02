@@ -1,6 +1,6 @@
 # Google OAuth setup
 
-The backend supports Google sign-in side by side with email/password; both flows land on the same HttpOnly session cookie. To enable it locally, create an OAuth 2.0 Client in Google Cloud Console and paste the credentials into `backend/.env`.
+The backend supports Google sign-in side by side with email/password; both flows land on the same HttpOnly session cookie. To enable it locally, create an OAuth 2.0 Client in Google Cloud Console and paste the credentials into the root `.env`.
 
 1. Open [APIs & Services → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent). Set **User type: External** (Internal restricts sign-in to a Google Workspace org and rejects personal Gmail with `403 org_internal`). Fill in App name, support email, and developer contact. While the app is in **Testing**, add every Google account you'll use as a **Test user**, otherwise consent is denied.
 2. Enable the **People API** for the same project: <https://console.cloud.google.com/apis/library/people.googleapis.com>. The Python `httpx-oauth` Google client fetches the user profile from `people.googleapis.com`, not the legacy `/oauth2/v3/userinfo` endpoint, so without this the OAuth callback fails with `GetProfileError → GetIdEmailError` after Google has already issued the access token.
@@ -8,7 +8,7 @@ The backend supports Google sign-in side by side with email/password; both flows
 4. Fill in:
    - **Authorised JavaScript origins:** `http://localhost:5173`
    - **Authorised redirect URIs:** `http://localhost:5173/api/auth/google/callback`
-5. Copy the generated **Client ID** and **Client Secret** into `backend/.env`:
+5. Copy the generated **Client ID** and **Client Secret** into the root `.env`:
 
    ```env
    GOOGLE_CLIENT_ID=<paste>

@@ -45,15 +45,18 @@ cd /opt/tfm
 
 The CD workflow assumes `/opt/tfm`; if you choose another path, update `cd.yml`.
 
-Create the two server-side env files (never committed):
+Create the server-side `.env` — one file at the root, never committed. Start from [.env.example](../../.env.example) and set prod values:
 
-- **`.env`** (root): `SITE_ADDRESS=s-charge.app` — see [.env.example](../../.env.example).
-- **`backend/.env`**: start from [backend/.env.example](../../backend/.env.example) and set prod values:
-  - fresh `SECRET_KEY` (`openssl rand -hex 32`) and a strong `POSTGRES_PASSWORD` (mirrored in `DATABASE_URL`) — **rotate, don't reuse, the dev values**
-  - `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`
-  - `CORS_ALLOW_ORIGINS=` (empty — same-origin behind Caddy)
-  - `APP_BASE_URL=https://s-charge.app` and `GOOGLE_REDIRECT_URI=https://s-charge.app/api/auth/google/callback`
-  - `REVE_API_KEY`, `RESEND_API_KEY` / `MAIL_FROM` (see step 6)
+- fresh `SECRET_KEY` (`openssl rand -hex 32`) and a strong `POSTGRES_PASSWORD` (mirrored in `DATABASE_URL`) — **rotate, don't reuse, the dev values**
+- `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`
+- `CORS_ALLOW_ORIGINS=` (empty — same-origin behind Caddy)
+- `APP_BASE_URL=https://s-charge.app` and `GOOGLE_REDIRECT_URI=https://s-charge.app/api/auth/google/callback`
+- `SITE_ADDRESS=s-charge.app` — Caddy's public address, and the only variable Compose reads by interpolation rather than handing to a container
+- `REVE_API_KEY`, `RESEND_API_KEY` / `MAIL_FROM` (see step 6)
+
+**No value may contain `$`.** Compose truncates at the first one and only warns, so the container silently receives half a password while anything reading the file directly sees all of it. `openssl rand -hex 32` is safe; a password manager's "special characters" toggle is not.
+
+`ENVIRONMENT=production` arms a check in [config.py](../../backend/app/config.py): the backend refuses to start if `SECRET_KEY`, `DATABASE_URL` or `APP_BASE_URL` is missing or still holds its development default, if Google is configured without a redirect URI, or if `SESSION_COOKIE_SECURE` is false. A container that restarts in a loop right after this step is that check talking — read `logs backend`.
 
 ## 4. Bootstrap the database from a seed dump
 

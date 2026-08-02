@@ -17,8 +17,9 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 11 | Renovate | Not started | — |
 | 12 | REVE tariff backfill | Not started | — |
 | 13 | Auth surface hardening | Not started | — |
+| 14 | Environment configuration | Done | #15 |
 
-Slices 2–13 are ordered by dependency, with one exception: **Slice 13 is numbered last but must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, because it closes gaps that slice's gate checks for. **Start at 2**: the provider account and the domain are the only wall-clock-bound items (ID verification, DNS propagation), and everything on the host waits on them. **Slices 4–6 are repo work and run in parallel with that waiting** — they are independent of each other and of the host, so they can land in any order.
+Slices 2–14 are ordered by dependency, with two exceptions: **Slice 13 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)** and **Slice 14 before [Slice 7](#slice-7--first-deploy)**, though both are numbered last because they were found after the plan was written. Each closes gaps the earlier slice depends on. **Start at 2**: the provider account and the domain are the only wall-clock-bound items (ID verification, DNS propagation), and everything on the host waits on them. **Slices 4–6 are repo work and run in parallel with that waiting** — they are independent of each other and of the host, so they can land in any order.
 
 They are three slices rather than one because they are three unrelated review problems: hooks, release plumbing, and version bumps. Reviewing them together is what turns a PR into a rubber stamp.
 
@@ -28,7 +29,7 @@ They are three slices rather than one because they are three unrelated review pr
 
 ## Start here
 
-The order to actually work in, which is not simply "slice 1 to 12".
+The order to actually work in, which is not simply "slice 1 to 14".
 
 **Step 0 — two local commands, before anything else.** No dependencies, a few minutes, and they improve what production gets bootstrapped from:
 
@@ -37,7 +38,7 @@ The order to actually work in, which is not simply "slice 1 to 12".
 
 **Step 1 — start the clock (Slice 2).** Create the provider account and buy the domain *first*. Neither is work, both are waiting: ID verification can take hours and DNS has to propagate, and every host slice queues behind them.
 
-**Step 2 — repo work while that clock runs (Slices 5, 6, 13; [4](#slice-4--toolchain-lefthook--ci-hygiene) is done).** Independent of the host and of each other. Order: **4** first (toolchain, because everything after is reviewed through those gates) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
+**Step 2 — repo work while that clock runs (Slices 5, 6, 13; [4](#slice-4--toolchain-lefthook--ci-hygiene) and [14](#slice-14--environment-configuration) are done).** Independent of the host and of each other. Order: **4** first (toolchain, because everything after is reviewed through those gates) → **14** (environment configuration, which the deploy's runbook depends on) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
 
 **Step 3 — the host chain, in order:** 3 → 7 → 8 → 9 → 10, ending at `v0.1.0`. Then 11 and 12.
 
@@ -137,7 +138,7 @@ Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to
 **Acceptance:** the app loads over HTTPS on a phone, the PWA installs, `/api/health` reports ok with a version, and the scheduler container runs both ETL jobs. Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 
 - [ ] Repo cloned to `/opt/tfm` (the path `cd.yml` assumes)
-- [ ] Server-side `.env` files written with **every secret rotated** — fresh `SECRET_KEY`, new `POSTGRES_PASSWORD`, `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`, empty `CORS_ALLOW_ORIGINS`, prod `APP_BASE_URL` / `GOOGLE_REDIRECT_URI`; copies kept in a password manager
+- [ ] The server-side `.env` written with **every secret rotated** — fresh `SECRET_KEY`, new `POSTGRES_PASSWORD`, `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`, empty `CORS_ALLOW_ORIGINS`, prod `APP_BASE_URL` / `GOOGLE_REDIRECT_URI`, `SITE_ADDRESS`; copies kept in a password manager, and **no value containing `$`** ([Slice 14](#slice-14--environment-configuration)). `ENVIRONMENT=production` arms the boot check, so a misconfigured file now restart-loops the backend instead of serving with a development secret
 - [ ] Database bootstrapped from the latest seed dump — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
 - [ ] `up -d --build` + `alembic upgrade head`
 - [ ] Verified: site on a phone, PWA installs, `/api/health` returns the version, `logs scheduler` shows supercronic loading both jobs
@@ -228,6 +229,44 @@ Both were found by reading the production artifacts against the [infra-0001](../
 - [ ] **Order matters between the two.** Fixing the limiter without the proxy headers produces a limiter that sees one client and throttles every user at once. Land the header fix first, or both together
 - [ ] **Verify on the deployed instance, not locally**: log in once and confirm the audit line carries your own IP, then exceed the limit and confirm a `429`. Neither can be verified through a local direct-to-uvicorn request, because the bug only exists behind the proxy
 - [ ] Reword the `infra-0001` gate line from *"auth rate limits kept"* to something that does not imply they already exist — the gate item is right, only the tense is wrong
+
+## Slice 14 — Environment configuration [x]
+
+**Acceptance:** one env file at the repository root, one object that reads it, and a production boot that refuses to start on a missing required secret instead of running with an empty one.
+
+**It must land before [Slice 7](#slice-7--first-deploy)**, which writes the server-side env files and owns the runbook that describes them. Afterwards the same change costs a runbook rewrite plus an edit on a live server.
+
+### The scheme
+
+**One file, one reader, three tiers.** The root `.env` is the only env file; `.env.example` is its committed twin and *is* the documentation — there is no second list of "what you need to set". Real environment variables still win over the file, which is how CI injects an ephemeral `SECRET_KEY` and how CD could inject anything with no file at all.
+
+The tier decides the default:
+
+| Tier | Default | Missing in production means |
+| --- | --- | --- |
+| **Required in prod** — `SECRET_KEY`, `DATABASE_URL`, `APP_BASE_URL`, `GOOGLE_REDIRECT_URI` | none | boot fails, loudly |
+| **Tuned** — token lifetime, API base URLs, REVE budget and lookback | a working dev value | runs on the default, which is fine |
+| **Optional integration** — `RESEND_*`, `GOOGLE_*` credentials | empty | the feature is off, which is already the design |
+
+### Why it is worth a slice
+
+**`secret_key` defaults to `""` and that value signs sessions.** It is the secret behind the session JWT (`utils/auth_backend.py`), the password-reset token and the verification token (`services/user_manager.py`). A server whose `.env` is missing, misnamed, or merely missing that one line **boots normally and signs sessions with an empty secret** — forgeable session cookies and password-reset tokens for any account, with no warning anywhere. It fails *open*. Slice 7 says "fresh `SECRET_KEY`" and [Slice 10](#slice-10--security-gate-cutover-first-release)'s gate says "secrets rotated", but nothing enforces either; both are a human remembering.
+
+**Three variables bypass `Settings` entirely** — `REVE_BUDGET_PER_RUN` and `REVE_REFRESH_LOOKBACK_HOURS`, read with `os.getenv` in `scripts/refresh_reve.py` and `scripts/seed_reve.py`. None appears in `.env.example`, so on the server they are invisible, and [Slice 12](#slice-12--reve-tariff-backfill) plans to retune the lookback once the servable window is measured — which today means editing a literal and rebuilding the image.
+
+- [x] **Single root `.env` + `.env.example`**, merging `backend/.env.example` and the one-variable root file. `frontend/.env` and `frontend/.env.example` are **deleted**: they contain no variables at all, only comments, and `VITE_PROXY_TARGET` in `vite.config.ts` reads `process.env` — the shell, never that file
+- [x] **Vite's `envDir` stays `frontend/`.** Today it is structurally impossible for a backend secret to reach the JS bundle, because the directory Vite reads env from holds none. Pointing it at the root would trade that away for one file: a `VITE_`-prefixed typo, or `loadEnv(mode, dir, '')` with an empty prefix, would ship `SECRET_KEY` and `REVE_API_KEY` to the browser. If a real `VITE_*` var ever appears it gets its own `frontend/.env`
+- [x] `config.py` `env_file` → repository root. Inside the prod image that path resolves to a missing `/.env`, which pydantic ignores — production gets real environment variables through compose's `env_file:` anyway
+- [x] **Production validator**: when `ENVIRONMENT=production`, the tier-1 variables must be present and must not still hold their development default. This finally gives the `environment` setting the job its TODO has been waiting for
+- [x] `REVE_BUDGET_PER_RUN` and `REVE_REFRESH_LOOKBACK_HOURS` become `Settings` fields, documented in `.env.example`
+- [x] **A test asserting `Settings.model_fields` and the keys in `.env.example` are the same set.** Ten lines, and it permanently kills the "added a setting, forgot the server" failure — the one that costs an evening during a deploy rather than a minute at a desk
+- [x] Both compose files read `./.env`; the justfile's `SITE_ADDRESS=${SITE_ADDRESS:-localhost}` prefix disappears, since compose auto-loads the root `.env` for interpolation — which is what that hack was working around
+- [x] `test_database_url` still defaults to `@db:5432`, left from when dev ran in containers, and disagrees with `.env.example`
+- [x] Docs: [README](../../README.md) quick start (one `cp`, not three), [operations.md](../operations.md), [setup/deployment.md](../setup/deployment.md), [setup/google-oauth.md](../setup/google-oauth.md), [setup/email.md](../setup/email.md)
+
+**Generate the rotated secrets `$`-free.** Compose truncates an env value at the first `$` and only warns — `PASS=ab$cd$ef` reaches the container as `ab`, with a "the cd variable is not set" line nobody reads. This is **not** new to the root file; it applies to `env_file:` at any path, so it is already true today. What makes it dangerous is that the native backend reads the file directly and gets the full value while every container gets the truncated one: dev and prod disagreeing on a password, surfacing as an authentication failure during the first deploy. `openssl rand -hex 32` is safe; a password manager's "special characters" toggle is not.
+
+**Noted, not fixed here:** the `db` container's `env_file` hands Postgres `RESEND_API_KEY`, `REVE_API_KEY` and `SECRET_KEY`, which it has no use for — anything with `docker exec` on `db` reads them. Splitting the `POSTGRES_*` variables into their own file would fix it. Unchanged by this slice, which only makes it easier to see.
 
 ## Open decision
 
