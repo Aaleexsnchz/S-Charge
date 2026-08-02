@@ -76,11 +76,14 @@ Verify before moving on: the row counts should match the source (`select count(*
 ## 5. First deploy
 
 ```bash
+export APP_VERSION="$(git describe --tags --always)"
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 ```
 
-Verify: `https://s-charge.app` loads the app on a phone, PWA installs, `https://s-charge.app/api/health` returns ok, `docker compose -f docker-compose.prod.yml logs scheduler` shows supercronic loading the two jobs. Then **remove the refresh/PVPC entries from the laptop crontab** (the scheduler container owns them now) and move the weekly `backup_db_cron.sh` line to the server crontab (requires `rclone` + the B2 config on the VPS; adjust its hardcoded paths).
+`APP_VERSION` is a **build argument**, not runtime configuration: it is baked into both images, so a deploy that forgets to export it reports `dev` and only a rebuild fixes it. CD exports it for you; only a by-hand deploy needs the line above.
+
+Verify: `https://s-charge.app` loads the app on a phone, PWA installs, `https://s-charge.app/api/health` returns ok **and the version it reports is the tag you deployed**, `docker compose -f docker-compose.prod.yml logs scheduler` shows supercronic loading the two jobs. Then **remove the refresh/PVPC entries from the laptop crontab** (the scheduler container owns them now) and move the weekly `backup_db_cron.sh` line to the server crontab (requires `rclone` + the B2 config on the VPS; adjust its hardcoded paths).
 
 ## 6. External services for the prod origin
 
@@ -94,6 +97,26 @@ Repository secrets (Settings → Secrets and variables → Actions): `DEPLOY_HOS
 Protect `main` with a ruleset: **require a pull request**, require the CI checks to pass, and block force-pushes and deletion. `main` is what production runs, so every change goes through a PR ([AGENTS.md](../../AGENTS.md) → Git workflow).
 
 Then **test the loop end to end** — a trivial PR, merged, should turn CI green and leave a changed version string in production. That round trip is the only proof the pipeline works; do it before trusting it.
+
+## Rolling back
+
+A deploy is a git checkout plus a rebuild, so going back is the same operation aimed at an older commit:
+
+```bash
+cd /opt/tfm
+git fetch --tags
+git checkout v0.1.0                       # or the previous good commit
+export APP_VERSION="$(git describe --tags --always)"
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Leave the branch detached until the fix is merged; the next CD run does `git pull --ff-only`, which fails loudly on a detached HEAD rather than deploying over your rollback silently.
+
+**Code rolls back; the schema does not.** `alembic upgrade` has already run, and older code against a newer schema is only safe when the migration was additive. If it was not, restore the dump CD takes immediately before migrating — `backups/pre-migrate-*.dump` on the server, most recent last, restored with the `pg_restore` line in [operations.md](../operations.md). This is why that dump exists.
+
+### The migration window
+
+`cd.yml` brings the new containers up and *then* migrates, so for the few seconds between them the new code serves against the old schema. Closing it properly means migrating before the new containers take traffic, which needs a release/rollout split this deployment does not have. At single-user demo traffic the exposure is negligible, and the pre-migration dump improves recovery rather than the window itself — but it is a known trade-off, not an oversight.
 
 ## 8. Security gate
 
