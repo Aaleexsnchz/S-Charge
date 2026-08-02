@@ -222,6 +222,16 @@ puede olvidar. Con una condición: el escaneo de secretos deja de ser obligatori
 que pasa a ser un trabajo de CI sobre el historial completo; de lo contrario el cambio
 eliminaría una defensa sin sustituirla.
 
+La objeción previsible es el tiempo: un *hook* lento se acaba esquivando, y esquivarlo es
+justamente lo que el proyecto prohíbe. Medida en la máquina de desarrollo, la batería completa
+—linter, formateador, *type checker*, tests de backend contra una base de datos real, tests y
+*build* de frontend— tarda **8 segundos** de reloj frente a unos 29 de CPU: los trabajos corren
+en paralelo, así que el coste es el del más lento y no la suma. Con ese margen no hizo falta
+sacrificar ninguna comprobación, que era el plan de contingencia previsto. La orden manual
+equivalente no reimplementa la lista, sino que ejecuta ese mismo *hook*: no hay dos definiciones
+que puedan divergir, que es la misma clase de deriva que motiva las demás decisiones de esta
+sección.
+
 **Renovate.** Las incidencias de mantenimiento acumuladas durante la fase de despliegue —un
 *runtime* de Actions obsoleto, dos versiones distintas del gestor de paquetes entre CI y la
 imagen, el gestor de Python fijado a versiones distintas en dos sitios— son exactamente la
