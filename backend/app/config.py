@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db"
     )
     test_database_url: str = (
-        "postgresql+asyncpg://app_user:change_me_db_password@db:5432/app_db_test"
+        "postgresql+asyncpg://app_user:change_me_db_password@localhost:5432/app_db_test"
     )
 
     session_token_expire_days: int = 14
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     ree_api_base_url: str = "https://apidatos.ree.es"
 
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parents[1] / ".env",
+        env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

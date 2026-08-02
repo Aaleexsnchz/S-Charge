@@ -10,8 +10,7 @@ Needs [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io), and Docker with
 
 ```bash
 git clone <repo> tfm && cd tfm
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp .env.example .env    # one file for the whole project
 
 just install     # uv sync + pnpm install + git hooks
 just up          # start Postgres

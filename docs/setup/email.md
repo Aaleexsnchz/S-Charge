@@ -3,7 +3,7 @@
 The backend sends verification and password-reset emails through [Resend](https://resend.com). Without an API key, registration still succeeds but the helper logs `email_send_failed` instead of delivering — fine for UI sanity-checking, not enough to exercise the verify or reset success paths. Decision rationale: [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md).
 
 1. Create an account at <https://resend.com> and copy a key from **API Keys**. Free tier is 100 emails/day, sufficient for the thesis demo.
-2. Add the credentials to `backend/.env`:
+2. Add the credentials to the root `.env`:
 
    ```env
    RESEND_API_KEY=<paste>

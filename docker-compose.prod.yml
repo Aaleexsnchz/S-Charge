@@ -14,7 +14,7 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
       target: prod
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -42,7 +42,7 @@ services:
       target: scheduler
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env
     environment:
       TZ: Europe/Madrid
     depends_on:
