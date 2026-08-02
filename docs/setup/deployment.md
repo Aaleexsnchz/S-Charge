@@ -8,7 +8,7 @@ The repo side is already in place: `docker-compose.prod.yml` (Caddy + prod image
 
 ## 1. Provision the host
 
-- Hetzner **CX23** (~€7/mo) or **CPX22** if the CX line is out of stock — **2 vCPU / 4 GB / ≥40 GB, x86-64, EU**, Ubuntu 24.04 LTS, with your SSH public key set at creation. 4 GB is the floor because the deploy builds the prod images on the host. Spec rationale and fallback providers: [infra-0001](../decisions/infra-0001-deployment.md). (arm64 hosts — Oracle Always-Free, Hetzner CAX, Scaleway ARM — need an arm64 supercronic binary in `backend/Dockerfile` first.)
+- Hetzner **CX23** (~€7/mo) or **CPX22** if the CX line is out of stock — **2 vCPU / 4 GB / ≥40 GB, x86-64, EU**, Ubuntu 26.04 LTS, with your SSH public key set at creation. 4 GB is the floor because the deploy builds the prod images on the host. Spec rationale and fallback providers: [infra-0001](../decisions/infra-0001-deployment.md). (arm64 hosts — Oracle Always-Free, Hetzner CAX, Scaleway ARM — need an arm64 supercronic binary in `backend/Dockerfile` first.)
 - Create a non-root user and disable root/password SSH:
 
   ```bash
@@ -29,7 +29,11 @@ The repo side is already in place: `docker-compose.prod.yml` (Caddy + prod image
 
 ## 2. DNS
 
-Point an A record for the **registered domain** at the VPS IP (AAAA too if IPv6 is enabled). Caddy needs the name resolving to the host before it can obtain the Let's Encrypt certificate. A free DuckDNS subdomain was considered and rejected — it sits on the Public Suffix List, which Google's OAuth authorised-domain check trips over ([infra-0001](../decisions/infra-0001-deployment.md)).
+Point an A record for **`s-charge.app`** at the VPS IP (AAAA too if IPv6 is enabled). Caddy needs the name resolving to the host before it can obtain the Let's Encrypt certificate.
+
+DNS is on Cloudflare. Set the record to **DNS only — grey cloud, not the orange proxied one.** Proxied, Cloudflare terminates TLS at its edge: Caddy never completes the ACME challenge and visitors get Cloudflare's certificate instead of the origin's.
+
+`.app` is HSTS-preloaded, so there is no HTTP fallback at any point — the name works over HTTPS or not at all. Why this domain and registrar, and what was rejected: [infra-0001](../decisions/infra-0001-deployment.md).
 
 ## 3. Clone + configure
 
@@ -43,12 +47,12 @@ The CD workflow assumes `/opt/tfm`; if you choose another path, update `cd.yml`.
 
 Create the two server-side env files (never committed):
 
-- **`.env`** (root): `SITE_ADDRESS=<your domain>` — see [.env.example](../../.env.example).
+- **`.env`** (root): `SITE_ADDRESS=s-charge.app` — see [.env.example](../../.env.example).
 - **`backend/.env`**: start from [backend/.env.example](../../backend/.env.example) and set prod values:
   - fresh `SECRET_KEY` (`openssl rand -hex 32`) and a strong `POSTGRES_PASSWORD` (mirrored in `DATABASE_URL`) — **rotate, don't reuse, the dev values**
   - `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`
   - `CORS_ALLOW_ORIGINS=` (empty — same-origin behind Caddy)
-  - `APP_BASE_URL=https://<domain>` and `GOOGLE_REDIRECT_URI=https://<domain>/api/auth/google/callback`
+  - `APP_BASE_URL=https://s-charge.app` and `GOOGLE_REDIRECT_URI=https://s-charge.app/api/auth/google/callback`
   - `REVE_API_KEY`, `RESEND_API_KEY` / `MAIL_FROM` (see step 6)
 
 ## 4. Bootstrap the database from a seed dump
@@ -73,11 +77,11 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 ```
 
-Verify: `https://<domain>` loads the app on a phone, PWA installs, `https://<domain>/api/health` returns ok, `docker compose -f docker-compose.prod.yml logs scheduler` shows supercronic loading the two jobs. Then **remove the refresh/PVPC entries from the laptop crontab** (the scheduler container owns them now) and move the weekly `backup_db_cron.sh` line to the server crontab (requires `rclone` + the B2 config on the VPS; adjust its hardcoded paths).
+Verify: `https://s-charge.app` loads the app on a phone, PWA installs, `https://s-charge.app/api/health` returns ok, `docker compose -f docker-compose.prod.yml logs scheduler` shows supercronic loading the two jobs. Then **remove the refresh/PVPC entries from the laptop crontab** (the scheduler container owns them now) and move the weekly `backup_db_cron.sh` line to the server crontab (requires `rclone` + the B2 config on the VPS; adjust its hardcoded paths).
 
 ## 6. External services for the prod origin
 
-- **Google OAuth** (Cloud Console → the existing client): add `https://<domain>` as authorised JavaScript origin and `https://<domain>/api/auth/google/callback` as redirect URI.
+- **Google OAuth** (Cloud Console → the existing client): add `https://s-charge.app` as authorised JavaScript origin and `https://s-charge.app/api/auth/google/callback` as redirect URI.
 - **Resend**: verify a sending domain (or keep sandbox during private testing) and set `MAIL_FROM` accordingly — without it, verification emails only reach the account owner's inbox.
 
 ## 7. CI/CD + branch protection

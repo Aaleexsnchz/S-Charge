@@ -50,6 +50,18 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
   Commits on demand — no bot, no release PRs, nothing to maintain until the day it is
   wanted. Reasoning for the manual-tagging baseline: [phases/phase-5.md](phases/phase-5.md).
 
+## Infrastructure (deferred)
+
+- **Cloudflare edge proxy in front of the origin** — the domain's DNS records are
+  deliberately **DNS-only (grey cloud)**; turning the proxy on would add origin-IP hiding,
+  DDoS absorption, edge caching and a WAF. The blocker is not effort (~1 hour: a custom
+  Caddy build with `caddy-dns/cloudflare` for the DNS-01 challenge, since proxying breaks
+  TLS-ALPN-01) but the **Cloudflare API token with DNS-edit rights it would place on the
+  VPS** — a secret able to repoint the domain and mint certificates for it, so more
+  dangerous than the host it defends. Promote if the app ever takes real payments or real
+  users, where hiding the origin and absorbing attacks start to pay for that risk. Full
+  reasoning: [decisions/infra-0001](decisions/infra-0001-deployment.md).
+
 ## Notes
 
 - The original ACN-Data integration (real-session-grounded occupancy + simulation
