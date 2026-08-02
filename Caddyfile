@@ -11,5 +11,5 @@ handle /api/* {
 }
 
 handle {
-	reverse_proxy frontend:80
+	reverse_proxy frontend:8080
 }

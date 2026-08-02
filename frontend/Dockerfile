@@ -14,18 +14,16 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 
 # ---------- build: produce dist/ for production serving ----------
 FROM deps AS build
-# Vite inlines VITE_* values into the bundle, so the version is fixed here at
-# build time — it is not runtime configuration and cannot be set on the container.
-ARG APP_VERSION=dev
-ENV VITE_APP_VERSION=${APP_VERSION}
 COPY . .
 RUN pnpm build
 
 # ---------- prod: serve built assets via nginx (opt-in via --target prod) ----------
-FROM nginx:1.27-alpine AS prod
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
+ARG APP_VERSION
+LABEL org.opencontainers.image.version=${APP_VERSION}
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -q -O /dev/null http://127.0.0.1/index.html || exit 1
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/index.html || exit 1
 CMD ["nginx", "-g", "daemon off;"]
