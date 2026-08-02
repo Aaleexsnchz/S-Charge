@@ -2,9 +2,12 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import { Avatar, Box, Button, Stack, Typography } from '@mui/material'
 import { Form, useRouteLoaderData } from 'react-router'
 import type { RootLoaderData } from '@/features/auth/loaders'
+import { useAppVersion } from './useAppVersion'
 
 export function ProfilePage() {
   const data = useRouteLoaderData('root') as RootLoaderData | undefined
+  // Before the early return: the linter enforces unconditional hook calls.
+  const { data: version } = useAppVersion()
   const user = data?.user
   if (!user) return null
 
@@ -40,7 +43,7 @@ export function ProfilePage() {
         color="text.secondary"
         sx={{ display: 'block', textAlign: 'center' }}
       >
-        Versión {import.meta.env.VITE_APP_VERSION ?? 'dev'}
+        Versión {version ?? '—'}
       </Typography>
 
       <Box sx={{ mt: 3 }}>

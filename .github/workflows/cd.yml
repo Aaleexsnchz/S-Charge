@@ -1,7 +1,13 @@
 name: CD
 
-# Deploys to the VPS when CI goes green on main (infra-0001). The deploy is a
-# git pull + compose rebuild + alembic upgrade, executed over SSH.
+# Deploys to the VPS. Shipping is a deliberate act, not a side effect of merging
+# (infra-0003): a tag push deploys that release, and the manual run deploys the
+# default branch for a look on a real device. The deploy is a checkout + compose
+# rebuild + alembic upgrade, executed over SSH.
+#
+# Only tag commits that are already on `main`: the deploy trusts that CI has
+# already passed on that tree, which is true for a merged commit and not
+# otherwise.
 #
 # Required repository secrets:
 #   DEPLOY_HOST         VPS hostname or IP
@@ -9,10 +15,9 @@ name: CD
 #   DEPLOY_SSH_KEY      private key authorized on the VPS (deploy-only key)
 #   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <host>` (pins the host key)
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
@@ -26,7 +31,6 @@ jobs:
     # Authenticates to the VPS by SSH key and never calls the GitHub API, so it
     # needs no GITHUB_TOKEN scope at all.
     permissions: {}
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Set up SSH
         run: |
@@ -35,19 +39,23 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-      - name: Pull, rebuild, migrate
+      - name: Check out the ref, rebuild, migrate
+        env:
+          # A tag for a release, the default branch for a manual run.
+          DEPLOY_REF: ${{ github.ref_type == 'tag' && github.ref_name || 'origin/main' }}
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" bash -s <<'REMOTE'
+          ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE'
           set -euo pipefail
           cd /opt/tfm
           compose="docker compose -f docker-compose.prod.yml"
 
-          # --tags: git describe is what stamps the build, and a plain pull does
-          # not necessarily bring new tags with it.
-          git fetch --tags --force
-          git pull --ff-only
+          # Detached on purpose: the server tracks the deployed ref, never a
+          # moving branch, so nothing arrives that was not deployed deliberately.
+          git fetch --tags --force --prune origin
+          git checkout --force --detach "$DEPLOY_REF"
           export APP_VERSION="$(git describe --tags --always)"
-          echo "Deploying $APP_VERSION"
+          echo "Deploying $DEPLOY_REF as $APP_VERSION"
 
           # Migrations are the one step redeploying an older tag cannot undo, so
           # take a dump first. Credentials stay inside the container; the host

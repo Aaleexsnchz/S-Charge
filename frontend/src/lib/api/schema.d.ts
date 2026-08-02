@@ -434,6 +434,16 @@ export interface components {
       /** Detail */
       detail?: components['schemas']['ValidationError'][]
     }
+    /** HealthRead */
+    HealthRead: {
+      /**
+       * Status
+       * @constant
+       */
+      status: 'ok'
+      /** Version */
+      version: string
+    }
     /** OAuth2AuthorizeResponse */
     OAuth2AuthorizeResponse: {
       /** Authorization Url */
@@ -1480,7 +1490,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': unknown
+          'application/json': components['schemas']['HealthRead']
         }
       }
     }

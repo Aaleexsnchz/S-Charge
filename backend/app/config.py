@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Must be set to something of their own in production. The check is equality
@@ -14,11 +14,16 @@ REQUIRED_IN_PRODUCTION = ("secret_key", "database_url", "app_base_url")
 # literal assigned to `secret_key` as a hardcoded credential (S105).
 DEVELOPMENT_PLACEHOLDER = "change_me_secret_key"
 
+# The backend's single fallback for an unstamped build. The image passes the
+# build argument through unconditionally, so an image built outside CD arrives
+# here as an empty string rather than as an absent variable.
+UNVERSIONED = "dev"
+
 
 class Settings(BaseSettings):
-    # Baked into the image at build time from the git tag; `dev` everywhere the
-    # image was not built by CD. Never edit a version string by hand.
-    app_version: str = "dev"
+    # Baked into the image at build time from the git tag. Never edit a version
+    # string by hand: the tag is the source of truth (infra-0002).
+    app_version: str = UNVERSIONED
     # TODO: wire into /docs visibility when needed; it already gates the
     # production configuration check below.
     environment: str = "development"
@@ -58,6 +63,11 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("app_version", mode="after")
+    @classmethod
+    def _treat_blank_as_unversioned(cls, value: str) -> str:
+        return value or UNVERSIONED
 
     @model_validator(mode="after")
     def _reject_development_defaults_in_production(self) -> Self:

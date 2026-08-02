@@ -51,11 +51,19 @@ CI builds all three, so a broken Dockerfile fails there rather than on the serve
 
 Dev is on **17** while CI and production are on **18** — a deliberate, temporary split, because cutting the dev volume over is a manual step planned in [phases/phase-5.md](phases/phase-5.md).
 
-**A major version bump is not a tag change.** The data directory format changes between majors, so a PG17 volume under an `18-alpine` image refuses to start with `database files are incompatible with server`. The local database holds the REVE seed, which costs ~12 days to rebuild, so dump before touching anything:
+**A major version bump is not a tag change.** The data directory format changes between majors, so a PG17 volume under an `18-alpine` image refuses to start with `database files are incompatible with server`. The local database holds the REVE seed, which costs ~12 days to rebuild, so dump before touching anything.
+
+**Going to 18 also moves the mount point.** From 18 the images store data in a major-version subdirectory and declare `/var/lib/postgresql` as the volume, so `PGDATA` is `/var/lib/postgresql/18/docker`. A compose file still mounting the 17-era `/var/lib/postgresql/data` makes the entrypoint abort with *"there appears to be PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)"* — deliberately, because the alternative is writing the cluster into the container's own layer, where the next `up --build` silently discards it. Change the mount in the same edit as the tag:
+
+```yaml
+volumes:
+  - postgres_data:/var/lib/postgresql      # not /var/lib/postgresql/data
+```
 
 ```bash
 ./scripts/backup_db.sh                  # full dump, taken with the OLD image still running
 docker compose down -v                  # drops the old-major volume
+# edit docker-compose.yml: image tag AND the mount path above
 docker compose up -d                    # fresh volume, new major
 cd backend && uv run alembic upgrade head
 docker compose exec -T db pg_restore -U ev_charging_app -d ev_charging \

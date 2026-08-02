@@ -57,9 +57,9 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **Docker Compose** | Runs Postgres in dev and the whole stack in production, so the deployed artifact is built from this repo and can be smoke-tested locally (`just prod-up`). Details: [operations.md](operations.md). |
 | **Caddy** | Reverse proxy in production: automatic Let's Encrypt certificates, HTTP→HTTPS redirect, HSTS, and same-origin serving of the SPA and `/api/*`. See [infra-0001](decisions/infra-0001-deployment.md). |
 | **nginx** (frontend prod image only) | Serves the built `dist/` with SPA fallback. Caddy does the routing; nginx just serves files. |
-| **GitHub Actions** | CI (lint, typecheck, tests, prod image builds) and CD (deploy on a successful CI run on `main`). |
+| **GitHub Actions** | CI (lint, typecheck, tests, prod image builds), CD (deploy on a tag push, or on demand — [infra-0003](decisions/infra-0003-deploy-on-tag.md)) and a release workflow turning a tag into GitHub Release notes. |
 | **lefthook** | Git hooks: staged-file lint/format with auto-restage on commit, and a pre-push hook mirroring CI exactly, which `just ci` also runs. Installs as a uv dev dependency. Replaced pre-commit, whose cross-language env management this repo never used. |
 | **betterleaks** | Secret scanning. Best-effort locally, authoritative as a CI job over full history. |
-| **Renovate** *(Phase 5)* | Weekly grouped dependency PRs, gated by the same CI as everything else. No automerge — merging to `main` deploys. |
+| **Renovate** *(Phase 5)* | Weekly grouped dependency PRs, gated by the same CI as everything else. No automerge — a dependency bump should be a deliberate merge, and it reaches production with the next tag ([infra-0003](decisions/infra-0003-deploy-on-tag.md)). |
 | **just** | Task runner for humans — `just api`/`just web` to run the app, `just ci` before pushing. Nothing in CI/CD depends on it. |
 | **rclone + Backblaze B2** | Offsite database backups from the host. |

@@ -54,6 +54,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 | [fe-0007](decisions/fe-0007-frontend-stack-migration.md) | Migrate to Tailwind + shadcn/ui and TanStack Router + Form |
 | [infra-0001](decisions/infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy |
 | [infra-0002](decisions/infra-0002-manual-release-tagging.md) | Tag releases by hand; derive the running version from the tag |
+| [infra-0003](decisions/infra-0003-deploy-on-tag.md) | Deploy on a tag push, not on every merge to `main` |
 
 ### Thesis chapters
 

@@ -10,6 +10,12 @@
 # from that file: it is baked into the images at build time.
 name: ev-charging-app-prod
 
+# Every image is stamped with the same version, exported by CD from the git tag.
+# Unset (a local `just prod-up`) passes an empty string, and each artifact owns
+# its own fallback: app/config.py for the backend, ProfilePage for the bundle.
+x-version-arg: &version-arg
+  APP_VERSION: ${APP_VERSION-}
+
 services:
   db:
     image: postgres:18-alpine
@@ -17,7 +23,11 @@ services:
     env_file:
       - ./.env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # 18+ stores data in a major-version subdirectory of /var/lib/postgresql
+      # and declares that as the volume. Mounting the old /var/lib/postgresql/data
+      # makes the entrypoint abort rather than write to a path the next rebuild
+      # would discard.
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -29,8 +39,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: prod
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
+      args: *version-arg
     restart: unless-stopped
     env_file:
       - ./.env
@@ -43,8 +52,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: scheduler
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
+      args: *version-arg
     restart: unless-stopped
     env_file:
       - ./.env
@@ -59,8 +67,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: prod
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
+      args: *version-arg
     restart: unless-stopped
     depends_on:
       - backend

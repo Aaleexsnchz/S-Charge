@@ -14,6 +14,7 @@ from app.routers.prices import router as prices_router
 from app.routers.simulate import router as simulate_router
 from app.routers.users import router as users_router
 from app.routers.vehicles import router as vehicles_router
+from app.schemas.health import HealthRead
 
 OAUTH_PATH_PREFIX = "/api/auth/google/"
 OAUTH_FAILURE_REDIRECT = "/login?error=oauth_failed"
@@ -66,5 +67,5 @@ app.include_router(vehicles_router, prefix="/api")
 
 
 @app.get("/api/health")
-async def health():
-    return {"status": "ok", "version": settings.app_version}
+async def health() -> HealthRead:
+    return HealthRead(status="ok", version=settings.app_version)

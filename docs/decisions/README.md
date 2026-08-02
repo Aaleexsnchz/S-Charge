@@ -57,13 +57,14 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 | --- | --- | --- |
 | [infra-0001](infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy | 5 |
 | [infra-0002](infra-0002-manual-release-tagging.md) | Tag releases by hand; derive the running version from the tag | 5 |
+| [infra-0003](infra-0003-deploy-on-tag.md) | Deploy on a tag push, not on every merge to `main` | 5 |
 
 ## Records worth writing later
 
 Decided in principle, but cheaper to write when the work forces the detail. Don't let these ship without a record:
 
 - **`be-0003` — booking overlap as a database constraint.** PostgreSQL 18's temporal `PRIMARY KEY … WITHOUT OVERLAPS` moves conflict detection out of application code and removes a check-then-insert race; verified working on 18.4. Write it when Phase 9 designs the bookings schema.
-- **`infra-0003` — native development environment.** Only Postgres is containerised, so one toolchain gates commits, CI and the app. Rationale currently lives in [operations.md](../operations.md) and the migration chapter; promote it if it starts being re-litigated.
+- **`infra-0004` — native development environment.** Only Postgres is containerised, so one toolchain gates commits, CI and the app. Rationale currently lives in [operations.md](../operations.md) and the migration chapter; promote it if it starts being re-litigated. (Earmarked as `infra-0003` until that number was taken by the deploy trigger record; numbers are never reused, so it moves rather than the written one.)
 - **A wallet/ledger record** when Phase 10 chooses between signed single-entry rows and paired double-entry movements — expensive to reverse once money-shaped data exists.
 
 ## Adding a new ADR
