@@ -23,6 +23,18 @@ Locally, `just prod-up` runs the same stack with `SITE_ADDRESS=localhost` (self-
 
 Environment variables are read **at container creation**: after editing a server-side `.env`, use `up -d --force-recreate <service>`, never `restart`, or the container keeps the old values.
 
+### Reaching the production database
+
+Postgres has no published port, and that is the only thing keeping it off the internet — **not** the firewall. `ufw` does not filter Docker-published ports: Docker inserts its DNAT rules ahead of ufw's chain, so adding a `ports:` entry exposes the database publicly while `ufw status` still shows a correct-looking policy. Never add one to inspect production.
+
+Tunnel over SSH instead — it publishes nothing and the port exists only on your machine, for the life of the connection:
+
+```bash
+ssh -L 5432:localhost:5432 deploy@s-charge.app
+```
+
+Leave that session open and point any client (DBeaver, `psql`) at `localhost:5432` on your laptop. Credentials are the server-side `backend/.env`. If the dev stack is already using 5432 locally, map a different local port instead — `-L 55432:localhost:5432` — and connect to `localhost:55432`.
+
 ### Image stages
 
 Both Dockerfiles are multi-stage, and every stage is a production stage — the dev stages were removed when development moved to the host:
