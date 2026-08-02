@@ -92,11 +92,11 @@ Verify: `https://s-charge.app` loads the app on a phone, PWA installs, `https://
 
 ## 7. CI/CD + branch protection
 
-Repository secrets (Settings → Secrets and variables → Actions): `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (a dedicated key authorized on the VPS, not your personal one), `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`). CD runs on every **green** CI run on `main` (and manually via *Run workflow*).
+Repository secrets (Settings → Secrets and variables → Actions): `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (a dedicated key authorized on the VPS, not your personal one), `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`). CD runs on a **tag push**, and on demand via *Run workflow* — which deploys `main` for a look at unreleased work on a real device ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)). Merging does not deploy.
 
 Protect `main` with a ruleset: **require a pull request**, require the CI checks to pass, and block force-pushes and deletion. `main` is what production runs, so every change goes through a PR ([AGENTS.md](../../AGENTS.md) → Git workflow).
 
-Then **test the loop end to end** — a trivial PR, merged, should turn CI green and leave a changed version string in production. That round trip is the only proof the pipeline works; do it before trusting it.
+Then **test the loop end to end** — merge a trivial PR, confirm nothing deploys, then push a tag and watch the version at `/api/health` change to it. That round trip is the only proof the pipeline works; do it before trusting it.
 
 ## Rolling back
 

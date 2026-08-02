@@ -175,7 +175,7 @@ Deployment comes before the remaining feature work so there is a secure, phone-a
 - [ ] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
 - [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
 - [ ] REVE/PVPC refresh ETLs run on the server, not the laptop
-- [ ] CI/CD: deploy on merge to `main`; branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
+- [ ] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
 - [ ] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
 ### Phase 6 — Frontend stack migration — not started

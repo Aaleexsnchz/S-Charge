@@ -23,7 +23,7 @@ Slices 2–14 are ordered by dependency, with two exceptions: **Slice 13 must la
 
 They are three slices rather than one because they are three unrelated review problems: hooks, release plumbing, and version bumps. Reviewing them together is what turns a PR into a rubber stamp.
 
-**Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **disabled** in the Actions tab because nothing is deployed for it to target — re-enabling it is Slice 9. `main` is not yet PR-protected, though changes are already going through PRs by convention.
+**Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **enabled** but inert: it fires only on a tag push or a manual run, and no tag has been pushed. `main` is not yet PR-protected, though changes are already going through PRs by convention.
 
 **Next up: Slices 6 → 13**, both repo work needing no host access. After them the host chain is unblocked: Slice 5 has landed, so the first deploy will be version-stamped and its images are already proven to build in CI.
 
@@ -50,6 +50,7 @@ The order to actually work in, which is not simply "slice 1 to 14".
 - **A real registered domain** (~€10/yr) over a free DuckDNS subdomain. `duckdns.org` sits on the Public Suffix List, so Google treats the subdomain as the top private domain and wants it verified before accepting it as an OAuth authorised domain. A registrable domain removes that friction and reads better at the defense.
 - **Prod images build in CI**, not only on the VPS. As built, a change that breaks either Dockerfile passes CI green and fails on the server at deploy time.
 - **Releases are tagged manually**, version derived from the tag — [infra-0002](../decisions/infra-0002-manual-release-tagging.md).
+- **A tag push deploys; merging does not** — [infra-0003](../decisions/infra-0003-deploy-on-tag.md), decided mid-phase and superseding the "deploy on merge to `main`" criterion in [plan.md](../plan.md). The manual run of the CD workflow covers looking at unreleased work on a phone, which is what the frontend migration needs.
 
 ## Release policy
 
@@ -61,7 +62,7 @@ Recorded permanently in [infra-0002](../decisions/infra-0002-manual-release-tagg
 
 - [x] `docker-compose.prod.yml` as a standalone file (not an override) + `Caddyfile`
 - [x] `scheduler` image stage (supercronic + repo-committed `backend/crontab`) replacing the host refresh crons
-- [x] `cd.yml` triggered by a successful CI run on `main`
+- [x] `cd.yml` (originally triggered by a successful CI run on `main`; now by a tag push — [infra-0003](../decisions/infra-0003-deploy-on-tag.md))
 - [x] Env-driven CORS; root `justfile`; provisioning runbook in [setup/deployment.md](../setup/deployment.md)
 
 ## Slice 2 — Accounts, host, DNS
@@ -139,7 +140,8 @@ Both Dockerfiles were read end to end while the build arg went in. They were alr
 **Acceptance:** CI and production run the versions the project has settled on, and a backend contract change breaks CI instead of the frontend at runtime. Independent of the host work; the dev-database cutover is the only part that is not on the deploy path at all.
 
 - [ ] **Postgres 18 for CI and production** — tags already bumped in `docker-compose.prod.yml` and `ci.yml`. Production is provisioned fresh on 18, so it never performs a major upgrade; it restores a seed dump into an empty cluster. Rehearsed on 2026-08-01: a PG17 `pg_dump -Fc` restored into 18.4 with zero errors, identical row counts, `alembic current` at head, 104 tests green and the API serving from it
-- [ ] **Cut the dev database over to 18** — `docker-compose.yml` is deliberately still on `17-alpine` because the local volume holds the ~12-day REVE seed and the data directory is not compatible across majors. Dump, `down -v`, flip the tag, restore ([operations.md](../operations.md)). Until this is done, dev runs 17 while CI and production run 18
+- [ ] **Cut the dev database over to 18** — `docker-compose.yml` is deliberately still on `17-alpine` because the local volume holds the ~12-day REVE seed and the data directory is not compatible across majors. Dump, `down -v`, flip the tag **and the mount path**, restore ([operations.md](../operations.md)). Until this is done, dev runs 17 while CI and production run 18.
+  **The mount is the part that was missing.** From 18 the images keep data in a major-version subdirectory and declare `/var/lib/postgresql` as the volume, so a compose file still mounting `/var/lib/postgresql/data` refuses to start — found when `just prod-up` could not bring the stack up on a completely empty volume, and fixed in `docker-compose.prod.yml` at that point. The dev file carries the same trap, disarmed only because it is still on 17
 - [ ] **Python 3.12 → 3.13**: `requires-python`, both `Dockerfile` stages, ruff `target-version`, basedpyright `pythonVersion`, CI `python-version`. Verified: the full dependency set resolves, installs and imports on 3.13/3.14 (asyncpg's C extension included). **3.13, not 3.14** — it is the version the agent/LLM SDK ecosystem targets, and Phase 11 depends on that ecosystem
 - [ ] **Committed `openapi.json`**: a console script exports it from the app, the file is committed, `pnpm run gen:api` reads the file instead of a running backend, and CI regenerates and fails on a diff — so a backend contract change breaks CI rather than the frontend at runtime
 
@@ -176,9 +178,9 @@ The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is m
 **Acceptance:** merging a PR to `main` deploys to production automatically, and `main` cannot be pushed to directly or force-pushed.
 
 - [ ] Repo secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`)
-- [ ] CD workflow re-enabled in the Actions tab
+- [x] CD workflow enabled in the Actions tab — safe to do before the server exists now that it only fires on a tag push or a manual run ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)), so nothing can trigger it by accident
 - [ ] Branch protection ruleset on `main`: **require a pull request**, require the CI checks, block force-push and deletion
-- [ ] **End-to-end test:** trivial PR → merge → CI green → CD deploys → the version string in production changes. The only proof the pipeline works.
+- [ ] **End-to-end test:** trivial PR → merge → CI green → **nothing deploys** → push a tag → CD deploys → `/api/health` reports that tag. Both halves matter: that merging is inert is as much a claim to verify as that tagging ships ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)).
 
 ## Slice 10 — Security gate, cutover, first release
 
@@ -200,7 +202,7 @@ Lands **after** Slice 9, so the first automated PRs arrive against a pipeline th
 - [ ] `renovate.json`: weekly schedule, non-majors grouped into one PR, dev dependencies grouped, majors one at a time, dependency dashboard, `:semanticCommits` so PR titles match the Conventional Commits rule
 - [ ] Scope includes `github-actions` and the Docker base images, not just `uv`/`pnpm` manifests
 - [ ] `vulnerabilityAlerts` unscheduled, so security updates are not held for the weekly window
-- [ ] No automerge — every dependency PR merges by hand, because merging to `main` deploys to production
+- [ ] No automerge — every dependency PR merges by hand and reaches production with the next tag ([infra-0003](../decisions/infra-0003-deploy-on-tag.md))
 
 ## Slice 12 — REVE tariff backfill
 
