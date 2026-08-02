@@ -61,6 +61,10 @@ Two exceptions, both deliberate: [docs/decisions/](docs/decisions/) keeps a trai
 
 **Thesis chapters are written in Spanish** ([docs/thesis/](docs/thesis/)), keeping established technical terms in English (bearer token, upsert, rate limit).
 
+**What reaches a thesis chapter, and when.** The trigger is a **concept, not a unit of work** — neither "every slice" nor "only at phase close". Most slices produce nothing for the thesis: toolchain pins, CI hygiene and version bumps are a [tech-stack.md](docs/tech-stack.md) row at most. Write when a cross-cutting system lands or a decision acquires a road not taken, and sweep once more when a phase closes, since that is when phase-plan knowledge gets migrated out anyway.
+
+The filter: **would this still interest someone who will never read this repository?** In scope — a decision and why the alternative lost; a constraint that shaped the design (REVE's 5 req/hr cap shaped the entire ETL); a measurement (the servable refresh window, the 12-day seed cost); a threat model; a *camino no tomado*. Out of scope — tool versions and config keys, slice and PR numbers, dates and sequence ("then we did X"), and anything a reader could learn by reading the code. **A chapter that reads like a changelog has failed the test**; write the idea, and let git hold the history.
+
 **Which documents to update when a slice ships** is a checklist applied at the end of a change, not while writing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Phase plans** are written just before a phase starts, never in advance, and stay live for its duration: [docs/phases/README.md](docs/phases/README.md).
