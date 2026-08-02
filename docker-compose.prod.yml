@@ -5,8 +5,9 @@
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Reads SITE_ADDRESS from a root .env (see .env.example) and app secrets from
-# backend/.env — both server-side only, never committed.
+# Reads every variable from the root .env (see .env.example), server-side only
+# and never committed. APP_VERSION comes from the environment CD exports, not
+# from that file: it is baked into the images at build time.
 name: ev-charging-app-prod
 
 services:
@@ -28,6 +29,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: prod
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     restart: unless-stopped
     env_file:
       - ./.env
@@ -40,6 +43,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: scheduler
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     restart: unless-stopped
     env_file:
       - ./.env
@@ -54,6 +59,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: prod
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     restart: unless-stopped
     depends_on:
       - backend

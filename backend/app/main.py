@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(
     title="EV Charging Point Management API",
-    version="0.1.0",
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
@@ -67,4 +67,4 @@ app.include_router(vehicles_router, prefix="/api")
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": settings.app_version}

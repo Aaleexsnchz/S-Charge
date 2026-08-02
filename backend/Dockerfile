@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
+ARG PYTHON_VERSION=3.12
+
 # Shared base: pinned uv binary + build env.
-FROM python:3.12-slim AS base
+FROM python:${PYTHON_VERSION}-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -16,9 +18,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # ---------- prod: lean, non-root runtime (no uv, no dev deps) ----------
-FROM python:3.12-slim AS prod
+FROM python:${PYTHON_VERSION}-slim AS prod
+# Set by CD from the git tag; `dev` for any image not built by it.
+ARG APP_VERSION=dev
 ENV PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    APP_VERSION=${APP_VERSION}
 RUN useradd -m -u 10001 appuser
 WORKDIR /app
 COPY --from=build-prod --chown=appuser:appuser /app/.venv /app/.venv
