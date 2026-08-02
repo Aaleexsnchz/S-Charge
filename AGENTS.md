@@ -27,8 +27,8 @@ Read before proposing architectural or scope changes:
 ## Git workflow
 
 - **`main` is protected and is what production runs.** Every change reaches it through a pull request; no direct commits, no force-pushes. It must stay deployable at every commit.
-- **`just ci` must be green before pushing** — `basedpyright` and the test suites gate only in CI, so a commit can commit cleanly and still fail the merge gate.
-- **Never `--no-verify`.** The hooks are the gate and the secret scan is in them. No secrets or credentials in the diff.
+- **The pre-push hook is `just ci`** — both run [lefthook.yml](lefthook.yml)'s `pre-push` jobs, which mirror CI. A commit only lints and formats its staged files, so `basedpyright` and the test suites first speak at push time.
+- **Never `--no-verify`.** The hooks are the gate. No secrets or credentials in the diff — the commit-time secret scan is best-effort (it needs `betterleaks` on `PATH`), and the authoritative one is a CI job over the full history.
 - Branch naming, commit types and scopes, and the doc-update checklist: **[CONTRIBUTING.md](CONTRIBUTING.md)** — read it when you finish a change.
 
 ## Releases
@@ -42,7 +42,7 @@ Semantic versioning, tagged **manually**; a minor marks a phase shipping and **`
 - **`backend/scripts/`** is Python, run from `backend/` with `uv run python -m scripts.X`. **Repo-root `scripts/`** is bash, host-level ops (DB backup) — see [docs/operations.md](docs/operations.md).
 - **Alembic: always autogenerate then review.** Never trust the diff blindly, never edit an applied migration — add a new one.
 - **Tests** mirror `app/`. Service tests are unit tests with no DB; route tests use a transactional fixture or the test database.
-- Ruff, `ruff format` and `basedpyright` must all pass. Type checking is CI-gated, not commit-gated.
+- Ruff, `ruff format` and `basedpyright` must all pass. Type checking is push-gated, not commit-gated.
 
 ## Frontend conventions
 

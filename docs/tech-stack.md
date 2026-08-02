@@ -22,7 +22,7 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **pytest + pytest-asyncio + pytest-httpx** | Tests; external APIs are stubbed at the transport, never called for real in CI. |
 | **uv** | Package manager and lockfile. One fast tool for resolve, install and run — pinned to the same version in CI and in the image so the lockfile is always resolved by the uv that builds it. |
 | **Ruff** | Lint + format in one Rust binary, replacing flake8/isort/black. |
-| **basedpyright** | Type checking. Runs in CI, not in pre-commit — it is too slow for a commit hook. |
+| **basedpyright** | Type checking. Runs in CI and in the pre-push hook, not on commit — it is too slow to sit between typing a message and getting a prompt back. |
 | **supercronic** | Cron inside the scheduler container: logs to stdout, no host crontab to provision. Chosen over APScheduler ([infra-0001](decisions/infra-0001-deployment.md)). |
 
 ## Frontend
@@ -58,7 +58,7 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **Caddy** | Reverse proxy in production: automatic Let's Encrypt certificates, HTTP→HTTPS redirect, HSTS, and same-origin serving of the SPA and `/api/*`. See [infra-0001](decisions/infra-0001-deployment.md). |
 | **nginx** (frontend prod image only) | Serves the built `dist/` with SPA fallback. Caddy does the routing; nginx just serves files. |
 | **GitHub Actions** | CI (lint, typecheck, tests, prod image builds) and CD (deploy on a successful CI run on `main`). |
-| **lefthook** *(Phase 5, replacing pre-commit)* | Git hooks: staged-file lint/format with auto-restage on commit, and a pre-push hook mirroring CI exactly. Installs as a uv dev dependency. Replaces pre-commit, whose cross-language env management this repo never used. |
+| **lefthook** | Git hooks: staged-file lint/format with auto-restage on commit, and a pre-push hook mirroring CI exactly, which `just ci` also runs. Installs as a uv dev dependency. Replaced pre-commit, whose cross-language env management this repo never used. |
 | **betterleaks** | Secret scanning. Best-effort locally, authoritative as a CI job over full history. |
 | **Renovate** *(Phase 5)* | Weekly grouped dependency PRs, gated by the same CI as everything else. No automerge — merging to `main` deploys. |
 | **just** | Task runner for humans — `just api`/`just web` to run the app, `just ci` before pushing. Nothing in CI/CD depends on it. |

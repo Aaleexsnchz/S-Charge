@@ -4,10 +4,11 @@ default:
 
 # ---------- dev ----------
 
-# Install/refresh both toolchains
+# Install/refresh both toolchains and the git hooks
 install:
     cd backend && uv sync --locked --all-groups
     cd frontend && pnpm install --frozen-lockfile
+    cd backend && uv run lefthook install
 
 # Start Postgres (the only containerised piece in dev)
 up:
@@ -67,9 +68,9 @@ fix:
 typecheck:
     cd backend && uv run basedpyright
 
-# Everything CI runs — run before pushing
-ci: lint typecheck test
-    cd frontend && pnpm run test && pnpm run build
+# Everything CI runs, in parallel — the pre-push hook, forced to run every job
+ci:
+    cd backend && uv run lefthook run pre-push --force
 
 # Regenerate frontend API types from the backend schema (+ biome re-format)
 gen-api:

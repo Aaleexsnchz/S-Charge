@@ -54,7 +54,7 @@ How to write those docs — current reality only, the two exceptions, phase plan
 
 ## Push and open the PR
 
-`just ci` must be green before pushing: it runs exactly what CI runs, and CI is the merge gate. The commit hooks run a secret scan plus Ruff and Biome — **never `--no-verify`**.
+The pre-push hook runs exactly what CI runs, and CI is the merge gate; `just ci` is the same battery on demand, before you get there. Committing lints, formats and secret-scans the staged files — **never `--no-verify`**.
 
 Open the PR early. `main` is protected: pull request required, CI checks required, no direct commits, no force-pushes. It is what production runs, so it must stay deployable at every commit.
 
