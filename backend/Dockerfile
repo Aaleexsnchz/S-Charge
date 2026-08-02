@@ -19,11 +19,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # ---------- prod: lean, non-root runtime (no uv, no dev deps) ----------
 FROM python:${PYTHON_VERSION}-slim AS prod
-# Set by CD from the git tag; `dev` for any image not built by it.
-ARG APP_VERSION=dev
+# Set by CD from the git tag. Deliberately without a default: an unstamped
+# build arrives as an empty string, and app/config.py owns the one fallback.
+ARG APP_VERSION
 ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
     APP_VERSION=${APP_VERSION}
+LABEL org.opencontainers.image.version=${APP_VERSION}
 RUN useradd -m -u 10001 appuser
 WORKDIR /app
 COPY --from=build-prod --chown=appuser:appuser /app/.venv /app/.venv
