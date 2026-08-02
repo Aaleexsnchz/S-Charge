@@ -33,6 +33,8 @@ class Settings(BaseSettings):
 
     reve_api_key: str = ""
     reve_api_base_url: str = "https://www.mapareve.es/api/external/v1"
+    reve_budget_per_run: int = 5
+    reve_refresh_lookback_hours: int = 2
 
     ree_api_base_url: str = "https://apidatos.ree.es"
 

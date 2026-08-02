@@ -1,10 +1,10 @@
 import argparse
 import asyncio
-import os
 import sys
 from collections.abc import Awaitable, Callable
 
 import httpx
+from app.config import settings
 from app.database import SessionLocal
 from app.etl.cursor import read_all_cursors, read_cursor, record_error, record_progress
 from app.etl.reve import (
@@ -15,7 +15,7 @@ from app.etl.reve import (
 from app.integrations.reve import ReveClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-DEFAULT_BUDGET_PER_RUN = int(os.getenv("REVE_BUDGET_PER_RUN", "5"))
+DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
 
 ImportFn = Callable[..., Awaitable[tuple[int, int, bool]]]
 ENDPOINT_PRIORITY: list[tuple[str, ImportFn]] = [
