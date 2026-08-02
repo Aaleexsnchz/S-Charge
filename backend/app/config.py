@@ -16,6 +16,9 @@ DEVELOPMENT_PLACEHOLDER = "change_me_secret_key"
 
 
 class Settings(BaseSettings):
+    # Baked into the image at build time from the git tag; `dev` everywhere the
+    # image was not built by CD. Never edit a version string by hand.
+    app_version: str = "dev"
     # TODO: wire into /docs visibility when needed; it already gates the
     # production configuration check below.
     environment: str = "development"

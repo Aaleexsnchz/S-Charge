@@ -8,7 +8,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 2 | Accounts, host, DNS | Done | host work |
 | 3 | Server hardening | Done | host work |
 | 4 | Toolchain: lefthook + CI hygiene | Done | #14 |
-| 5 | Release plumbing: versioning, CI images, CD, `release.yml` | Not started | — |
+| 5 | Release plumbing: versioning, CI images, CD, `release.yml` | Done | #16 |
 | 6 | Runtime versions + API contract | Not started | — |
 | 7 | First deploy | Not started | host work |
 | 8 | External services on the prod origin | Not started | host work |
@@ -25,7 +25,7 @@ They are three slices rather than one because they are three unrelated review pr
 
 **Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **disabled** in the Actions tab because nothing is deployed for it to target — re-enabling it is Slice 9. `main` is not yet PR-protected, though changes are already going through PRs by convention.
 
-**Next up: Slices 5 → 6 → 13**, all repo work needing no host access. Slice 7 stays blocked behind Slice 5 so the first deploy is version-stamped and its images are already proven to build in CI.
+**Next up: Slices 6 → 13**, both repo work needing no host access. After them the host chain is unblocked: Slice 5 has landed, so the first deploy will be version-stamped and its images are already proven to build in CI.
 
 ## Start here
 
@@ -38,7 +38,7 @@ The order to actually work in, which is not simply "slice 1 to 14".
 
 **Step 1 — start the clock (Slice 2).** Create the provider account and buy the domain *first*. Neither is work, both are waiting: ID verification can take hours and DNS has to propagate, and every host slice queues behind them.
 
-**Step 2 — repo work while that clock runs (Slices 5, 6, 13; [4](#slice-4--toolchain-lefthook--ci-hygiene) and [14](#slice-14--environment-configuration) are done).** Independent of the host and of each other. Order: **4** first (toolchain, because everything after is reviewed through those gates) → **14** (environment configuration, which the deploy's runbook depends on) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
+**Step 2 — repo work while that clock runs (Slices 6 and 13 remain; [4](#slice-4--toolchain-lefthook--ci-hygiene), [14](#slice-14--environment-configuration) and [5](#slice-5--release-plumbing) are done).** Independent of the host and of each other. Order: **4** first (toolchain, because everything after is reviewed through those gates) → **14** (environment configuration, which the deploy's runbook depends on) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
 
 **Step 3 — the host chain, in order:** 3 → 7 → 8 → 9 → 10, ending at `v0.1.0`. Then 11 and 12.
 
@@ -111,18 +111,28 @@ Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to
 - [x] `.nvmrc` + `node-version-file` in CI instead of a hardcoded Node major. It lives in `frontend/`, the only place Node is used
 - [x] CI hygiene: `permissions: contents: read`, a `concurrency` group with `cancel-in-progress` on pull requests, and dependency caching for both uv and pnpm. **`cancel-in-progress` is conditioned on the event**, not left on: cancelling a superseded run on `main` would cancel the deploy it triggers
 
-## Slice 5 — Release plumbing
+## Slice 5 — Release plumbing [x]
 
 **Acceptance:** CI catches Dockerfile breakage, deploys stamp a version and take a database dump before migrating, and a tag push produces a GitHub Release. **This must land before the first deploy**, so that deploy is stamped and its images are already proven to build.
 
-- [ ] Version stamping: `APP_VERSION` build arg through both Dockerfiles → `/api/health` + profile screen
-- [ ] CI job building the three prod image targets (backend `prod`, backend `scheduler`, frontend `prod`)
-- [ ] CD hardening: `git fetch --tags`, export `APP_VERSION`, `pg_dump` before `alembic upgrade head`
-- [ ] `permissions: {}` on the `deploy` job in [cd.yml](../../.github/workflows/cd.yml) — it authenticates to the VPS by SSH key and never calls the GitHub API, so it should carry no `GITHUB_TOKEN` scope at all. Same hardening as the `contents: read` planned for CI in [Slice 4](#slice-4--toolchain-lefthook--ci-hygiene)
-- [ ] **Know the migration window, even if it stays unfixed.** `cd.yml` runs `up -d --build` and *then* `alembic upgrade head`, so the new code serves against the old schema for the seconds between them. `pg_dump`-before-migrate above improves recovery, not the window. Closing it properly means migrating before the new containers take traffic, which is a bigger change than this phase needs — at single-user demo traffic the exposure is negligible, but it should be a known trade-off rather than an oversight
-- [ ] Documented rollback (`git checkout <tag>` + rebuild) in [setup/deployment.md](../setup/deployment.md)
-- [ ] `release.yml`: tag push → `gh release create --generate-notes`
-- [ ] Drop the "lands with Phase 5 Slice 5" qualifier in [AGENTS.md](../../AGENTS.md) once `release.yml` exists, and make it a link
+- [x] Version stamping: `APP_VERSION` build arg through both Dockerfiles → `/api/health` + profile screen. **It is a build argument, not runtime configuration** — Vite inlines `VITE_*` into the bundle and the backend bakes it into the image, so a deploy that forgets to export it reports `dev` until the next rebuild. Verified by building both images with a fake tag and reading it back out of the running container and the served bundle
+- [x] CI job building the three prod image targets (backend `prod`, backend `scheduler`, frontend `prod`), with a GitHub Actions layer cache per target
+- [x] CD hardening: `git fetch --tags` (a plain pull does not necessarily bring the tag `git describe` needs), export `APP_VERSION`, `pg_dump` before `alembic upgrade head`, keeping the last five dumps. The dump runs `pg_dump` inside the `db` container so the credentials never reach the deploy shell, and is skipped when the stack is not up yet — the first deploy has nothing to dump
+- [x] `permissions: {}` on the `deploy` job in [cd.yml](../../.github/workflows/cd.yml) — it authenticates to the VPS by SSH key and never calls the GitHub API, so it should carry no `GITHUB_TOKEN` scope at all. Same hardening as the `contents: read` planned for CI in [Slice 4](#slice-4--toolchain-lefthook--ci-hygiene)
+- [x] **Know the migration window, even if it stays unfixed.** `cd.yml` runs `up -d --build` and *then* `alembic upgrade head`, so the new code serves against the old schema for the seconds between them. `pg_dump`-before-migrate above improves recovery, not the window. Closing it properly means migrating before the new containers take traffic, which is a bigger change than this phase needs — at single-user demo traffic the exposure is negligible, but it should be a known trade-off rather than an oversight. Written down in [setup/deployment.md](../setup/deployment.md)
+- [x] Documented rollback (`git checkout <tag>` + rebuild) in [setup/deployment.md](../setup/deployment.md), including the half git cannot undo: **code rolls back, the schema does not**, which is what the pre-migration dump is for
+- [x] `release.yml`: tag push → `gh release create --generate-notes`
+- [x] The AGENTS.md qualifier this item asked about no longer exists — it went in the documentation restructure before this slice started
+
+### Image review
+
+Both Dockerfiles were read end to end while the build arg went in. They were already close to right — multi-stage, non-root backend, no `uv` at runtime, BuildKit caches, a pinned supercronic checksum — so this is what changed, and what deliberately did not.
+
+- [x] **The frontend image had no `HEALTHCHECK`** while the backend had one. Added — and it failed on the first run: `localhost` resolves to `::1` first, nginx listens on IPv4 only, and busybox `wget` does not fall back the way Python's `urllib` does, which is why the backend's equivalent check never exposed the same asymmetry. Pointed at `127.0.0.1`; both containers verified reaching `healthy`
+- [x] **`python:3.12-slim` appeared in two `FROM` lines**, so [Slice 6](#slice-6--runtime-versions--api-contract)'s bump to 3.13 would have been two edits with one easy to miss. Single-sourced to an `ARG PYTHON_VERSION`
+- **Base images stay on floating tags** (`python:3.12-slim`, `nginx:1.27-alpine`, `caddy:2.11-alpine`, `postgres:18-alpine`). Digest pinning is the reproducibility upgrade, but pinning by hand now means stale digests until something maintains them; it belongs with [Renovate](#slice-11--renovate), which raises digest updates as pull requests
+- **nginx still runs its master process as root.** The unprivileged image would fix that, but it listens on 8080, so it is a `Caddyfile` and compose change too — worth doing, not worth bundling into a release-plumbing slice. Backend and scheduler already run as `appuser`
+- Sizes for the record: backend `prod` 330 MB, `scheduler` 356 MB, frontend `prod` 77.5 MB
 
 ## Slice 6 — Runtime versions + API contract
 

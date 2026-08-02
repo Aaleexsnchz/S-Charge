@@ -35,6 +35,14 @@ export function ProfilePage() {
         </Typography>
       </Stack>
 
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: 'block', textAlign: 'center' }}
+      >
+        Versión {import.meta.env.VITE_APP_VERSION ?? 'dev'}
+      </Typography>
+
       <Box sx={{ mt: 3 }}>
         <Form method="post" action="/logout">
           <Button

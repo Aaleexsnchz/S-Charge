@@ -84,6 +84,8 @@ docker compose exec -T db pg_restore -U ev_charging_app -d ev_charging \
 
 > **Check the dump is not empty.** The weekly cron produced a 0-byte file on 2026-07-13 and nothing noticed, because the script has no size check. A backup you have not restored — or at least sized — is not a backup.
 
+There is a second kind of dump on the server: **`backups/pre-migrate-*.dump`**, written by CD immediately before `alembic upgrade head` and pruned to the last five. They exist because a rollback returns the code but not the schema — restoring one is how you undo a migration. They are full dumps, they are not sent offsite, and they are not a substitute for the weekly backup.
+
 ### Offsite + automation
 
 The offsite copy is **Backblaze B2** (bucket `tfm-db-backups`, server-side encryption at rest), uploaded with `rclone`. Only the PII-safe seed dump goes offsite — no `users`/`oauth_account` data ever leaves the machine.

@@ -23,6 +23,9 @@ jobs:
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
+    # Authenticates to the VPS by SSH key and never calls the GitHub API, so it
+    # needs no GITHUB_TOKEN scope at all.
+    permissions: {}
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Set up SSH
@@ -37,8 +40,28 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" bash -s <<'REMOTE'
           set -euo pipefail
           cd /opt/tfm
+          compose="docker compose -f docker-compose.prod.yml"
+
+          # --tags: git describe is what stamps the build, and a plain pull does
+          # not necessarily bring new tags with it.
+          git fetch --tags --force
           git pull --ff-only
-          docker compose -f docker-compose.prod.yml up -d --build
-          docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+          export APP_VERSION="$(git describe --tags --always)"
+          echo "Deploying $APP_VERSION"
+
+          # Migrations are the one step redeploying an older tag cannot undo, so
+          # take a dump first. Credentials stay inside the container; the host
+          # shell never reads them.
+          if $compose ps --status running --services | grep -qx db; then
+            mkdir -p backups
+            $compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
+              > "backups/pre-migrate-$(date -u +%Y%m%dT%H%M%SZ).dump"
+            ls -1t backups/pre-migrate-*.dump | tail -n +6 | xargs -r rm --
+          else
+            echo "db is not running yet; skipping the pre-migration dump"
+          fi
+
+          $compose up -d --build
+          $compose exec -T backend alembic upgrade head
           docker image prune -f
           REMOTE
