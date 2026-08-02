@@ -5,8 +5,8 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
 | 1 | Repo-side prod artifacts | Done | #8 |
-| 2 | Accounts, host, DNS | Not started | host work |
-| 3 | Server hardening | Not started | host work |
+| 2 | Accounts, host, DNS | Done | host work |
+| 3 | Server hardening | Done | host work |
 | 4 | Toolchain: lefthook + CI hygiene | Not started | — |
 | 5 | Release plumbing: versioning, CI images, CD, `release.yml` | Not started | — |
 | 6 | Runtime versions + API contract | Not started | — |
@@ -15,8 +15,10 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 9 | Close the CI/CD loop | Not started | — |
 | 10 | Security gate, cutover, first release | Not started | host work |
 | 11 | Renovate | Not started | — |
+| 12 | REVE tariff backfill | Not started | — |
+| 13 | Auth surface hardening | Not started | — |
 
-Slices 2–11 are ordered by dependency. **Start at 2**: the provider account and the domain are the only wall-clock-bound items (ID verification, DNS propagation), and everything on the host waits on them. **Slices 4–6 are repo work and run in parallel with that waiting** — they are independent of each other and of the host, so they can land in any order.
+Slices 2–13 are ordered by dependency, with one exception: **Slice 13 is numbered last but must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, because it closes gaps that slice's gate checks for. **Start at 2**: the provider account and the domain are the only wall-clock-bound items (ID verification, DNS propagation), and everything on the host waits on them. **Slices 4–6 are repo work and run in parallel with that waiting** — they are independent of each other and of the host, so they can land in any order.
 
 They are three slices rather than one because they are three unrelated review problems: hooks, release plumbing, and version bumps. Reviewing them together is what turns a PR into a rubber stamp.
 
@@ -24,24 +26,24 @@ They are three slices rather than one because they are three unrelated review pr
 
 ## Start here
 
-The order to actually work in, which is not simply "slice 1 to 11".
+The order to actually work in, which is not simply "slice 1 to 12".
 
 **Step 0 — two local commands, before anything else.** No dependencies, a few minutes, and they improve what production gets bootstrapped from:
 
-- [ ] `cd backend && uv run python -m scripts.fetch_pvpc` — heals the PVPC hole from REE's history *now*, so production starts with a continuous price curve instead of one that stops in July. Nothing about this needs the server
-- [ ] `just backup-seed` — re-take the seed dump afterwards. The newest is from 2026-07-08 and [Slice 7](#slice-7--first-deploy) restores it into production; taking it after the backfill saves a round trip
+- [x] `cd backend && uv run python -m scripts.fetch_pvpc` — heals the PVPC hole from REE's history *now*, so production starts with a continuous price curve instead of one that stops in July. Nothing about this needs the server. Done: the curve is continuous from 2026-01-01 to 2026-08-01, 5111 rows, no missing hours (the only short day is 2026-03-29, the spring DST transition)
+- [x] `just backup-seed` — re-take the seed dump afterwards, so [Slice 7](#slice-7--first-deploy) restores a current catalogue rather than a stale one. Done: `backups/ev_charging_seed_20260801T185624Z.dump`, verified as a valid archive carrying the nine data tables and no `users`/`oauth_account` rows
 
 **Step 1 — start the clock (Slice 2).** Create the provider account and buy the domain *first*. Neither is work, both are waiting: ID verification can take hours and DNS has to propagate, and every host slice queues behind them.
 
-**Step 2 — repo work while that clock runs (Slices 4, 5, 6).** Independent of the host and of each other. Suggested order: **4** (toolchain, because everything after is reviewed through those gates) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract).
+**Step 2 — repo work while that clock runs (Slices 4, 5, 6, 13).** Independent of the host and of each other. Suggested order: **4** (toolchain, because everything after is reviewed through those gates) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
 
-**Step 3 — the host chain, in order:** 3 → 7 → 8 → 9 → 10, ending at `v0.1.0`. Then 11.
+**Step 3 — the host chain, in order:** 3 → 7 → 8 → 9 → 10, ending at `v0.1.0`. Then 11 and 12.
 
 **Why this phase comes before the frontend migration** (Phase 6), in case it is asked again: the migration benefits from nearly every slice here — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the rewrite drifting from the API, the pre-push hook covers ~3,200 lines of churn, and CD means each migration slice lands on a URL that can be opened on a phone, which is the only way to check the one risk no tool verifies. Deployment gains nothing from the migration in return: nginx serves a `dist/` and does not care what is in it. Separately, the REVE tariff gap widens permanently every day the server does not exist.
 
 ## Decisions taken
 
-- **Host: a 2 vCPU / 4 GB x86-64 EU VPS on Ubuntu 24.04, on Hetzner** — CX23 if in stock, else CPX22. The spec is the decision; the SKU is a purchasing detail. Fallback providers and why arm64 and GCP stay out: [infra-0001](../decisions/infra-0001-deployment.md).
+- **Host: a 2 vCPU / 4 GB x86-64 EU VPS on Ubuntu 26.04, on Hetzner** — CX23 if in stock, else CPX22. The spec is the decision; the SKU is a purchasing detail. Fallback providers and why arm64 and GCP stay out: [infra-0001](../decisions/infra-0001-deployment.md).
 - **A real registered domain** (~€10/yr) over a free DuckDNS subdomain. `duckdns.org` sits on the Public Suffix List, so Google treats the subdomain as the top private domain and wants it verified before accepting it as an OAuth authorised domain. A registrable domain removes that friction and reads better at the defense.
 - **Prod images build in CI**, not only on the VPS. As built, a change that breaks either Dockerfile passes CI green and fails on the server at deploy time.
 - **Releases are tagged manually**, version derived from the tag — [infra-0002](../decisions/infra-0002-manual-release-tagging.md).
@@ -61,22 +63,23 @@ Recorded permanently in [infra-0002](../decisions/infra-0002-manual-release-tagg
 
 ## Slice 2 — Accounts, host, DNS
 
-**Acceptance:** a 2 vCPU / 4 GB x86-64 VPS running Ubuntu 24.04 in an EU region, reachable by SSH key, with the purchased domain resolving to its IP.
+**Acceptance:** a 2 vCPU / 4 GB x86-64 VPS running Ubuntu 26.04 in an EU region, reachable by SSH key, with the purchased domain resolving to its IP.
 
-- [ ] Plan chosen: Hetzner CX23 if in stock (check FSN/NBG/HEL separately), else CPX22 — spec and fallbacks in [infra-0001](../decisions/infra-0001-deployment.md)
-- [ ] Provider account created — **start here**, new accounts may need ID verification (hours)
-- [ ] Domain purchased (~€10/yr; `.es`, `.app` and `.dev` all fine)
-- [ ] Server created: Ubuntu 24.04 LTS, EU region, SSH public key attached **at creation**
-- [ ] DNS A record → server IPv4 (AAAA → IPv6 if enabled); Caddy cannot obtain a certificate until this resolves
+- [x] Provider account created and ID-verified
+- [x] Server purchased on Hetzner. **Confirm before Slice 3**: 2 vCPU / 4 GB x86-64, Ubuntu 26.04 LTS, EU region, and an SSH public key attached **at creation** — if no key was attached, Hetzner mailed a root password and [Slice 3](#slice-3--server-hardening) starts from password auth instead
+- [x] Domain purchased: **`s-charge.app` at Cloudflare Registrar** — the choice, the HSTS-preload consequence and the rejected `.es` are in [infra-0001](../decisions/infra-0001-deployment.md)
+- [x] DNS `A` + `AAAA` records → the server's IPv4 and IPv6, both **DNS-only / grey cloud** ([deployment.md §2](../setup/deployment.md)). Verified against Cloudflare's authoritative nameservers: both resolve to the Hetzner host (rDNS `*.clients.your-server.de`) rather than a Cloudflare anycast address, so neither is proxied and Caddy can complete the ACME challenge over either protocol
 
 ## Slice 3 — Server hardening
 
 **Acceptance:** key-only SSH on a non-root user, firewall limited to SSH + HTTP(S), Docker installed, and a dedicated deploy key authorized for CI. Commands in [setup/deployment.md](../setup/deployment.md) §1.
 
-- [ ] `deploy` user with sudo; SSH keys copied; `PermitRootLogin no` + `PasswordAuthentication no`
-- [ ] `ufw`: OpenSSH + 80/tcp + 443/tcp + 443/udp only; `fail2ban` + `unattended-upgrades`
-- [ ] Docker Engine + Compose plugin from the official apt repo; `deploy` in the `docker` group
-- [ ] Dedicated `ed25519` deploy key generated and authorized — **not** the personal SSH key
+- [x] `deploy` user with sudo; SSH keys copied; `PermitRootLogin no` + `PasswordAuthentication no` + `KbdInteractiveAuthentication no`, set in `/etc/ssh/sshd_config.d/10-hardening.conf`. Verified from outside the host: every account answers `Permission denied (publickey)`, so `publickey` is the only method the server accepts. A root password was set first, deliberately — it is unusable over SSH and exists only for the Hetzner web console, which is the recovery path if SSH ever breaks
+- [x] `ufw`: OpenSSH + 80/tcp + 443/tcp + 443/udp only, default deny incoming, rules applied to v4 and v6. Port 80 is required despite everything being HTTPS — Caddy needs it for the ACME challenge and the HTTPS redirect
+- [x] `fail2ban` + `unattended-upgrades`. `unattended-upgrades` already ships enabled on the Hetzner image, both flags `1` in `20auto-upgrades`. fail2ban needs `backend = systemd` in `/etc/fail2ban/jail.local` — the default jail reads `/var/log/auth.log`, which this image does not produce, so without it fail2ban runs while banning nobody. It was already banning two probing hosts within hours of the server existing
+- [x] **Understand that `ufw` does not protect Docker-published ports.** Docker writes DNAT rules that are evaluated *before* ufw's INPUT chain, so a container `ports:` entry is reachable from the internet while `ufw status` still shows a correct-looking policy. What keeps Postgres private is that `docker-compose.prod.yml` gives `db` **no `ports:` entry at all** — not the firewall. The tunnel that replaces it is now recorded in [operations.md](../operations.md) → Reaching the production database. Background: [ufw-docker](https://github.com/chaifeng/ufw-docker)
+- [x] Docker Engine + Compose plugin from the official apt repo; `deploy` in the `docker` group. Docker publishes for `resolute`; the repo now uses the deb822 `.sources` format rather than the older one-line `.list`. Compose v5.3.1 as a plugin. Note the `docker` group is root-equivalent — it grants nothing new here because `deploy` already has `sudo`, which is exactly why no other user joins it
+- [x] Dedicated `ed25519` deploy key generated and authorized — **not** the personal SSH key. Lives at `~/.ssh/tfm_deploy` on the laptop, no passphrase (CI cannot type one), and becomes the `DEPLOY_SSH_KEY` secret in [Slice 9](#slice-9--close-the-cicd-loop). Verified to run `docker compose` on the host with no TTY, password or `sudo` — the exact capability `cd.yml` needs. No `command=` or `from=` restriction in `authorized_keys`: CD runs arbitrary commands and GitHub's runner IPs are dynamic, so containment is that it is a separate key revocable by deleting one line
 
 ## Slice 4 — Toolchain: lefthook + CI hygiene
 
@@ -110,6 +113,8 @@ Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to
 - [ ] Version stamping: `APP_VERSION` build arg through both Dockerfiles → `/api/health` + profile screen
 - [ ] CI job building the three prod image targets (backend `prod`, backend `scheduler`, frontend `prod`)
 - [ ] CD hardening: `git fetch --tags`, export `APP_VERSION`, `pg_dump` before `alembic upgrade head`
+- [ ] `permissions: {}` on the `deploy` job in [cd.yml](../../.github/workflows/cd.yml) — it authenticates to the VPS by SSH key and never calls the GitHub API, so it should carry no `GITHUB_TOKEN` scope at all. Same hardening as the `contents: read` planned for CI in [Slice 4](#slice-4--toolchain-lefthook--ci-hygiene)
+- [ ] **Know the migration window, even if it stays unfixed.** `cd.yml` runs `up -d --build` and *then* `alembic upgrade head`, so the new code serves against the old schema for the seconds between them. `pg_dump`-before-migrate above improves recovery, not the window. Closing it properly means migrating before the new containers take traffic, which is a bigger change than this phase needs — at single-user demo traffic the exposure is negligible, but it should be a known trade-off rather than an oversight
 - [ ] Documented rollback (`git checkout <tag>` + rebuild) in [setup/deployment.md](../setup/deployment.md)
 - [ ] `release.yml`: tag push → `gh release create --generate-notes`
 - [ ] Drop the "lands with Phase 5 Slice 5" qualifier in [AGENTS.md](../../AGENTS.md) once `release.yml` exists, and make it a link
@@ -135,11 +140,11 @@ Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to
 
 ### Closing the data gap
 
-The ETLs stopped when the laptop did. Both gaps are measured as of 2026-08-01; re-measure at deploy time, because both keep growing.
+The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is measured as of 2026-08-01 and keeps growing until the scheduler runs on the server.
 
-- [ ] **PVPC prices — recoverable, backfill them.** Last stored hour is **2026-07-03**, a 29-day hole. `fetch_pvpc.py` gap-backfills from the last stored hour to tomorrow and REE serves history, so this heals completely: run it explicitly after the first deploy instead of waiting for the daily tick, then verify the curve is continuous from 2026-07-03 to today. Any PVPC-priced simulation and the optimiser are wrong until this is done
-- [ ] **REVE tariffs — decide, because part of this gap is not recoverable.** The refresh watermark is stuck at **2026-07-08 19:30** after a 504 (the documented REVE-side regression on wide windows). On resume the script sees a stale watermark, **jumps it to `now − REVE_REFRESH_LOOKBACK_HOURS`** and audits `reve_refresh_jumped_to_recent` — so tariff changes between 2026-07-08 and the deploy date are **skipped permanently**, not backfilled. Options: accept the gap and state it in the thesis (prices are a snapshot with a documented hole), or force a wider re-pull, which costs days under the 5 req/hr cap. Accepting is the default, but the choice should be deliberate
-- [ ] **Re-take the seed dump immediately before bootstrapping the server**, after the PVPC backfill, so production starts from the freshest catalogue rather than the 2026-07-08 artifact
+- [x] **PVPC prices — recoverable, backfilled.** The hole ran from **2026-07-03** to 2026-08-01, 29 days. `fetch_pvpc.py` gap-backfills from the last stored hour to tomorrow and REE serves history, so it healed completely in one local run ([Step 0](#start-here)) — production is bootstrapped from a seed dump that already contains the full curve. The daily tick keeps it current from there
+- [ ] **REVE tariffs — recover what REVE will still serve, then accept the rest.** The refresh watermark is stuck at **2026-07-08 19:30** behind a 504. How much of that stretch is recoverable is an empirical question about REVE, not a decision to take here: it is [Slice 12](#slice-12--reve-tariff-backfill), which runs after the deploy because it needs the scheduler's environment and a working cron. **The ordering constraint is here:** the watermark has not been jumped yet — the 504 hit while it was still recent, so it was classed transient and left in place — and the first unattended refresh tick *will* jump it to `now − REVE_REFRESH_LOOKBACK_HOURS`. Read `--status` before enabling the scheduler and note the value, so Slice 12 knows where to probe from
+- [x] **Re-take the seed dump immediately before bootstrapping the server**, after the PVPC backfill, so production starts from the freshest catalogue. Done in [Step 0](#start-here); re-take again if the deploy slips far enough that the dump goes stale
 - [ ] After the first scheduler ticks, confirm in the logs that both jobs ran, that `electricity_prices` reaches today, and whether `reve_refresh_jumped_to_recent` fired
 
 ## Slice 8 — External services on the prod origin
@@ -164,7 +169,7 @@ The ETLs stopped when the laptop did. Both gaps are measured as of 2026-08-01; r
 
 **Acceptance:** the infra-0001 pre-deploy gate passes, the laptop is no longer part of production, and `v0.1.0` is tagged.
 
-- [ ] `/security-review` run; infra-0001 gate passed (HSTS, only 22/80/443 open, no published `5432`, secrets rotated, cookie `Secure`, CORS empty, backup restorable)
+- [ ] `/security-review` run; infra-0001 gate passed (HSTS, only 22/80/443 open, no published `5432`, secrets rotated, cookie `Secure`, CORS empty, backup restorable, auth endpoints rate-limited and logging the real client IP per [Slice 13](#slice-13--auth-surface-hardening))
 - [ ] Laptop crontab refresh/PVPC lines removed — the scheduler container owns them now
 - [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS; its hardcoded paths adjusted)
 - [ ] **`v0.1.0` tagged**
@@ -181,6 +186,44 @@ Lands **after** Slice 9, so the first automated PRs arrive against a pipeline th
 - [ ] Scope includes `github-actions` and the Docker base images, not just `uv`/`pnpm` manifests
 - [ ] `vulnerabilityAlerts` unscheduled, so security updates are not held for the weekly window
 - [ ] No automerge — every dependency PR merges by hand, because merging to `main` deploys to production
+
+## Slice 12 — REVE tariff backfill
+
+**Acceptance:** the tariff watermark has been advanced from 2026-07-08 by the largest span REVE will actually serve, the unrecoverable remainder is measured rather than assumed, and both numbers are written into [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+
+Last, because it needs the scheduler's environment, a working cron and a budget that is not competing with the deploy. It is also the only slice whose outcome is not under the project's control.
+
+**The constraint.** `/connectors/tariffs` takes `date_from` and no `date_to`, so a stale range cannot be sliced into chunks — the only lever is *how far back `date_from` points*. A wide window makes REVE scan too much and time out; a narrow one returns quickly but recovers less history. There is therefore no way to backfill the gap in pieces, and the whole slice reduces to one measurement: **the oldest `date_from` REVE will answer with a 200.** Everything older than that is unrecoverable through this endpoint at any price.
+
+Note that the gap is **self-healing per connector, but only forward**: any connector whose tariff changes after the deploy re-emits its current price on the next tick. What is lost is the intermediate history of connectors that changed during the gap and then went quiet — the stored price is stale until that connector next moves.
+
+The production database inherits the stuck watermark from the seed dump (`reve_etl_cursor` is in the archive), so the probe runs against the same starting point locally and on the server.
+
+**Expect to recover almost none of it.** The ceiling was already measured once under controlled conditions ([precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md)): `date_from` at ~100 h, ~20 h and intermediate values all returned 504, while `now − 3 h` returned 200. The servable window is **hours wide**, so a ~24-day gap is written off almost in full unless REVE's performance has changed since. This slice exists to turn "almost in full" into a number, not to rescue the data.
+
+- [ ] **Stop the scheduler before probing by hand.** Every probe below is a second writer against `reve_etl_cursor` while the hourly cron ticks, and two concurrent runs corrupt the watermark — the field whose loss caused this gap in the first place. `docker compose -f docker-compose.prod.yml stop scheduler` for the duration, and start it again after. The permanent fix is an advisory lock, deferred to Phase 12 ([production-readiness.md](../production-readiness.md)); until it lands, this is a manual discipline
+- [ ] `--date-from` override on `refresh_reve.py`, so the watermark can be aimed deliberately instead of edited with raw SQL. `--status` already exists to read it back
+- [ ] **One optimistic probe first**: `date_from = 2026-07-08`. One call. If REVE has fixed the wide-window regression it answers 200, the gap closes entirely and the rest of this slice is a drain. Cheap enough that not testing it would be careless — but the prior measurement says not to plan around it
+- [ ] **Then bracket the real ceiling**: binary-search between `now − 3 h` (known 200) and `now − 20 h` (known 504). ~3 probes at 5 calls/hr. Do this **before** an unattended tick jumps the watermark — see [Closing the data gap](#closing-the-data-gap)
+- [ ] Set the watermark to the oldest instant that answered and let the normal budgeted drain paginate through it. No special-case code path: this is the ordinary refresh loop pointed at an older start
+- [ ] **Record the measured gap** — the span recovered and the span written off — in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md), and re-check whether the 3 h/20 h bracket still holds a second time. A documented hole with a number is a finding; an undocumented one is a defect
+- [ ] If the ceiling has moved materially since the first measurement, `REVE_REFRESH_LOOKBACK_HOURS` should move with it — it is currently 2 h, chosen as a span known to answer 200
+
+**Open question:** whether to re-probe periodically or accept the first measurement as final. The 504 is a REVE-side performance regression that has self-healed once before, so a window that fails today may succeed later — but the recoverable history ages out meanwhile, and by the defense the gap is historical either way. Decide once the first probe has a number.
+
+## Slice 13 — Auth surface hardening
+
+**Acceptance:** the authentication endpoints are rate-limited, and the IP recorded in the auth audit log is the real client's rather than the reverse proxy's.
+
+Repo work, independent of the host, so it runs alongside Slices 4–6. **It must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**: both items are things that slice's gate checks for, and both are only reachable-from-the-internet problems, so they cost nothing while the app is on a laptop and matter the moment a URL is shared.
+
+Both were found by reading the production artifacts against the [infra-0001](../decisions/infra-0001-deployment.md) gate, not by a tool. Neither is a regression — they have never worked.
+
+- [ ] **Rate-limit the auth endpoints.** `slowapi` is declared in `backend/pyproject.toml` and imported nowhere in `app/`: login, register and password-reset accept unlimited attempts. Email verification blocks drive-by *registration*, but does nothing about attempts against accounts that already exist, and password-reset is an unmetered send-an-email endpoint for anyone who finds it. Wire the limiter and cover at least `/api/auth/login`, registration, and the reset request
+- [ ] **Trust Caddy's forwarded headers.** `backend/app/services/user_manager.py` logs `request.client.host` on four auth events, but uvicorn's `--forwarded-allow-ips` defaults to `127.0.0.1` and Caddy connects from a Docker network address — so every event will record Caddy's container IP. Add `--forwarded-allow-ips="*"` to the `prod` stage `CMD` in [backend/Dockerfile](../../backend/Dockerfile). The wildcard is safe **only** because `backend` publishes no ports and Caddy is the sole thing that can reach it; it would be a header-spoofing hole on a directly-exposed backend
+- [ ] **Order matters between the two.** Fixing the limiter without the proxy headers produces a limiter that sees one client and throttles every user at once. Land the header fix first, or both together
+- [ ] **Verify on the deployed instance, not locally**: log in once and confirm the audit line carries your own IP, then exceed the limit and confirm a `429`. Neither can be verified through a local direct-to-uvicorn request, because the bug only exists behind the proxy
+- [ ] Reword the `infra-0001` gate line from *"auth rate limits kept"* to something that does not imply they already exist — the gate item is right, only the tense is wrong
 
 ## Open decision
 
