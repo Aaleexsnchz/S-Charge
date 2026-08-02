@@ -5,8 +5,10 @@ ARG NODE_VERSION=24
 # ---------- deps: install with pinned standalone pnpm + BuildKit store cache ----------
 FROM node:${NODE_VERSION}-alpine AS deps
 WORKDIR /app
-RUN npm install -g pnpm@11
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# corepack install takes the pnpm version from package.json's packageManager,
+# so the image, CI and the laptop cannot drift apart.
+RUN corepack enable && corepack install
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 

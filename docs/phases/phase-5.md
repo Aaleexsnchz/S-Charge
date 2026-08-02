@@ -7,7 +7,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 1 | Repo-side prod artifacts | Done | #8 |
 | 2 | Accounts, host, DNS | Done | host work |
 | 3 | Server hardening | Done | host work |
-| 4 | Toolchain: lefthook + CI hygiene | Not started | — |
+| 4 | Toolchain: lefthook + CI hygiene | Done | #14 |
 | 5 | Release plumbing: versioning, CI images, CD, `release.yml` | Not started | — |
 | 6 | Runtime versions + API contract | Not started | — |
 | 7 | First deploy | Not started | host work |
@@ -22,7 +22,9 @@ Slices 2–13 are ordered by dependency, with one exception: **Slice 13 is numbe
 
 They are three slices rather than one because they are three unrelated review problems: hooks, release plumbing, and version bumps. Reviewing them together is what turns a PR into a rubber stamp.
 
-**Where things stand:** nothing is deployed. The app runs locally (`just up` + `just api`/`just web`); the REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap). The CD workflow is **disabled** in the Actions tab because there is no server to target — re-enabling it is Slice 9. `main` is not yet PR-protected.
+**Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **disabled** in the Actions tab because nothing is deployed for it to target — re-enabling it is Slice 9. `main` is not yet PR-protected, though changes are already going through PRs by convention.
+
+**Next up: Slices 5 → 6 → 13**, all repo work needing no host access. Slice 7 stays blocked behind Slice 5 so the first deploy is version-stamped and its images are already proven to build in CI.
 
 ## Start here
 
@@ -35,7 +37,7 @@ The order to actually work in, which is not simply "slice 1 to 12".
 
 **Step 1 — start the clock (Slice 2).** Create the provider account and buy the domain *first*. Neither is work, both are waiting: ID verification can take hours and DNS has to propagate, and every host slice queues behind them.
 
-**Step 2 — repo work while that clock runs (Slices 4, 5, 6, 13).** Independent of the host and of each other. Suggested order: **4** (toolchain, because everything after is reviewed through those gates) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
+**Step 2 — repo work while that clock runs (Slices 5, 6, 13; [4](#slice-4--toolchain-lefthook--ci-hygiene) is done).** Independent of the host and of each other. Order: **4** first (toolchain, because everything after is reviewed through those gates) → **5** (release plumbing, which *must* land before the first deploy so it is stamped and its images are proven to build) → **6** (runtime versions and the API contract) → **13** (auth hardening, which must land before the URL is shared).
 
 **Step 3 — the host chain, in order:** 3 → 7 → 8 → 9 → 10, ending at `v0.1.0`. Then 11 and 12.
 
@@ -81,18 +83,20 @@ Recorded permanently in [infra-0002](../decisions/infra-0002-manual-release-tagg
 - [x] Docker Engine + Compose plugin from the official apt repo; `deploy` in the `docker` group. Docker publishes for `resolute`; the repo now uses the deb822 `.sources` format rather than the older one-line `.list`. Compose v5.3.1 as a plugin. Note the `docker` group is root-equivalent — it grants nothing new here because `deploy` already has `sudo`, which is exactly why no other user joins it
 - [x] Dedicated `ed25519` deploy key generated and authorized — **not** the personal SSH key. Lives at `~/.ssh/tfm_deploy` on the laptop, no passphrase (CI cannot type one), and becomes the `DEPLOY_SSH_KEY` secret in [Slice 9](#slice-9--close-the-cicd-loop). Verified to run `docker compose` on the host with no TTY, password or `sudo` — the exact capability `cd.yml` needs. No `command=` or `from=` restriction in `authorized_keys`: CD runs arbitrary commands and GitHub's runner IPs are dynamic, so containment is that it is a separate key revocable by deleting one line
 
-## Slice 4 — Toolchain: lefthook + CI hygiene
+## Slice 4 — Toolchain: lefthook + CI hygiene [x]
 
 **Acceptance:** commits and pushes are gated locally by the same checks CI runs, and secret scanning is authoritative in CI. Nothing here blocks the deploy; it lands first because everything after it is reviewed through these gates.
 
+Measured on this machine: the whole pre-push battery runs in **8 s** wall time against ~29 s of CPU, so nothing had to be cut — the plan's fallback of dropping `pnpm build` first was not needed.
+
 ### Hooks: pre-commit → lefthook
 
-Replaces [.pre-commit-config.yaml](../../.pre-commit-config.yaml). Every current hook is a `language: system` shim with `pass_filenames: false`, so the repo pays pre-commit's Python-env bootstrap while using none of its cross-language env management, and lints the whole tree on every commit instead of the staged files. lefthook installs as a uv dev dependency, runs staged files in parallel, and can auto-fix and restage.
+Replaced `.pre-commit-config.yaml`. Every hook in it was a `language: system` shim with `pass_filenames: false`, so the repo paid pre-commit's Python-env bootstrap while using none of its cross-language env management, and linted the whole tree on every commit instead of the staged files. lefthook installs as a uv dev dependency, runs staged files in parallel, and can auto-fix and restage.
 
-- [ ] `lefthook.yml` **pre-commit**: ruff format + ruff check `--fix` on staged `*.py`, biome `check --write` on staged frontend files, all with `stage_fixed: true`
-- [ ] `lefthook.yml` **pre-push** mirroring CI exactly — ruff, ruff format, basedpyright, pytest, biome, typecheck, vitest, build. Replaces "remember to run `just ci`" with something that cannot be forgotten
-- [ ] **betterleaks moves to a CI job** scanning full history (`fetch-depth: 0`). Non-negotiable and lands in the same PR: lefthook makes the local scan best-effort, so without the CI job the repo has no secret scanning at all
-- [ ] `pre-commit` removed from the dev dependency group; `lefthook install` documented in [README](../../README.md) and [AGENTS.md](../../AGENTS.md)
+- [x] `lefthook.yml` **pre-commit**: ruff format + ruff check `--fix` on staged `*.py`, biome `check --write` on staged frontend files, all with `stage_fixed: true`. Two gotchas, both silent: ruff needs `--force-exclude` when paths are passed explicitly, or it lints `alembic/versions` anyway; and lefthook's default glob matcher reads `**` as *one or more* directory levels, so `frontend/**/*.json` skips `frontend/package.json` — `glob_matcher: doublestar` restores the semantics every other tool uses. `check-yaml` was dropped rather than reimplemented: GitHub rejects a malformed workflow and Compose fails on use, so broken YAML surfaces without a hook
+- [x] `lefthook.yml` **pre-push** mirroring CI exactly — ruff, ruff format, basedpyright, pytest, biome, typecheck, vitest, build. Replaces "remember to run `just ci`" with something that cannot be forgotten. **Decided: pytest stays in.** The objection was that it needs Postgres, which is solvable rather than fundamental — the hook runs `docker compose up -d db` first, a no-op when it is already up. It matters because [AGENTS.md](../../AGENTS.md) forbids `--no-verify`, so a hook that omits a check leaves nothing at all stopping a bad push, and because Phase 6 is ~3,200 lines of churn where the tests are exactly what catches breakage. Run jobs in parallel so wall time is the slowest job, not the sum. **If it proves too slow, cut `pnpm build` first** — `tsc -b` in the typecheck step already covers most of it; cutting pytest is the last resort
+- [x] **betterleaks moves to a CI job** scanning full history (`fetch-depth: 0`). Non-negotiable and lands in the same PR: lefthook makes the local scan best-effort, so without the CI job the repo has no secret scanning at all. There is no official action, so the job runs the published container — as the runner's uid, because git refuses to read a repository owned by someone else and the image is root. ~2 s over this history
+- [x] `pre-commit` removed from the dev dependency group; hook installation folded into `just install`, and documented in [README](../../README.md) and [AGENTS.md](../../AGENTS.md). **The migration needs `pre-commit uninstall` before `lefthook install`**, or the stale shim stays in `.git/hooks` and keeps running — call it out in the PR description, since it is a manual step every clone has to repeat
 
 ### CI hygiene
 
@@ -101,10 +105,10 @@ Surfaced while wiring CI up; none of it blocks the deploy, all of it is cheap to
 - [x] GitHub Actions bumped off the deprecated Node 20 runtime — checkout v7, setup-node v7, pnpm/action-setup v6, setup-uv v9.0.0. **setup-uv must be pinned to a full version**: it stopped publishing floating major tags after v7 as a supply-chain measure, so `@v9` does not resolve.
 - [x] pnpm aligned at 11 across CI and `frontend/Dockerfile` — CI was on 10.
 - [x] uv pinned to the same version in CI and `backend/Dockerfile` — CI installed the latest uv while the image pinned 0.11.22, so `uv.lock` was resolved by a different uv than the one building the images. Bump both together.
-- [ ] **CI switches to `pnpm install --frozen-lockfile`.** The current `--no-frozen-lockfile` defeats lockfile integrity checking, so a green CI does not prove the lockfile is honest; `frontend/Dockerfile` already uses the frozen form. Flipping it breaks CI if the lockfile is genuinely out of sync — verify locally first.
-- [ ] `packageManager` field in `frontend/package.json` to single-source the pnpm version instead of repeating it in `ci.yml` and the Dockerfile. `pnpm/action-setup` errors when both `packageManager` and the `version` input are set, so the input goes at the same time.
-- [ ] `.nvmrc` + `node-version-file` in CI instead of a hardcoded Node major.
-- [ ] CI hygiene: `permissions: contents: read`, a `concurrency` group with `cancel-in-progress` on pull requests, and dependency caching for both uv and pnpm.
+- [x] **CI switches to `pnpm install --frozen-lockfile`.** The current `--no-frozen-lockfile` defeats lockfile integrity checking, so a green CI does not prove the lockfile is honest; `frontend/Dockerfile` already uses the frozen form. Verified locally first: the lockfile was already honest, so the flip is a no-op until it stops being
+- [x] `packageManager` field in `frontend/package.json` to single-source the pnpm version instead of repeating it in `ci.yml` and the Dockerfile. `pnpm/action-setup` errors when both `packageManager` and the `version` input are set, so the input goes at the same time — and it needs `package_json_file: frontend/package.json`, since the manifest is not at the repository root. The image reads the same field through `corepack install`, replacing `npm install -g pnpm@11`. **Decided: pin the current 11.8.0, do not bump to 11.18.0** — version bumps are [Renovate's](#slice-11--renovate) job, and pinning what is already installed keeps this slice about single-sourcing rather than upgrading
+- [x] `.nvmrc` + `node-version-file` in CI instead of a hardcoded Node major. It lives in `frontend/`, the only place Node is used
+- [x] CI hygiene: `permissions: contents: read`, a `concurrency` group with `cancel-in-progress` on pull requests, and dependency caching for both uv and pnpm. **`cancel-in-progress` is conditioned on the event**, not left on: cancelling a superseded run on `main` would cancel the deploy it triggers
 
 ## Slice 5 — Release plumbing
 

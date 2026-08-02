@@ -27,8 +27,8 @@ Read before proposing architectural or scope changes:
 ## Git workflow
 
 - **`main` is protected and is what production runs.** Every change reaches it through a pull request; no direct commits, no force-pushes. It must stay deployable at every commit.
-- **`just ci` must be green before pushing** — `basedpyright` and the test suites gate only in CI, so a commit can commit cleanly and still fail the merge gate.
-- **Never `--no-verify`.** The hooks are the gate and the secret scan is in them. No secrets or credentials in the diff.
+- **The pre-push hook is `just ci`** — both run [lefthook.yml](lefthook.yml)'s `pre-push` jobs, which mirror CI. A commit only lints and formats its staged files, so `basedpyright` and the test suites first speak at push time.
+- **Never `--no-verify`.** The hooks are the gate. No secrets or credentials in the diff — the commit-time secret scan is best-effort (it needs `betterleaks` on `PATH`), and the authoritative one is a CI job over the full history.
 - Branch naming, commit types and scopes, and the doc-update checklist: **[CONTRIBUTING.md](CONTRIBUTING.md)** — read it when you finish a change.
 
 ## Releases
@@ -42,7 +42,7 @@ Semantic versioning, tagged **manually**; a minor marks a phase shipping and **`
 - **`backend/scripts/`** is Python, run from `backend/` with `uv run python -m scripts.X`. **Repo-root `scripts/`** is bash, host-level ops (DB backup) — see [docs/operations.md](docs/operations.md).
 - **Alembic: always autogenerate then review.** Never trust the diff blindly, never edit an applied migration — add a new one.
 - **Tests** mirror `app/`. Service tests are unit tests with no DB; route tests use a transactional fixture or the test database.
-- Ruff, `ruff format` and `basedpyright` must all pass. Type checking is CI-gated, not commit-gated.
+- Ruff, `ruff format` and `basedpyright` must all pass. Type checking is push-gated, not commit-gated.
 
 ## Frontend conventions
 
@@ -60,6 +60,10 @@ Semantic versioning, tagged **manually**; a minor marks a phase shipping and **`
 Two exceptions, both deliberate: [docs/decisions/](docs/decisions/) keeps a trail by supersession, and [docs/thesis/](docs/thesis/) may narrate an abandoned approach as a *camino no tomado* — what it promised, why it was dropped, what replaced it. Academic honesty about roads not taken is thesis content, not clutter; keep it short and keep it factual.
 
 **Thesis chapters are written in Spanish** ([docs/thesis/](docs/thesis/)), keeping established technical terms in English (bearer token, upsert, rate limit).
+
+**What reaches a thesis chapter, and when.** The trigger is a **concept, not a unit of work** — neither "every slice" nor "only at phase close". Most slices produce nothing for the thesis: toolchain pins, CI hygiene and version bumps are a [tech-stack.md](docs/tech-stack.md) row at most. Write when a cross-cutting system lands or a decision acquires a road not taken, and sweep once more when a phase closes, since that is when phase-plan knowledge gets migrated out anyway.
+
+The filter: **would this still interest someone who will never read this repository?** In scope — a decision and why the alternative lost; a constraint that shaped the design (REVE's 5 req/hr cap shaped the entire ETL); a measurement (the servable refresh window, the 12-day seed cost); a threat model; a *camino no tomado*. Out of scope — tool versions and config keys, slice and PR numbers, dates and sequence ("then we did X"), and anything a reader could learn by reading the code. **A chapter that reads like a changelog has failed the test**; write the idea, and let git hold the history.
 
 **Which documents to update when a slice ships** is a checklist applied at the end of a change, not while writing: [CONTRIBUTING.md](CONTRIBUTING.md).
 

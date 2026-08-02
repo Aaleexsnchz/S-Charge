@@ -1,0 +1,54 @@
+# Standard `**` semantics. lefthook's default matcher requires at least one
+# directory level, so `frontend/**/*.json` would silently miss package.json.
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: ruff
+      root: backend/
+      glob: 'backend/**/*.py'
+      # --force-exclude: ruff ignores its own exclude list when paths are passed explicitly.
+      run: uv run ruff check --fix --force-exclude {staged_files} && uv run ruff format --force-exclude {staged_files}
+      stage_fixed: true
+
+    - name: biome
+      root: frontend/
+      glob: 'frontend/**/*.{js,jsx,ts,tsx,json,jsonc,css}'
+      run: pnpm exec biome check --write {staged_files}
+      stage_fixed: true
+
+    - name: secrets
+      run: betterleaks git . --pre-commit --staged --no-banner --redact
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: ruff
+      root: backend/
+      run: uv run ruff check
+
+    - name: ruff-format
+      root: backend/
+      run: uv run ruff format --check
+
+    - name: basedpyright
+      root: backend/
+      run: uv run basedpyright
+
+    - name: pytest
+      root: backend/
+      # The suite needs the dev database; a no-op when it is already up.
+      run: docker compose -f ../docker-compose.yml up -d db && uv run pytest
+
+    - name: biome
+      root: frontend/
+      run: pnpm run lint
+
+    - name: vitest
+      root: frontend/
+      run: pnpm run test
+
+    - name: build
+      root: frontend/
+      run: pnpm run build

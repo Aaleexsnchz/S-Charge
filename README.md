@@ -13,7 +13,7 @@ git clone <repo> tfm && cd tfm
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 
-just install     # uv sync + pnpm install
+just install     # uv sync + pnpm install + git hooks
 just up          # start Postgres
 just migrate     # apply migrations
 just api         # backend  → http://localhost:8000
@@ -40,7 +40,7 @@ The ones used daily. `just --list` has the rest, with descriptions.
 | `just web` | Vite dev server |
 | `just migrate` | apply migrations |
 | `just revision "msg"` | autogenerate a migration — always review the diff |
-| `just ci` | the full CI gate: lint, typecheck, tests, build. Run before pushing |
+| `just ci` | the full CI gate in parallel: lint, typecheck, tests, build. Run before pushing |
 | `just prod-up` / `just prod-down` | the production stack locally, for a deploy smoke test |
 | `just backup-seed` | PII-safe database dump, also the production bootstrap artifact |
 
@@ -75,13 +75,14 @@ tfm/
 ├── docker-compose.prod.yml  prod stack (Caddy TLS + prod images + scheduler)
 ├── Caddyfile            reverse-proxy config for the prod stack
 ├── justfile             task runner recipes — `just --list`
+├── lefthook.yml         git hooks: lint/format on commit, the CI gate on push
 ├── CONTRIBUTING.md      branch, commit and doc-update conventions
 └── AGENTS.md            code conventions and documentation discipline
 ```
 
 ## Contributing
 
-Every change reaches `main` through a pull request, and `just ci` must be green before pushing. Install the commit hooks once per clone with `pre-commit install`. Branch naming, commit conventions and what to update before opening the PR: **[CONTRIBUTING.md](CONTRIBUTING.md)**. The code-level conventions — layout, testing, migrations, documentation discipline — are in [AGENTS.md](AGENTS.md).
+Every change reaches `main` through a pull request. `just install` puts the lefthook hooks in place: commits lint and format the staged files, and pushes run the full CI gate, so `just ci` is the same thing on demand. The commit-time secret scan needs [betterleaks](https://github.com/betterleaks/betterleaks) on `PATH` — it is best-effort locally and authoritative as a CI job over the full history. Branch naming, commit conventions and what to update before opening the PR: **[CONTRIBUTING.md](CONTRIBUTING.md)**. The code-level conventions — layout, testing, migrations, documentation discipline — are in [AGENTS.md](AGENTS.md).
 
 **Agent skills.** `.claude/skills/` is gitignored, so on a fresh clone materialise them from [skills-lock.json](skills-lock.json), which pins each skill to its `source`, `skillPath` and a content hash: install with the skill manager that wrote the lockfile, or copy the upstream `skillPath` to `.claude/skills/<name>/SKILL.md` by hand. Which skills this project uses, and what for: [docs/thesis/skills.md](docs/thesis/skills.md) — add a row the first time you use a new one.
 
