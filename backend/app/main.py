@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -15,6 +15,7 @@ from app.routers.simulate import router as simulate_router
 from app.routers.users import router as users_router
 from app.routers.vehicles import router as vehicles_router
 from app.schemas.health import HealthRead
+from app.services.user_manager import current_user
 
 OAUTH_PATH_PREFIX = "/api/auth/google/"
 OAUTH_FAILURE_REDIRECT = "/login?error=oauth_failed"
@@ -59,11 +60,18 @@ async def oauth_redirect_exception_handler(
 
 
 app.include_router(auth_router, prefix="/api")
-app.include_router(points_router, prefix="/api")
-app.include_router(prices_router, prefix="/api")
-app.include_router(simulate_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
-app.include_router(vehicles_router, prefix="/api")
+
+# The frontend already gates every page behind ProtectedRoute; without this the
+# API disagreed, serving the catalogue, prices and simulator to anyone holding
+# the URL. Applied at the mount rather than per route, so a new endpoint inside
+# one of these routers cannot be added unguarded.
+AUTHENTICATED = [Depends(current_user)]
+
+app.include_router(points_router, prefix="/api", dependencies=AUTHENTICATED)
+app.include_router(prices_router, prefix="/api", dependencies=AUTHENTICATED)
+app.include_router(simulate_router, prefix="/api", dependencies=AUTHENTICATED)
+app.include_router(vehicles_router, prefix="/api", dependencies=AUTHENTICATED)
 
 
 @app.get("/api/health")
