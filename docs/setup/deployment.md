@@ -23,9 +23,14 @@ The repo side is already in place: `docker-compose.prod.yml` (Caddy + prod image
   ```bash
   ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw allow 443/udp && ufw enable
   apt install -y fail2ban unattended-upgrades
+  printf '[DEFAULT]\nbackend = systemd\n' > /etc/fail2ban/jail.local && systemctl restart fail2ban
   ```
 
-- Install Docker Engine + Compose from the official apt repo (<https://docs.docker.com/engine/install/ubuntu/>), then `usermod -aG docker deploy`.
+  **`backend = systemd` is not optional here.** The default jail reads `/var/log/auth.log`, which this image does not produce, so without it fail2ban runs happily and bans nobody — a protection that reports success while doing nothing. Confirm with `fail2ban-client status sshd` that the jail has seen failures. Port 80 stays open despite everything being HTTPS: Caddy needs it for the ACME challenge and the redirect.
+
+- Install Docker Engine + Compose from the official apt repo (<https://docs.docker.com/engine/install/ubuntu/>), then `usermod -aG docker deploy`. Note `docker` group membership is root-equivalent; it grants `deploy` nothing new because it already has `sudo`, which is exactly why no other user joins it.
+
+- Generate a **dedicated** `ed25519` deploy key for CI — not your personal key — and authorize it for `deploy`. It carries no passphrase, because CI cannot type one, and no `command=`/`from=` restriction in `authorized_keys`: CD runs arbitrary compose commands and GitHub's runner IPs are dynamic. Containment is that it is a separate key, revocable by deleting one line.
 
 ## 2. DNS
 

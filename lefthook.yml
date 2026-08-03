@@ -2,6 +2,12 @@
 # directory level, so `frontend/**/*.json` would silently miss package.json.
 glob_matcher: doublestar
 
+# Refuse the commit if lefthook cannot be found rather than warning and letting
+# it through. `lefthook install` bakes the interpreter version into the path it
+# writes to .git/hooks, so recreating the venv on a new Python silently unhooks
+# the repository — `just install` puts it back.
+assert_lefthook_installed: true
+
 pre-commit:
   parallel: true
   jobs:

@@ -48,7 +48,7 @@ jobs:
           # Keep in lockstep with the uv pinned in backend/Dockerfile, so CI
           # resolves uv.lock with the same uv that builds the images.
           version: '0.11.32'
-          python-version: '3.12'
+          python-version: '3.13'
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
       - name: Install backend dependencies
@@ -59,6 +59,8 @@ jobs:
         run: uv run ruff format --check
       - name: Type check (basedpyright)
         run: uv run basedpyright
+      - name: Check the committed OpenAPI schema matches the app
+        run: uv run python -m scripts.export_openapi --check
       - name: Generate ephemeral test secret for JWT signing
         run: echo "SECRET_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
       - name: Run backend tests
@@ -85,6 +87,12 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check the generated API types match the schema
+        run: |
+          pnpm run gen:api
+          pnpm exec biome check --write src/lib/api/schema.d.ts
+          git diff --exit-code -- src/lib/api/schema.d.ts \
+            || { echo "::error::schema.d.ts is stale. Run 'just gen-api' and commit."; exit 1; }
       - name: Lint
         run: pnpm run lint
       - name: Run frontend tests

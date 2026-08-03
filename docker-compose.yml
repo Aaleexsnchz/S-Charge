@@ -7,10 +7,7 @@ name: ev-charging-app
 
 services:
   db:
-    # Still 17 while CI and production run 18: this volume holds the REVE seed and
-    # the data directory is not compatible across majors. Cutting over is a dump +
-    # `down -v` + restore, planned in docs/phases/phase-5.md.
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: ev-charging-app-db
     restart: unless-stopped
     env_file:
@@ -18,7 +15,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ev_charging_app_postgres_data:/var/lib/postgresql/data
+      # 18+ keeps data in a major-version subdirectory and declares
+      # /var/lib/postgresql as the volume; the old path aborts the entrypoint.
+      - ev_charging_app_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

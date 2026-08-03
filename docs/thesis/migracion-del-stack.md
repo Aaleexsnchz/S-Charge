@@ -123,9 +123,11 @@ en una fase propia y no de forma incremental mientras se construyen funcionalida
 
 ## 2. Base de datos: PostgreSQL 17 → 18
 
-Aquí no se sustituye una herramienta: se sube de versión mayor la misma. Lo que lo justifica es
-que **tres novedades de la 18 se usan directamente en este proyecto**, no una mejora genérica
-de rendimiento.
+Aquí no se sustituye una herramienta: se sube de versión mayor la misma. Lo que lo justifica no
+es una mejora genérica de rendimiento sino **novedades concretas de la 18**. De las tres que se
+evaluaron, una sostiene una funcionalidad futura, otra está en uso desde el primer día y la
+tercera **se descartó**; el criterio que separa a las dos primeras de la tercera es el mismo que
+ordena todo este capítulo.
 
 **Claves primarias temporales (`WITHOUT OVERLAPS`).** La fase de reservas debe garantizar que
 dos reservas no solapen sobre el mismo conector. Comprobarlo en la aplicación —consultar si hay
@@ -149,13 +151,30 @@ pasa a ser una invariante del esquema, imposible de saltarse por concurrencia o 
 de código que olvide comprobarla. Para una funcionalidad cuyo valor depende de que la reserva
 signifique algo, la diferencia no es de comodidad sino de corrección.
 
-**`uuidv7()`.** Las claves primarias del proyecto son UUID. La versión 4 es aleatoria, de modo
-que cada inserción cae en una hoja arbitraria del índice B-tree, fragmentándolo y perjudicando
-la localidad de caché —efecto que se nota justamente en tablas grandes como el catálogo
-sembrado—. UUIDv7 antepone una marca de tiempo, con lo que las claves nuevas se insertan de
-forma aproximadamente ordenada, conservando el resto de propiedades del UUID: unicidad sin
-coordinación y opacidad frente a un entero autoincremental, que revela volumen. PostgreSQL 18
-lo genera de forma nativa, sin extensión ni generación en el cliente.
+**`uuidv7()`, evaluada y descartada.** Las claves primarias del proyecto son UUID. La versión 4
+es aleatoria, de modo que cada inserción cae en una hoja arbitraria del índice B-tree,
+fragmentándolo y perjudicando la localidad de caché; UUIDv7 antepone una marca de tiempo, con lo
+que las claves nuevas se insertan de forma aproximadamente ordenada y conservan el resto de
+propiedades del UUID —unicidad sin coordinación y opacidad frente a un entero autoincremental,
+que revela volumen—. PostgreSQL 18 la genera de forma nativa, sin extensión ni generación en el
+cliente. Sobre el papel es la mejora más atractiva de las tres.
+
+No se adopta, y conviene decir por qué con precisión, porque la razón no es la dificultad. **El
+beneficio es de localidad en la inserción, y este sistema apenas inserta.** La tabla mayor tiene
+unas 47 000 filas y se sembró una vez; el flujo permanente son veinticuatro precios al día y
+*upserts* dispersos del refresco de tarifas. A esa escala la diferencia entre una clave aleatoria
+y una ordenada no es pequeña: es **inmedible**. Adoptarla obligaría además a elegir entre
+reescribir todos los identificadores existentes —una migración sobre nueve tablas con sus claves
+ajenas, sobre el único conjunto de datos que cuesta doce días reconstruir— o convivir con dos
+versiones de UUID en la misma columna.
+
+El argumento que decide es el criterio de este capítulo: **un cambio cuyo beneficio no puede
+medirse no se defiende, se cree**. Incorporarlo obligaría a escribir en la memoria que "mejora
+la localidad del índice" sin un número detrás, que es exactamente la clase de afirmación que
+este trabajo intenta no hacer. Queda como camino no tomado, con la puerta abierta donde sí
+tendría sentido: las tablas de sesiones y reservas de la fase de reservas son las primeras con
+un ritmo de inserción real, y nacerán con el valor por defecto en el servidor si entonces se
+justifica.
 
 **Entrada/salida asíncrona.** La 18 introduce un subsistema de E/S asíncrona (`io_method`, con
 soporte de `io_uring` en Linux) que beneficia recorridos secuenciales, *bitmap heap scans* y
@@ -165,7 +184,10 @@ propios: se declara como razonable, no como medida.
 
 **El coste operativo, que es real.** Un salto de versión mayor **no es cambiar la etiqueta de
 la imagen**: el formato del directorio de datos cambia, y un volumen de la 17 bajo una imagen
-18 se niega a arrancar. Como la base de datos contiene la siembra de REVE —doce días de trabajo
+18 se niega a arrancar. Desde la 18 cambia además el punto de montaje —los datos viven en un
+subdirectorio por versión mayor—, de modo que una configuración que siga montando la ruta
+anterior aborta el arranque deliberadamente, antes que escribir el cluster en una capa efímera
+que el siguiente despliegue descartaría en silencio. Como la base de datos contiene la siembra de REVE —doce días de trabajo
 bajo el límite de cinco peticiones por hora— el procedimiento es volcar con la imagen antigua,
 destruir el volumen, arrancar la nueva y restaurar. Queda documentado como parte del
 procedimiento y no como nota al pie, porque es el punto exacto donde este cambio podría costar

@@ -72,8 +72,9 @@ typecheck:
 ci:
     cd backend && uv run lefthook run pre-push --force
 
-# Regenerate frontend API types from the backend schema (+ biome re-format)
+# Export the OpenAPI schema, then regenerate frontend types from it
 gen-api:
+    cd backend && uv run python -m scripts.export_openapi
     cd frontend && pnpm run gen:api && pnpm run format
 
 # ---------- ops ----------
