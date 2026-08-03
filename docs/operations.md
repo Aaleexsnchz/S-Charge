@@ -49,7 +49,7 @@ CI builds all three, so a broken Dockerfile fails there rather than on the serve
 
 ## Major Postgres upgrades
 
-Dev is on **17** while CI and production are on **18** — a deliberate, temporary split, because cutting the dev volume over is a manual step planned in [phases/phase-5.md](phases/phase-5.md).
+Dev, CI and production all run **18**. The dev volume was cut over in Phase 5 by the procedure below; keep it here because the next major will need it again.
 
 **A major version bump is not a tag change.** The data directory format changes between majors, so a PG17 volume under an `18-alpine` image refuses to start with `database files are incompatible with server`. The local database holds the REVE seed, which costs ~12 days to rebuild, so dump before touching anything.
 
