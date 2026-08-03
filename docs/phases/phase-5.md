@@ -16,21 +16,23 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 10 | Security gate, cutover, first release | Not started | host work |
 | 11 | Renovate | Not started | — |
 | 12 | REVE tariff backfill | Not started | — |
-| 13 | Auth surface hardening | Not started | — |
+| 13 | Auth surface hardening | Code done, verify on the host | — |
 | 14 | Environment configuration | Done | #15 |
+| 15 | Authenticate the read endpoints | Not started | — |
 
-Numbering is not the running order. **Slice 13 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what it fixes; both it and Slice 14 are numbered last only because they were found after the plan was written.
+Numbering is not the running order. **Slices 13 and 15 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what they fix; they and Slice 14 are numbered last only because they were found after the plan was written.
 
 **Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **enabled** but inert: it fires only on a tag push or a manual run, and no tag has been pushed. `main` is not yet PR-protected, though changes are already going through PRs by convention.
 
 ## Start here
 
-**Everything that does not need the host is done** — Slices 1, 4, 5, 6 and 14, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it.
+**Everything that does not need the host is done** — Slices 1, 4, 5, 6, 13 and 14, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it.
 
-**What remains, in order: 13 → 7 → 8 → 9 → 10**, ending at `v0.1.0`. Then 11 and 12.
+**What remains, in order: 15 → 7 → 8 → 9 → 10**, ending at `v0.1.0`. Then 11 and 12.
 
-- **[13](#slice-13--auth-surface-hardening) first**, because it is the last thing that needs no server, and because both of its gaps are only reachable-from-the-internet problems — they cost nothing while the app is on a laptop and matter the moment a URL is shared.
+- **[15](#slice-15--authenticate-the-read-endpoints) first**, for the same reason 13 went first: it needs no server, and it stops mattering only in the sense that it becomes urgent the moment a URL exists.
 - **7 → 8 → 9 → 10 is a chain on the host**, each step depending on the one before.
+- **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are checked on the first deploy rather than locally.
 - **11 and 12 last.** Renovate wants a pipeline already proven end to end; the tariff backfill needs the scheduler's environment and a budget not competing with the deploy.
 
 **Why this phase comes before the frontend migration** (Phase 6), in case it is asked again: the migration benefits from nearly every slice here — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the rewrite drifting from the API, the pre-push hook covers ~3,200 lines of churn, and a deploy on demand means each migration slice can be opened on a phone, which is the only way to check the one risk no tool verifies. Deployment gains nothing from the migration in return: nginx serves a `dist/` and does not care what is in it. Separately, the REVE tariff gap widens permanently every day the server does not exist.
@@ -177,11 +179,15 @@ Repo work, independent of the host, so it runs alongside Slices 4–6. **It must
 
 Both were found by reading the production artifacts against the [infra-0001](../decisions/infra-0001-deployment.md) gate, not by a tool. Neither is a regression — they have never worked.
 
-- [ ] **Rate-limit the auth endpoints.** `slowapi` is declared in `backend/pyproject.toml` and imported nowhere in `app/`: login, register and password-reset accept unlimited attempts. Email verification blocks drive-by *registration*, but does nothing about attempts against accounts that already exist, and password-reset is an unmetered send-an-email endpoint for anyone who finds it. Wire the limiter and cover at least `/api/auth/login`, registration, and the reset request
-- [ ] **Trust Caddy's forwarded headers.** `backend/app/services/user_manager.py` logs `request.client.host` on four auth events, but uvicorn's `--forwarded-allow-ips` defaults to `127.0.0.1` and Caddy connects from a Docker network address — so every event will record Caddy's container IP. Add `--forwarded-allow-ips="*"` to the `prod` stage `CMD` in [backend/Dockerfile](../../backend/Dockerfile). The wildcard is safe **only** because `backend` publishes no ports and Caddy is the sole thing that can reach it; it would be a header-spoofing hole on a directly-exposed backend
-- [ ] **Order matters between the two.** Fixing the limiter without the proxy headers produces a limiter that sees one client and throttles every user at once. Land the header fix first, or both together
-- [ ] **Verify on the deployed instance, not locally**: log in once and confirm the audit line carries your own IP, then exceed the limit and confirm a `429`. Neither can be verified through a local direct-to-uvicorn request, because the bug only exists behind the proxy
-- [ ] Reword the `infra-0001` gate line from *"auth rate limits kept"* to something that does not imply they already exist — the gate item is right, only the tense is wrong
+Decision, limits chosen and the data-protection position: [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md).
+
+- [x] **Rate-limit the auth endpoints.** Per IP and per path, as a dependency on each `include_router`: 10/minute on login, 10/hour on registration, 5/hour on the mail-sending routers. `slowapi` **does** work here via the route-mutation pattern from the `fastapi-users` discussions (measured: `[201, 400, 400, 429, 429]` at `3/minute`) — it was rejected because that pattern matches library-internal path strings and silently limits nothing when one is renamed. Dropped from the dependencies, `limits` promoted to a direct one
+- [x] **Trust Caddy's forwarded headers.** `--forwarded-allow-ips=172.16.0.0/12` on the `prod` stage `CMD`, **not `*`**: the wildcard makes uvicorn take the leftmost `X-Forwarded-For` entry rather than walking the chain, which is safe only for as long as Caddy keeps discarding client-supplied values. It does today — verified against `caddy:2.11-alpine` — but that is a default in another component, and the CIDR costs the same to write
+- [x] Counters reset between tests via an autouse fixture; verified load-bearing by disabling it and watching six tests fail
+- [x] **Cap the log retention.** Docker keeps container logs forever by default and these now carry real client IPs. `max-size`/`max-file` on every prod service
+- [x] **Verified against a real proxy chain**, which turned out to be possible locally after all — not through `just api` (direct uvicorn, no proxy), but by running the built prod image behind a `caddy:2.11-alpine` container on a Docker network. Two persistent client containers on distinct addresses get **separate** counters (10 through, then `429`, while the second client is untouched), and a registration audits the client's address rather than Caddy's. Short-lived probe containers do *not* work as separate clients: Docker recycles the freed address, so every probe reuses one IP and the run looks exactly like the bug
+- [ ] Re-check once on the deployed instance, where the client address is a real public IP rather than a Docker one
+- [x] Reword the `infra-0001` gate line from *"auth rate limits kept"* to something that does not imply they already exist — the gate item is right, only the tense is wrong
 
 ## Slice 14 — Environment configuration [x]
 
@@ -190,6 +196,23 @@ One `.env` at the repository root, with `.env.example` as its committed twin and
 `ENVIRONMENT=production` now arms a boot check: the required variables must be present and must differ from the value the example ships, Google needs a redirect URI once a client id is set, and the session cookie must be `Secure`. It exists because `secret_key` defaulted to the empty string and signs every session — a missing line failed *open*. A test asserts `Settings` and `.env.example` describe the same set, so a setting cannot ship undocumented.
 
 **Compose truncates an env value at the first `$` and only warns**, so rotated secrets must avoid it — recorded in [setup/deployment.md](../setup/deployment.md) and on [Slice 7](#slice-7--first-deploy).
+
+## Slice 15 — Authenticate the read endpoints
+
+**Acceptance:** every `/api/*` route except `/api/health` and the auth surface requires an authenticated session, and a test asserts the `401` for each rather than trusting it.
+
+Repo work, no host needed, so it runs alongside anything. **Before [Slice 10](#slice-10--security-gate-cutover-first-release)**, and ideally before the URL exists at all.
+
+**This is not a product decision — it is the backend catching up with one already made.** [`app/routes.tsx`](../../frontend/src/app/routes.tsx) wraps dashboard, map, sessions, my-points, point detail and profile in `ProtectedRoute`; only the auth pages are public. The API disagrees: `points`, `prices`, `simulate` and `vehicles` carry no user dependency, so anyone holding the URL can pull the full ~13.7k-point catalogue, the price curve and the simulator without an account, while a real user is made to log in for exactly the same data. Publishing no ports does not help — that stops a client *bypassing* Caddy, not one arriving *through* it, and the SPA's own calls prove the path is open.
+
+- [ ] A `current_active_user` dependency (`fastapi_users.current_user(active=True, verified=True)`) applied at the four `include_router` calls, the same shape [Slice 13](#slice-13--auth-surface-hardening) used for the limits — not sprinkled per route, where one new endpoint silently misses it
+- [ ] **`/api/health` stays open.** It is the container healthcheck and returns status plus version, nothing else
+- [ ] **A test per endpoint asserting `401` without a session.** The gate is worth nothing if the next router is added unguarded; this is the regression guard, and it is the part that must not be skipped
+- [ ] The 16 tests in `tests/routers/` need an authenticated client — one shared verified-user fixture in `conftest.py`, not per-file setup. This is most of the work
+- [ ] **`just gen-api`**, and commit both files: adding a security dependency changes the OpenAPI schema, and CI fails on a stale one
+- [ ] Frontend expected to need no change, since the pages are already gated — confirm the map still loads after login rather than assuming it
+
+**Worth recording when it lands:** this materially improves the position on the [REVE data rights question](../plan.md), since serving a mirrored dataset to authenticated users of one's own application is a far easier thing to defend than publishing it. It also makes rate-limiting the rest of the API moot — abuse becomes attributable to an account instead of an address, which is why [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md) limits the auth surface and nothing else.
 
 ## Open decision
 

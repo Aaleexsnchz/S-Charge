@@ -16,6 +16,7 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **`fastapi-users`** | Authentication. Load-bearing enough to have an ADR: [auth-0001](decisions/auth-0001-fastapi-users.md). |
 | **`httpx-oauth`** | Google OAuth client, the provider `fastapi-users` expects. |
 | **Argon2 (`argon2-cffi`)** | Password hashing at OWASP-minimum parameters — see [auth-0001](decisions/auth-0001-fastapi-users.md). |
+| **`limits`** | Rate limiting on the auth endpoints, used directly as a FastAPI dependency. Replaces `slowapi`, whose way of reaching `fastapi-users`' generated routes fails silently ([auth-0004](decisions/auth-0004-rate-limits-and-client-ip.md)). |
 | **Resend** | Transactional email (verification, password reset). Sandbox sender works with no DNS; one helper module wraps it, so swapping providers is a small change. |
 | **`httpx`** | Async HTTP for the REVE and REE clients. |
 | **Uvicorn** | ASGI server, in dev with reload and in the prod image. |

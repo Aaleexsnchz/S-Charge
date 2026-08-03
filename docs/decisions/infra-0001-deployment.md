@@ -37,7 +37,7 @@ related: [auth-0002, fe-0002]
 - Host firewall: only 80/443 + SSH; SSH key-only, root login disabled, fail2ban.
 - Postgres not published to the host; strong DB password; backups confirmed (Backblaze B2 already configured).
 - Secrets server-side only; dev secrets rotated; Google OAuth redirect URI + Resend sender set for the prod origin.
-- Cookie `Secure` + `SameSite=Lax`; CORS locked to the one origin; auth rate limits kept.
+- Cookie `Secure` + `SameSite=Lax`; CORS locked to the one origin; auth endpoints rate-limited on the real client IP ([auth-0004](auth-0004-rate-limits-and-client-ip.md)).
 - Optionally keep registration invite-only during the demo (email verification already blocks drive-by signups).
 
 **Rejected alternatives.**
