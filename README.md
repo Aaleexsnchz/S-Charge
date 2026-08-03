@@ -74,6 +74,7 @@ tfm/
 ├── docker-compose.prod.yml  prod stack (Caddy TLS + prod images + scheduler)
 ├── Caddyfile            reverse-proxy config for the prod stack
 ├── justfile             task runner recipes — `just --list`
+├── openapi.json         exported API contract — `just gen-api`, committed, CI-gated
 ├── lefthook.yml         git hooks: lint/format on commit, the CI gate on push
 ├── CONTRIBUTING.md      branch, commit and doc-update conventions
 └── AGENTS.md            code conventions and documentation discipline

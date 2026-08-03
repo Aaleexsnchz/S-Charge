@@ -34,7 +34,7 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **React + TypeScript** | shipped | The default for a component-heavy PWA, and the ecosystem everything below assumes. |
 | **Vite** | shipped | Dev server with instant HMR, and the production build. Proxies `/api/*` in dev so the session cookie stays first-party. |
 | **TanStack Query** ([fe-0004](decisions/fe-0004-tanstack-query.md)) | shipped | Server state: cache, deduplication, stale-while-revalidate, retries and consistent pending/error states, defined once instead of re-implemented per page with `useEffect`. The map's large point payload is fetched once and shared across visits within a session. |
-| **openapi-typescript + openapi-fetch** | shipped | Types generated from the backend's own OpenAPI schema (`pnpm run gen:api`), so a backend contract change breaks the frontend build instead of production. |
+| **openapi-typescript + openapi-fetch** | shipped | Types generated from the backend's own OpenAPI schema, which is exported to a committed `openapi.json` (`just gen-api`) so the contract is reviewable in a diff and CI can fail on drift, rather than the frontend discovering it at runtime. |
 | **MapLibre GL JS + OpenFreeMap** | shipped | The map: WebGL rendering and native clustering for ~13.7k points, no API key, no usage cap. Unaffected by the migration. ADR: [fe-0003](decisions/fe-0003-maplibre-openfreemap.md). |
 | **`vite-plugin-pwa` (Workbox)** | shipped | Manifest + service worker for installability. The PWA-instead-of-native decision has an ADR: [fe-0002](decisions/fe-0002-pwa.md). |
 | **`@fontsource` (Hanken Grotesk, JetBrains Mono)** | shipped | Self-hosted fonts — no third-party request on load, and figures render mono so numbers line up. |

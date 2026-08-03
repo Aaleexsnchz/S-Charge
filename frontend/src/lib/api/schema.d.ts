@@ -4,6 +4,60 @@
  */
 
 export interface paths {
+  '/api/auth/forgot-password': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reset:Forgot Password */
+    post: operations['reset_forgot_password_api_auth_forgot_password_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/google/authorize': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Oauth:Google.Oauth-Cookie.Authorize */
+    get: operations['oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/auth/google/callback': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Oauth:Google.Oauth-Cookie.Callback
+     * @description The response varies based on the authentication backend used.
+     */
+    get: operations['oauth_google_oauth_cookie_callback_api_auth_google_callback_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/auth/login': {
     parameters: {
       query?: never
@@ -72,40 +126,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/auth/verify': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Verify:Verify */
-    post: operations['verify_verify_api_auth_verify_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/auth/forgot-password': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Reset:Forgot Password */
-    post: operations['reset_forgot_password_api_auth_forgot_password_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   '/api/auth/reset-password': {
     parameters: {
       query?: never
@@ -123,35 +143,32 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/auth/google/authorize': {
+  '/api/auth/verify': {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    /** Oauth:Google.Oauth-Cookie.Authorize */
-    get: operations['oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get']
+    get?: never
     put?: never
-    post?: never
+    /** Verify:Verify */
+    post: operations['verify_verify_api_auth_verify_post']
     delete?: never
     options?: never
     head?: never
     patch?: never
     trace?: never
   }
-  '/api/auth/google/callback': {
+  '/api/health': {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    /**
-     * Oauth:Google.Oauth-Cookie.Callback
-     * @description The response varies based on the authentication backend used.
-     */
-    get: operations['oauth_google_oauth_cookie_callback_api_auth_google_callback_get']
+    /** Health */
+    get: operations['health_api_health_get']
     put?: never
     post?: never
     delete?: never
@@ -304,33 +321,21 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/health': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Health */
-    get: operations['health_api_health_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
     /** Body_auth_cookie_login_api_auth_login_post */
     Body_auth_cookie_login_api_auth_login_post: {
+      /** Client Id */
+      client_id?: string | null
+      /**
+       * Client Secret
+       * Format: password
+       */
+      client_secret?: string | null
       /** Grant Type */
       grant_type?: string | null
-      /** Username */
-      username: string
       /**
        * Password
        * Format: password
@@ -341,13 +346,8 @@ export interface components {
        * @default
        */
       scope?: string
-      /** Client Id */
-      client_id?: string | null
-      /**
-       * Client Secret
-       * Format: password
-       */
-      client_secret?: string | null
+      /** Username */
+      username: string
     }
     /** Body_reset_forgot_password_api_auth_forgot_password_post */
     Body_reset_forgot_password_api_auth_forgot_password_post: {
@@ -359,10 +359,10 @@ export interface components {
     }
     /** Body_reset_reset_password_api_auth_reset_password_post */
     Body_reset_reset_password_api_auth_reset_password_post: {
-      /** Token */
-      token: string
       /** Password */
       password: string
+      /** Token */
+      token: string
     }
     /** Body_verify_request_token_api_auth_request_verify_token_post */
     Body_verify_request_token_api_auth_request_verify_token_post: {
@@ -379,23 +379,23 @@ export interface components {
     }
     /** ConnectorRead */
     ConnectorRead: {
+      /** Format */
+      format: string
       /**
        * Id
        * Format: uuid
        */
       id: string
-      /** Standard */
-      standard: string
-      /** Format */
-      format: string
-      /** Power Type */
-      power_type: string
+      /** Max Amperage */
+      max_amperage: number
       /** Max Electric Power */
       max_electric_power: number | null
       /** Max Voltage */
       max_voltage: number
-      /** Max Amperage */
-      max_amperage: number
+      /** Power Type */
+      power_type: string
+      /** Standard */
+      standard: string
       tariff: components['schemas']['TariffRead'] | null
     }
     /** ErrorModel */
@@ -409,25 +409,25 @@ export interface components {
     }
     /** EvseRead */
     EvseRead: {
+      /** Capabilities */
+      capabilities: string[] | null
+      /** Connectors */
+      connectors: components['schemas']['ConnectorRead'][]
+      /** Evse Id */
+      evse_id: string | null
+      /** Floor Level */
+      floor_level: string | null
       /**
        * Id
        * Format: uuid
        */
       id: string
-      /** Evse Id */
-      evse_id: string | null
       /** Physical Reference */
       physical_reference: string | null
-      /** Floor Level */
-      floor_level: string | null
-      /** Capabilities */
-      capabilities: string[] | null
-      /** Wheelchair Accessibility */
-      wheelchair_accessibility: string | null
       /** Status */
       status: string | null
-      /** Connectors */
-      connectors: components['schemas']['ConnectorRead'][]
+      /** Wheelchair Accessibility */
+      wheelchair_accessibility: string | null
     }
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -451,39 +451,36 @@ export interface components {
     }
     /** PointRead */
     PointRead: {
+      /** Address */
+      address: string
+      /**
+       * Aggregate Status
+       * @enum {string}
+       */
+      aggregate_status: 'available' | 'occupied' | 'unknown'
+      /** Charging When Closed */
+      charging_when_closed: boolean | null
+      /** City */
+      city: string
+      /** Country Code */
+      country_code: string
+      /** Cpo Name */
+      cpo_name: string | null
+      /** Evses */
+      evses: components['schemas']['EvseRead'][]
+      /** Facilities */
+      facilities: string[] | null
       /**
        * Id
        * Format: uuid
        */
       id: string
-      /** Source */
-      source: string
-      /** Name */
-      name: string | null
-      /** Cpo Name */
-      cpo_name: string | null
-      /** Address */
-      address: string
-      /** City */
-      city: string
-      /** Postal Code */
-      postal_code: string | null
-      /** Region */
-      region: string | null
-      /** State */
-      state: string | null
-      /** Country Code */
-      country_code: string
       /** Latitude */
       latitude: number
       /** Longitude */
       longitude: number
-      /** Parking Type */
-      parking_type: string | null
-      /** Facilities */
-      facilities: string[] | null
-      /** Time Zone */
-      time_zone: string
+      /** Name */
+      name: string | null
       /** Opening 24 7 */
       opening_24_7: boolean
       /** Opening Hours */
@@ -492,15 +489,18 @@ export interface components {
             [key: string]: unknown
           }[]
         | null
-      /** Charging When Closed */
-      charging_when_closed: boolean | null
-      /**
-       * Aggregate Status
-       * @enum {string}
-       */
-      aggregate_status: 'available' | 'occupied' | 'unknown'
-      /** Evses */
-      evses: components['schemas']['EvseRead'][]
+      /** Parking Type */
+      parking_type: string | null
+      /** Postal Code */
+      postal_code: string | null
+      /** Region */
+      region: string | null
+      /** Source */
+      source: string
+      /** State */
+      state: string | null
+      /** Time Zone */
+      time_zone: string
     }
     /** PricePoint */
     PricePoint: {
@@ -514,11 +514,6 @@ export interface components {
     }
     /** SimulationRequest */
     SimulationRequest: {
-      /**
-       * Vehicle Id
-       * Format: uuid
-       */
-      vehicle_id: string
       /**
        * Connector Id
        * Format: uuid
@@ -534,56 +529,61 @@ export interface components {
        * @default 80
        */
       soc_to?: number
+      /**
+       * Vehicle Id
+       * Format: uuid
+       */
+      vehicle_id: string
     }
     /** SimulationResult */
     SimulationResult: {
+      /** Average Power Kw */
+      average_power_kw: number
       /**
        * Charge Type
        * @enum {string}
        */
       charge_type: 'AC' | 'DC'
-      /** Soc From */
-      soc_from: number
-      /** Soc To */
-      soc_to: number
-      /** Energy Kwh */
-      energy_kwh: number
-      /** Duration Minutes */
-      duration_minutes: number
-      /** Peak Power Kw */
-      peak_power_kw: number
-      /** Average Power Kw */
-      average_power_kw: number
       /** Cost Eur */
       cost_eur: number | null
+      /** Duration Minutes */
+      duration_minutes: number
+      /** Energy Kwh */
+      energy_kwh: number
+      /** Margin Per Kwh */
+      margin_per_kwh: number | null
+      /** Peak Power Kw */
+      peak_power_kw: number
       /** Price Per Kwh */
       price_per_kwh: number | null
       /** Price Source */
       price_source: ('reve_tariff' | 'pvpc_plus_margin') | null
       /** Pvpc Per Kwh */
       pvpc_per_kwh: number | null
-      /** Margin Per Kwh */
-      margin_per_kwh: number | null
+      /** Soc From */
+      soc_from: number
+      /** Soc To */
+      soc_to: number
     }
     /** TariffRead */
     TariffRead: {
+      /** Currency */
+      currency: string
       /**
        * Id
        * Format: uuid
        */
       id: string
-      /** Currency */
-      currency: string
-      /** Price Per Kwh */
-      price_per_kwh: number | null
       /** Price Component Type */
       price_component_type: string | null
-      /** Vat Percentage */
-      vat_percentage: number | null
+      /** Price Per Kwh */
+      price_per_kwh: number | null
       /** Valid From */
       valid_from: string | null
       /** Valid To */
       valid_to: string | null
+      /** Vat Percentage */
+      vat_percentage: number | null
     }
     /** UserCreate */
     UserCreate: {
@@ -592,8 +592,6 @@ export interface components {
        * Format: email
        */
       email: string
-      /** Password */
-      password: string
       /**
        * Is Active
        * @default true
@@ -611,19 +609,21 @@ export interface components {
       is_verified?: boolean | null
       /** Name */
       name?: string | null
+      /** Password */
+      password: string
     }
     /** UserRead */
     UserRead: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string
       /**
        * Email
        * Format: email
        */
       email: string
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
       /**
        * Is Active
        * @default true
@@ -646,8 +646,6 @@ export interface components {
     }
     /** UserUpdate */
     UserUpdate: {
-      /** Password */
-      password?: string | null
       /** Email */
       email?: string | null
       /** Is Active */
@@ -658,24 +656,30 @@ export interface components {
       is_verified?: boolean | null
       /** Name */
       name?: string | null
+      /** Password */
+      password?: string | null
       /** Picture Url */
       picture_url?: string | null
     }
     /** ValidationError */
     ValidationError: {
+      /** Context */
+      ctx?: Record<string, never>
+      /** Input */
+      input?: unknown
       /** Location */
       loc: (string | number)[]
       /** Message */
       msg: string
       /** Error Type */
       type: string
-      /** Input */
-      input?: unknown
-      /** Context */
-      ctx?: Record<string, never>
     }
     /** VehicleRead */
     VehicleRead: {
+      /** Battery Kwh */
+      battery_kwh: number
+      /** Dc Connector */
+      dc_connector: string | null
       /**
        * Id
        * Format: uuid
@@ -683,16 +687,12 @@ export interface components {
       id: string
       /** Make */
       make: string
-      /** Model */
-      model: string
-      /** Battery Kwh */
-      battery_kwh: number
       /** Max Ac Kw */
       max_ac_kw: number
       /** Max Dc Kw */
       max_dc_kw: number | null
-      /** Dc Connector */
-      dc_connector: string | null
+      /** Model */
+      model: string
     }
   }
   responses: never
@@ -703,6 +703,113 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  reset_forgot_password_api_auth_forgot_password_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_reset_forgot_password_api_auth_forgot_password_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get: {
+    parameters: {
+      query?: {
+        scopes?: string[]
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['OAuth2AuthorizeResponse']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  oauth_google_oauth_cookie_callback_api_auth_google_callback_get: {
+    parameters: {
+      query?: {
+        code?: string | null
+        code_verifier?: string | null
+        state?: string | null
+        error?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorModel']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   auth_cookie_login_api_auth_login_post: {
     parameters: {
       query?: never
@@ -861,81 +968,6 @@ export interface operations {
       }
     }
   }
-  verify_verify_api_auth_verify_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['Body_verify_verify_api_auth_verify_post']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['UserRead']
-        }
-      }
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorModel']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  reset_forgot_password_api_auth_forgot_password_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['Body_reset_forgot_password_api_auth_forgot_password_post']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      202: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': unknown
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
   reset_reset_password_api_auth_reset_password_post: {
     parameters: {
       query?: never
@@ -978,16 +1010,18 @@ export interface operations {
       }
     }
   }
-  oauth_google_oauth_cookie_authorize_api_auth_google_authorize_get: {
+  verify_verify_api_auth_verify_post: {
     parameters: {
-      query?: {
-        scopes?: string[]
-      }
+      query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    requestBody?: never
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Body_verify_verify_api_auth_verify_post']
+      }
+    }
     responses: {
       /** @description Successful Response */
       200: {
@@ -995,41 +1029,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['OAuth2AuthorizeResponse']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  oauth_google_oauth_cookie_callback_api_auth_google_callback_get: {
-    parameters: {
-      query?: {
-        code?: string | null
-        code_verifier?: string | null
-        state?: string | null
-        error?: string | null
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': unknown
+          'application/json': components['schemas']['UserRead']
         }
       }
       /** @description Bad Request */
@@ -1048,6 +1048,26 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  health_api_health_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HealthRead']
         }
       }
     }
@@ -1471,26 +1491,6 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['VehicleRead'][]
-        }
-      }
-    }
-  }
-  health_api_health_get: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HealthRead']
         }
       }
     }
