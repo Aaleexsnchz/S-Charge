@@ -72,7 +72,7 @@ def make_tariff(price: str | None, **overrides: Any) -> Tariff:
 
 
 async def test_list_points_returns_nested_shape(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     point = make_point()
     evse = make_evse()
@@ -81,7 +81,7 @@ async def test_list_points_returns_nested_shape(
     db_session.add(point)
     await db_session.commit()
 
-    response = await client.get("/api/points")
+    response = await auth_client.get("/api/points")
 
     assert response.status_code == 200
     body = response.json()
@@ -98,14 +98,14 @@ async def test_list_points_returns_nested_shape(
 
 
 async def test_list_points_excludes_archived(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     active = make_point()
     archived = make_point(archived_at=NOW)
     db_session.add_all([active, archived])
     await db_session.commit()
 
-    response = await client.get("/api/points")
+    response = await auth_client.get("/api/points")
 
     assert response.status_code == 200
     ids = [item["id"] for item in response.json()]
@@ -113,7 +113,7 @@ async def test_list_points_excludes_archived(
 
 
 async def test_list_points_bbox_filter(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     madrid = make_point()
     barcelona = make_point(
@@ -122,23 +122,25 @@ async def test_list_points_bbox_filter(
     db_session.add_all([madrid, barcelona])
     await db_session.commit()
 
-    response = await client.get("/api/points", params={"bbox": "-4.5,39.5,-3.0,41.0"})
+    response = await auth_client.get(
+        "/api/points", params={"bbox": "-4.5,39.5,-3.0,41.0"}
+    )
 
     assert response.status_code == 200
     ids = [item["id"] for item in response.json()]
     assert ids == [str(madrid.id)]
 
 
-async def test_list_points_invalid_bbox_returns_422(client: AsyncClient) -> None:
-    response = await client.get("/api/points", params={"bbox": "1,2,3"})
+async def test_list_points_invalid_bbox_returns_422(auth_client: AsyncClient) -> None:
+    response = await auth_client.get("/api/points", params={"bbox": "1,2,3"})
     assert response.status_code == 422
 
-    response = await client.get("/api/points", params={"bbox": "a,b,c,d"})
+    response = await auth_client.get("/api/points", params={"bbox": "a,b,c,d"})
     assert response.status_code == 422
 
 
 async def test_list_points_connector_standard_filter(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     type2 = make_point()
     type2_evse = make_evse()
@@ -153,7 +155,9 @@ async def test_list_points_connector_standard_filter(
     db_session.add_all([type2, chademo])
     await db_session.commit()
 
-    response = await client.get("/api/points", params={"connector_standard": "CHADEMO"})
+    response = await auth_client.get(
+        "/api/points", params={"connector_standard": "CHADEMO"}
+    )
 
     assert response.status_code == 200
     ids = [item["id"] for item in response.json()]
@@ -161,7 +165,7 @@ async def test_list_points_connector_standard_filter(
 
 
 async def test_list_points_max_price_filter(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     cheap = make_point()
     cheap_evse = make_evse()
@@ -181,7 +185,9 @@ async def test_list_points_max_price_filter(
     db_session.add_all([cheap, pricey, unpriced])
     await db_session.commit()
 
-    response = await client.get("/api/points", params={"max_price_per_kwh": "0.40"})
+    response = await auth_client.get(
+        "/api/points", params={"max_price_per_kwh": "0.40"}
+    )
 
     assert response.status_code == 200
     ids = [item["id"] for item in response.json()]
@@ -189,7 +195,7 @@ async def test_list_points_max_price_filter(
 
 
 async def test_get_point_returns_nested_shape(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     point = make_point(
         opening_24_7=False,
@@ -203,7 +209,7 @@ async def test_get_point_returns_nested_shape(
     db_session.add(point)
     await db_session.commit()
 
-    response = await client.get(f"/api/points/{point.id}")
+    response = await auth_client.get(f"/api/points/{point.id}")
 
     assert response.status_code == 200
     body = response.json()
@@ -222,7 +228,7 @@ async def test_get_point_returns_nested_shape(
 
 
 async def test_map_returns_feature_collection(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     point = make_point()
     type2_evse = make_evse(status="AVAILABLE")
@@ -245,7 +251,7 @@ async def test_map_returns_feature_collection(
     db_session.add_all([point, bare, archived])
     await db_session.commit()
 
-    response = await client.get("/api/points/map")
+    response = await auth_client.get("/api/points/map")
 
     assert response.status_code == 200
     body = response.json()
@@ -267,7 +273,7 @@ async def test_map_returns_feature_collection(
 
 
 async def test_map_aggregate_status_rollup(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     mixed = make_point()
     mixed.evses.extend([make_evse(status="AVAILABLE"), make_evse(status="CHARGING")])
@@ -276,7 +282,7 @@ async def test_map_aggregate_status_rollup(
     db_session.add_all([mixed, busy])
     await db_session.commit()
 
-    response = await client.get("/api/points/map")
+    response = await auth_client.get("/api/points/map")
 
     statuses = {
         f["properties"]["id"]: f["properties"]["aggregate_status"]
@@ -286,8 +292,10 @@ async def test_map_aggregate_status_rollup(
     assert statuses[str(busy.id)] == "occupied"
 
 
-async def test_get_point_unknown_returns_reve_error_shape(client: AsyncClient) -> None:
-    response = await client.get(f"/api/points/{uuid.uuid4()}")
+async def test_get_point_unknown_returns_reve_error_shape(
+    auth_client: AsyncClient,
+) -> None:
+    response = await auth_client.get(f"/api/points/{uuid.uuid4()}")
 
     assert response.status_code == 404
     assert response.json() == {
