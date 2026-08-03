@@ -11,7 +11,7 @@ def _price(hour_start: datetime, value: str) -> ElectricityPrice:
 
 
 async def test_prices_for_madrid_local_day(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     db_session.add_all(
         [
@@ -24,7 +24,7 @@ async def test_prices_for_madrid_local_day(
     )
     await db_session.commit()
 
-    response = await client.get("/api/prices/today", params={"day": "2026-06-12"})
+    response = await auth_client.get("/api/prices/today", params={"day": "2026-06-12"})
 
     assert response.status_code == 200
     body = response.json()
@@ -33,8 +33,8 @@ async def test_prices_for_madrid_local_day(
     assert body[1]["price_per_kwh"] == 0.12
 
 
-async def test_prices_empty_day(client: AsyncClient) -> None:
-    response = await client.get("/api/prices/today", params={"day": "2030-01-01"})
+async def test_prices_empty_day(auth_client: AsyncClient) -> None:
+    response = await auth_client.get("/api/prices/today", params={"day": "2030-01-01"})
 
     assert response.status_code == 200
     assert response.json() == []

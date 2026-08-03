@@ -73,11 +73,11 @@ async def _seed_chain(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
 
 
 async def test_simulate_returns_prediction(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     vehicle_id, connector_id = await _seed_chain(db_session)
 
-    response = await client.post(
+    response = await auth_client.post(
         "/api/simulate",
         json={
             "vehicle_id": str(vehicle_id),
@@ -97,11 +97,11 @@ async def test_simulate_returns_prediction(
 
 
 async def test_simulate_unknown_vehicle_returns_404(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     _, connector_id = await _seed_chain(db_session)
 
-    response = await client.post(
+    response = await auth_client.post(
         "/api/simulate",
         json={
             "vehicle_id": str(uuid.uuid4()),
@@ -113,11 +113,11 @@ async def test_simulate_unknown_vehicle_returns_404(
 
 
 async def test_simulate_rejects_inverted_soc(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     vehicle_id, connector_id = await _seed_chain(db_session)
 
-    response = await client.post(
+    response = await auth_client.post(
         "/api/simulate",
         json={
             "vehicle_id": str(vehicle_id),

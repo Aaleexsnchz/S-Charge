@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def test_list_vehicles_ordered(
-    client: AsyncClient, db_session: AsyncSession
+    auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     db_session.add_all(
         [
@@ -30,7 +30,7 @@ async def test_list_vehicles_ordered(
     )
     await db_session.commit()
 
-    response = await client.get("/api/vehicles")
+    response = await auth_client.get("/api/vehicles")
 
     assert response.status_code == 200
     body = response.json()

@@ -12,6 +12,8 @@ from alembic.config import Config
 from app.config import settings
 from app.dependencies import get_db
 from app.main import app
+from app.models.user import User
+from app.services.user_manager import current_user
 from app.utils.rate_limit import reset_rate_limits
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -122,3 +124,28 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
             yield http_client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def auth_client(
+    client: AsyncClient, db_session: AsyncSession
+) -> AsyncIterator[AsyncClient]:
+    """A client whose requests satisfy the authentication gate.
+
+    Overrides the dependency rather than logging in over HTTP: these are route
+    tests, and the real credential path is covered in ``tests/auth``.
+    """
+    user = User(
+        email="fixture@example.com",
+        hashed_password="not-a-real-hash",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    app.dependency_overrides[current_user] = lambda: user
+    try:
+        yield client
+    finally:
+        app.dependency_overrides.pop(current_user, None)

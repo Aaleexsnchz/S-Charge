@@ -18,7 +18,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 12 | REVE tariff backfill | Not started | — |
 | 13 | Auth surface hardening | Code done, verify on the host | — |
 | 14 | Environment configuration | Done | #15 |
-| 15 | Authenticate the read endpoints | Not started | — |
+| 15 | Authenticate the read endpoints | Done | — |
 
 Numbering is not the running order. **Slices 13 and 15 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what they fix; they and Slice 14 are numbered last only because they were found after the plan was written.
 
@@ -26,11 +26,10 @@ Numbering is not the running order. **Slices 13 and 15 must land before [Slice 1
 
 ## Start here
 
-**Everything that does not need the host is done** — Slices 1, 4, 5, 6, 13 and 14, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it.
+**Everything that does not need the host is done** — Slices 1, 4, 5, 6, 13, 14 and 15, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it.
 
-**What remains, in order: 15 → 7 → 8 → 9 → 10**, ending at `v0.1.0`. Then 11 and 12.
+**What remains, in order: 7 → 8 → 9 → 10**, ending at `v0.1.0`. Then 11 and 12.
 
-- **[15](#slice-15--authenticate-the-read-endpoints) first**, for the same reason 13 went first: it needs no server, and it stops mattering only in the sense that it becomes urgent the moment a URL exists.
 - **7 → 8 → 9 → 10 is a chain on the host**, each step depending on the one before.
 - **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are checked on the first deploy rather than locally.
 - **11 and 12 last.** Renovate wants a pipeline already proven end to end; the tariff backfill needs the scheduler's environment and a budget not competing with the deploy.
@@ -205,12 +204,13 @@ Repo work, no host needed, so it runs alongside anything. **Before [Slice 10](#s
 
 **This is not a product decision — it is the backend catching up with one already made.** [`app/routes.tsx`](../../frontend/src/app/routes.tsx) wraps dashboard, map, sessions, my-points, point detail and profile in `ProtectedRoute`; only the auth pages are public. The API disagrees: `points`, `prices`, `simulate` and `vehicles` carry no user dependency, so anyone holding the URL can pull the full ~13.7k-point catalogue, the price curve and the simulator without an account, while a real user is made to log in for exactly the same data. Publishing no ports does not help — that stops a client *bypassing* Caddy, not one arriving *through* it, and the SPA's own calls prove the path is open.
 
-- [ ] A `current_active_user` dependency (`fastapi_users.current_user(active=True, verified=True)`) applied at the four `include_router` calls, the same shape [Slice 13](#slice-13--auth-surface-hardening) used for the limits — not sprinkled per route, where one new endpoint silently misses it
-- [ ] **`/api/health` stays open.** It is the container healthcheck and returns status plus version, nothing else
-- [ ] **A test per endpoint asserting `401` without a session.** The gate is worth nothing if the next router is added unguarded; this is the regression guard, and it is the part that must not be skipped
-- [ ] The 16 tests in `tests/routers/` need an authenticated client — one shared verified-user fixture in `conftest.py`, not per-file setup. This is most of the work
-- [ ] **`just gen-api`**, and commit both files: adding a security dependency changes the OpenAPI schema, and CI fails on a stale one
-- [ ] Frontend expected to need no change, since the pages are already gated — confirm the map still loads after login rather than assuming it
+- [x] The dependency applied at the four `include_router` calls, the same shape [Slice 13](#slice-13--auth-surface-hardening) used for the limits — not sprinkled per route, where one new endpoint silently misses it. **`current_user` already existed** in `user_manager.py` and was referenced nowhere: the dependency was written and never mounted, so this slice wired up what was already there rather than adding anything
+- [x] **`/api/health` stays open.** It is the container healthcheck and returns status plus version, nothing else
+- [x] **The regression guard reads the route table instead of listing paths by hand**, so a router mounted unguarded fails it rather than shipping open. It has to read `app.openapi()["paths"]`: this FastAPI version keeps opaque `_IncludedRouter` entries in `app.routes` rather than the sub-routers' own routes. Verified load-bearing by unmounting one dependency and watching `GET /api/vehicles` fail
+- [x] **A positive test too**, over the real credential path — register, verify, log in, then call two protected endpoints with the session cookie. The fixture overrides the dependency, so without this the suite would pass even if the gate rejected everyone
+- [x] The tests in `tests/routers/` moved to an `auth_client` fixture that overrides the dependency rather than logging in per test — the real credential path is covered once, above, not sixteen times
+- [x] **`just gen-api`**: the six operations now declare `security: APIKeyCookie`. Only `openapi.json` moved; `security` does not reach the generated TypeScript
+- [x] Frontend needed no change. The API-level proof is the cookie round-trip above; `credentials: 'include'` is already set on the client, dev proxies `/api` through Vite so it is same-origin there too, and the PWA precaches build assets only — no API route was being served from a cache. **Not done: a browser click-through after login**, which is the one claim resting on argument rather than a run
 
 **Worth recording when it lands:** this materially improves the position on the [REVE data rights question](../plan.md), since serving a mirrored dataset to authenticated users of one's own application is a far easier thing to defend than publishing it. It also makes rate-limiting the rest of the API moot — abuse becomes attributable to an account instead of an address, which is why [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md) limits the auth surface and nothing else.
 

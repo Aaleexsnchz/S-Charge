@@ -1751,6 +1751,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Read Points",
         "tags": [
           "points"
@@ -1775,6 +1780,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Read Points Map",
         "tags": [
           "points"
@@ -1821,6 +1831,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Read Point",
         "tags": [
           "points"
@@ -1877,6 +1892,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Read Prices Today",
         "tags": [
           "prices"
@@ -1918,6 +1938,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Simulate",
         "tags": [
           "simulate"
@@ -2240,6 +2265,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Read Vehicles",
         "tags": [
           "vehicles"
