@@ -6,6 +6,10 @@ encode zstd gzip
 
 header Strict-Transport-Security "max-age=31536000"
 
+# The backend audits and rate-limits on X-Forwarded-For. Caddy is what makes
+# that value trustworthy: with no `trusted_proxies` set it discards whatever the
+# client sent and writes the real peer. Adding `trusted_proxies` here — to put a
+# CDN in front, say — would make Caddy preserve the client's value instead.
 handle /api/* {
 	reverse_proxy backend:8000
 }

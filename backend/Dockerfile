@@ -37,7 +37,12 @@ USER appuser
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status == 200 else 1)"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Without this uvicorn trusts only 127.0.0.1, so every request is attributed to
+# Caddy's container address. A CIDR rather than "*": "*" short-circuits uvicorn
+# to the leftmost X-Forwarded-For entry, which is only safe while Caddy keeps
+# discarding client-sent values (see Caddyfile), whereas the network match makes
+# it walk the chain and take the first untrusted hop either way.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--forwarded-allow-ips", "172.16.0.0/12"]
 
 # ---------- scheduler: prod runtime + supercronic driving the refresh ETLs ----------
 # amd64-only binary: the target VPS (Hetzner CX22) is x86; add an arm64 case if
