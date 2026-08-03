@@ -12,6 +12,7 @@ from alembic.config import Config
 from app.config import settings
 from app.dependencies import get_db
 from app.main import app
+from app.utils.rate_limit import reset_rate_limits
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
@@ -79,6 +80,12 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         finally:
             await session.close()
             await transaction.rollback()
+
+
+@pytest_asyncio.fixture(autouse=True, loop_scope="session")
+async def _reset_rate_limits() -> None:
+    """Every test shares one client IP, so counters must not carry over."""
+    await reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
