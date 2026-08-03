@@ -3,7 +3,7 @@ name = "backend"
 version = "0.1.0"
 description = "FastAPI backend for an EV charging management PWA (master's thesis)"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 authors = [
     { name = "Alejandro Sánchez Bardera", email = "sanchezbarderaalejandro@gmail.com" },
 ]
@@ -33,7 +33,7 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 src = ["app"]
 extend-exclude = ["alembic/versions"]
 
@@ -48,7 +48,7 @@ select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF", "PIE", "RET", "TID"
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"
 exclude = ["**/node_modules", "**/__pycache__", "**/.*", "alembic/versions"]
