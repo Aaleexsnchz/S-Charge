@@ -17,6 +17,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
+      workbox: {
+        // The OAuth callback is a top-level navigation to /api/*. Without this
+        // the navigation fallback answers it from the precache, so the backend
+        // never sets the session cookie and the SPA renders its 404 instead.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
       devOptions: {
         enabled: true,
         type: 'module',
