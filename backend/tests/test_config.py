@@ -13,6 +13,11 @@ COMPOSE_ONLY_KEYS = frozenset(
     {"POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "SITE_ADDRESS"}
 )
 
+# Baked into the image as a build argument. Compose applies env_file at container
+# creation, which overrides the image's ENV, so a line in any .env silently wins
+# over the built value — including the one CD derives from the git tag.
+BUILD_TIME_KEYS = frozenset({"APP_VERSION"})
+
 PRODUCTION: dict[str, Any] = {
     "environment": "production",
     "secret_key": "a-real-secret",
@@ -60,9 +65,16 @@ def documented_keys() -> set[str]:
 
 def test_every_setting_is_documented() -> None:
     """A setting absent from .env.example is a setting nobody sets on the server."""
-    undocumented = setting_names() - documented_keys()
+    undocumented = setting_names() - documented_keys() - BUILD_TIME_KEYS
 
     assert not undocumented, f"missing from .env.example: {sorted(undocumented)}"
+
+
+def test_no_build_time_key_is_documented_as_settable() -> None:
+    """Copying .env.example must not hand a container a stale baked-in value."""
+    settable = documented_keys() & BUILD_TIME_KEYS
+
+    assert not settable, f"build args, remove from .env.example: {sorted(settable)}"
 
 
 def test_no_documented_key_is_unused() -> None:
