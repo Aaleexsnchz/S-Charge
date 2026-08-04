@@ -16,9 +16,10 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 10 | Security gate, cutover, first release | Not started | host work |
 | 11 | Renovate | Not started | — |
 | 12 | REVE tariff backfill | Not started | — |
-| 13 | Auth surface hardening | Code done, verify on the host | — |
+| 13 | Auth surface hardening | Code done, verify on the host | #19 |
 | 14 | Environment configuration | Done | #15 |
-| 15 | Authenticate the read endpoints | Done | — |
+| 15 | Authenticate the read endpoints | Done | #20 |
+| 16 | Pre-deploy hardening | Done | — |
 
 Numbering is not the running order. **Slices 13 and 15 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what they fix; they and Slice 14 are numbered last only because they were found after the plan was written.
 
@@ -213,6 +214,22 @@ Repo work, no host needed, so it runs alongside anything. **Before [Slice 10](#s
 - [x] Frontend needed no change. The API-level proof is the cookie round-trip above; `credentials: 'include'` is already set on the client, dev proxies `/api` through Vite so it is same-origin there too, and the PWA precaches build assets only — no API route was being served from a cache. **Not done: a browser click-through after login**, which is the one claim resting on argument rather than a run
 
 **Worth recording when it lands:** this materially improves the position on the [REVE data rights question](../plan.md), since serving a mirrored dataset to authenticated users of one's own application is a far easier thing to defend than publishing it. It also makes rate-limiting the rest of the API moot — abuse becomes attributable to an account instead of an address, which is why [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md) limits the auth surface and nothing else.
+
+## Slice 16 — Pre-deploy hardening
+
+**Acceptance:** the responses Caddy serves carry the OWASP header set minus the two entries that would break this app, the dependency audit is clean, and the weekly backup fails loudly on a host it is not configured for.
+
+Found by auditing the repo against the [infra-0001](../decisions/infra-0001-deployment.md) gate before [Slice 7](#slice-7--first-deploy), rather than after the URL was shared.
+
+- [x] **Security headers.** `X-Content-Type-Options`, `Referrer-Policy`, `X-Permitted-Cross-Domain-Policies`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`, `X-Frame-Options` and a `Content-Security-Policy` carrying **only** `frame-ancestors 'none'` — that directive takes no `default-src` fallback, so it constrains framing without waiting for the full policy. `Server` removed. **Two OWASP entries deliberately omitted**: `Cross-Origin-Embedder-Policy: require-corp` would block the OpenFreeMap tiles, which are cross-origin and send no CORP header, and `geolocation=()` would kill `useGeolocation` — it is `(self)` instead. Verified against `caddy:2.11-alpine`: all nine present on a live response
+- [x] **The full CSP stays [Phase 12](../plan.md)**, unchanged: MUI and Emotion inject inline `<style>` tags and would force `style-src 'unsafe-inline'`, which is most of the value gone
+- [x] **`cryptography` 49.0.0 → 50.0.0** ([CVE-2026-69247](https://advisories.gitlab.com/pypi/cryptography/CVE-2026-69247/), Bleichenbacher oracle in PKCS#7 decryption). Not reachable here — it arrives via `pyjwt[crypto]` and nothing calls `pkcs7_decrypt_*` — but a lockfile line. `pip-audit` is clean afterwards
+- [x] **The interactive docs are disabled when `ENVIRONMENT=production`.** Defence in depth rather than a fix: they were **never** reachable from the internet, because Caddy forwards only `/api/*` to the backend while FastAPI mounts them at `/docs`. Confirmed by putting the prod image behind the real Caddyfile — `/docs` reaches the frontend upstream, not the API. The change closes the case where something else reaches the backend
+- [x] **The weekly backup would not have run on the server.** `backup_db_cron.sh` hardcoded the development laptop's `$HOME` for both the `rclone` binary and its config; on the VPS neither path exists, and cron would have failed into a log nobody reads. Paths now derive from `$HOME`, and the script checks `rclone` and its config are present **before** dumping
+- [x] **The dump is sized and its exit status kept.** The 0-byte dump that reached the offsite bucket on 2026-07-13 is [recorded in operations.md](../operations.md) as having no size check. Both halves are needed: the shell creates the file before `pg_dump` runs, so `set -e` alone leaves a plausible artifact behind — verified by pointing the script at a database that does not exist
+- [x] **Recorded why only the seed dump goes offsite**, and the trigger that ends it — a wallet balance in Phase 10 makes "just register again" false, at which point the offsite copy must be a full dump encrypted client-side
+
+**Not addressed, deliberately:** the 14-day session with no revocation ([auth-0002](../decisions/auth-0002-cookie-session.md)), the deploy key with no `command=` restriction, and the boot check verifying `SECRET_KEY` differs from the placeholder without checking it is strong. All three are known, recorded, and unchanged by this slice.
 
 ## Open decision
 
