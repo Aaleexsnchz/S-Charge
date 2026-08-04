@@ -26,19 +26,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     yield
 
 
-_IS_PRODUCTION = settings.environment == "production"
-
-# Slice 15 put the endpoints behind a session; leaving the interactive docs open
-# would still publish the catalogue of them, with schemas, to anyone holding the
-# URL. `just gen-api` reads app.openapi() directly, so the committed contract is
-# unaffected by dropping the route.
+# Dropping the schema route takes Swagger and ReDoc with it: FastAPI mounts both
+# only `if self.openapi_url`. `just gen-api` calls app.openapi() directly rather
+# than over HTTP, so the committed contract is unaffected.
 app = FastAPI(
     title="EV Charging Point Management API",
     version=settings.app_version,
     lifespan=lifespan,
-    docs_url=None if _IS_PRODUCTION else "/docs",
-    redoc_url=None if _IS_PRODUCTION else "/redoc",
-    openapi_url=None if _IS_PRODUCTION else "/openapi.json",
+    openapi_url=None if settings.environment == "production" else "/openapi.json",
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
