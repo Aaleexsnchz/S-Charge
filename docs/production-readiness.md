@@ -38,6 +38,8 @@ Where an item is already argued in depth elsewhere, this file links out rather t
 
 **No rotation procedure.** Secrets are rotated once, at first deploy ([setup/deployment.md](setup/deployment.md)). There is no routine, no schedule, and no way to rotate `SECRET_KEY` without invalidating every live session — because sessions are stateless and unrevocable.
 
+**Production configuration exists in exactly one place, with no history.** The `.env` is uncommitted and lives only on the VPS, so losing the host loses the configuration, and nothing records what changed or when. The proportionate step is not a secrets manager but **SOPS + age**: the file committed encrypted and decrypted at deploy, which buys versioned, reviewable history against one key to protect. It does not remove plaintext at runtime — the values still reach the container environment — so it addresses recoverability and audit, not confidentiality against a compromised host. Why GitHub Secrets and Vault were both rejected for this: [decisions/infra-0001](decisions/infra-0001-deployment.md).
+
 ## Observability
 
 **There is none.** The answer to *is it up, is it slow, did that error reach a user* is `docker compose logs`. This is the largest single gap in this list: at real scale you learn about incidents from users, and you cannot diagnose what you did not record.
