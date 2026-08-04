@@ -5,9 +5,9 @@ Pull from this list when a phase has slack or when deciding the AI layer's depth
 idea is promoted, move it into [plan.md](plan.md) (a phase + acceptance criteria) and
 remove it here.
 
-## AI / agent features (Phase 11 — pick from here)
+## AI / agent features (Phase 12 — pick from here)
 
-AI is a committed **Phase 11** (planned), but the **specific features are not yet decided** —
+AI is a committed **Phase 12** (planned), but the **specific features are not yet decided** —
 this is the menu to choose from. All call the app's own APIs (points, simulate, recommend,
 bookings, prices) as tools — no new data sources. Depth scales to remaining hours.
 

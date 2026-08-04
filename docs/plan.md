@@ -74,7 +74,7 @@ React + Vite + TypeScript with the TanStack family (Query, Router, Form) and Tai
 5. **Private charging points + paid use** — user-registered, private or public; public ones priced as PVPC + margin or fixed; drivers pay from a simulated wallet/ledger, owners credited (real payment processing: stretch)
 6. **Driver dashboard** — bookings + recorded session history (energy, duration, cost) + wallet balance/transactions
 7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue from the ledger) and management
-8. **AI/agent assistant** — value-add features over the app's own APIs; feature set decided in Phase 11
+8. **AI/agent assistant** — value-add features over the app's own APIs; feature set decided in Phase 12
 
 One document per feature, with live implementation status: [features/](features/).
 
@@ -89,7 +89,7 @@ One document per feature, with live implementation status: [features/](features/
 | `/points/:id` | Point detail + pre-charge simulation dialog |
 | `/sessions` | Driver session history |
 | `/my-points` | Owner point management + stats |
-| `/bookings` | Driver bookings (Phase 9) |
+| `/bookings` | Driver bookings (Phase 10) |
 | `/profile`, `/login`, … | Profile (opened from the avatar) + auth |
 
 Per-screen implementation status: [features/](features/).
@@ -108,17 +108,18 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 4 | Frontend redesign + dashboard-first IA | Core | Done | [phase-4](phases/phase-4.md) |
 | 5 | Deployment + CI/CD + releases | Core | In progress | [phase-5](phases/phase-5.md) |
 | 6 | Frontend stack migration | Core | Not started | planned at phase start |
-| 7 | Private charging points + owner pricing | Core | Not started | planned at phase start |
-| 8 | Smart charging optimiser | Core | Not started | planned at phase start |
-| 9 | Bookings + session recording | **Optional** | Not started | planned at phase start |
-| 10 | Wallet + paid sessions | **Optional** | Not started | planned at phase start |
-| 11 | AI/agent assistant | **Optional** | Not started | planned at phase start |
-| 12 | Polish, security + hardening | Core | Not started | planned at phase start |
-| 13 | Thesis writing | Core | Not started | planned at phase start |
+| 7 | ETL reactivation + backfill | Core | Not started | planned at phase start |
+| 8 | Private charging points + owner pricing | Core | Not started | planned at phase start |
+| 9 | Smart charging optimiser | Core | Not started | planned at phase start |
+| 10 | Bookings + session recording | **Optional** | Not started | planned at phase start |
+| 11 | Wallet + paid sessions | **Optional** | Not started | planned at phase start |
+| 12 | AI/agent assistant | **Optional** | Not started | planned at phase start |
+| 13 | Polish, security + hardening | Core | Not started | planned at phase start |
+| 14 | Thesis writing | Core | Not started | planned at phase start |
 
 Releases track this table: a minor version marks a phase shipping, `v0.1.0` is the first production deploy, and **`v1.0.0` is the build presented for the thesis** (see [AGENTS.md](../AGENTS.md) → Releases).
 
-**Optional phases and the cut order.** Phases 9–11 are the ones that come out if the schedule tightens, dropped **from the bottom up: 11 (AI) first, then 10 (wallet), then 9 (bookings + sessions)**. They are optional because none of them is load-bearing for a pillar in [What makes this thesis-worthy](#what-makes-this-thesis-worthy) on its own: the platform model is argued by Phase 7, the algorithm chapter by Phase 8, and the deployment pillar by Phase 5.
+**Optional phases and the cut order.** Phases 10–12 are the ones that come out if the schedule tightens, dropped **from the bottom up: 11 (AI) first, then 10 (wallet), then 9 (bookings + sessions)**. They are optional because none of them is load-bearing for a pillar in [What makes this thesis-worthy](#what-makes-this-thesis-worthy) on its own: the platform model is argued by Phase 8, the algorithm chapter by Phase 9, and the deployment pillar by Phase 5.
 
 Everything marked Core is not negotiable. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged — the app must never present a cut feature as if it worked.
 
@@ -198,7 +199,23 @@ Two things justify the timing. Every later phase adds screens (registration wiza
 - [ ] Charts moved off MUI X Charts (nothing renders charts on real data yet, so this is a swap of the placeholder)
 - [ ] Re-tested on a real phone at the 360px reference width; no visual regressions against the current build
 
-### Phase 7 — Private charging points + owner pricing — not started
+### Phase 7 — ETL reactivation + backfill — not started
+
+Turn the refresh jobs back on, recover what is still recoverable, and fix what made them fragile. Both have been off since the laptop's crons stopped in early July 2026, and [Phase 5](phases/phase-5.md) deploys with the `scheduler` service **deliberately not started** — freezing the state so it can be inspected before anything overwrites it, rather than because the deploy failed.
+
+Small and deliberately placed after the migration: the ETLs are backend work with no UI, so nothing here competes with Phase 6, and the frozen watermark is worth more than fresh data during a rewrite.
+
+**Done when:**
+
+- [ ] **The REVE watermark is read before the scheduler ever ticks.** It is parked at `2026-07-08 19:30`; the first unattended run jumps it to `now − REVE_REFRESH_LOOKBACK_HOURS` and the pre-jump value is gone. Record it first — [Phase 5](phases/phase-5.md) Slice 12 holds the probing method and the measured ceiling, and moves here
+- [ ] **The recoverable span is measured, not assumed**, and the gap that is written off is recorded as a number in [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md). The prior measurement says a ~24-day hole is lost almost in full; this phase turns "almost" into a figure
+- [ ] **The 504 ceiling is re-probed** and `REVE_REFRESH_LOOKBACK_HOURS` moved if it has shifted. The failure is a REVE-side performance regression that has self-healed once before, so the answer is empirical each time
+- [ ] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but note the curve stops at `2026-08-01 21:00 UTC` in the seed, meaning the prices views show an empty "today" for the whole of Phase 6
+- [ ] **The cursor race is fixed rather than worked around.** `reve_etl_cursor` is read-modify-written every tick, and two concurrent runs corrupt the watermark — the field whose loss caused the gap this phase exists to measure. Running a refresh by hand while the cron ticks is enough to trigger it, so "stop the scheduler first" is a discipline, not a fix. Currently listed under [Phase 13](#phase-13--polish-security--hardening--not-started); decide when planning this phase whether it belongs here instead, since this is when the ETLs are open on the bench
+- [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](decisions/infra-0001-deployment.md) — re-read that before reopening it
+- [ ] **Both jobs observed running unattended** on the server, with the first ticks confirmed in the logs and `electricity_prices` reaching today
+
+### Phase 8 — Private charging points + owner pricing — not started
 
 The platform contribution: a user registers their own charging point, chooses whether it is private or publicly listed, and prices it. Replaces the placeholder My-points UI with real data.
 
@@ -209,9 +226,9 @@ The platform contribution: a user registers their own charging point, chooses wh
 - [ ] Public points priced as PVPC + margin (live) or a fixed €/kWh, owner's choice
 - [ ] `/my-points` lists, edits and deletes the user's real points (mock removed)
 
-### Phase 8 — Smart charging optimiser — not started
+### Phase 9 — Smart charging optimiser — not started
 
-The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule to charge tonight given the PVPC curve and a departure time. It depends only on owned points (Phase 7) and the price history (Phase 3), so it ships as soon as that dependency exists rather than behind the rest of the feature work — it is a thesis pillar and must not be what gets cut.
+The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule to charge tonight given the PVPC curve and a departure time. It depends only on owned points (Phase 8) and the price history (Phase 3), so it ships as soon as that dependency exists rather than behind the rest of the feature work — it is a thesis pillar and must not be what gets cut.
 
 **Done when:**
 
@@ -219,7 +236,7 @@ The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule 
 - [ ] Optimiser UI at an owned point
 - [ ] Algorithm write-up in [thesis/](thesis/): formulation, pseudocode, evaluation
 
-### Phase 9 — Bookings + session recording — not started
+### Phase 10 — Bookings + session recording — not started
 
 Reserving a point and recording what actually happened. Turns the dashboard's next-reservation card and the Sessions screen into real data.
 
@@ -231,7 +248,7 @@ Reserving a point and recording what actually happened. Turns the dashboard's ne
 - [ ] `/sessions` shows real history (mock removed); dashboard stats derive from it
 - [ ] Owner sees per-point sessions and energy delivered on `/my-points`
 
-### Phase 10 — Wallet + paid sessions — not started
+### Phase 11 — Wallet + paid sessions — not started
 
 The economics: a simulated wallet/ledger so a session at someone else's public point moves money from driver to owner.
 
@@ -242,7 +259,7 @@ The economics: a simulated wallet/ledger so a session at someone else's public p
 - [ ] Owner dashboard shows revenue derived from the ledger
 - [ ] **The offsite backup must start carrying user data — this phase is the trigger.** Today only the PII-free seed dump leaves the machine ([operations.md](operations.md)), which is right while accounts are reproducible: the irreplaceable asset is the REVE catalogue, ~12 days under a 5 req/hr cap, and an owner can re-register in a minute. A balance cannot be re-registered. From here, losing the host means losing money that existed, so the weekly copy has to become a **full dump encrypted client-side** — an `rclone crypt` remote, because B2's server-side encryption leaves the keys with Backblaze and the point is that the processor cannot read it. That in turn brings retention and right-to-erasure into scope for the backups, not just the database: a deleted account must age out of the offsite copies on a stated schedule
 
-### Phase 11 — AI/agent assistant — not started
+### Phase 12 — AI/agent assistant — not started
 
 A value-add layer of natural-language / tool-calling features over the app's own APIs (points, simulate, recommend, bookings, prices). Money and optimisation stay deterministic; the LLM orchestrates and explains. The **specific feature set is decided at the start of the phase**, from the menu in [ideas-backlog.md](ideas-backlog.md), against remaining time.
 
@@ -252,9 +269,9 @@ A value-add layer of natural-language / tool-calling features over the app's own
 - [ ] Implemented over existing APIs as tools; no new data sources
 - [ ] Architecture write-up for the thesis
 
-### Phase 12 — Polish, security + hardening — not started
+### Phase 13 — Polish, security + hardening — not started
 
-Responsive QA, error/empty states, test coverage, a full security review and a performance pass. The written deployment & scaling strategy moved to Phase 13 — it is a thesis artifact, not code.
+Responsive QA, error/empty states, test coverage, a full security review and a performance pass. The written deployment & scaling strategy moved to Phase 14 — it is a thesis artifact, not code.
 
 **Done when:**
 
@@ -267,7 +284,7 @@ Responsive QA, error/empty states, test coverage, a full security review and a p
 - [ ] **Advisory lock on the REVE ETL tick.** `reve_etl_cursor` is one row per endpoint, read-modify-written every tick, and two concurrent runs corrupt the refresh watermark — the field whose loss produced the July 2026 tariff gap. This is reachable without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two writers. A Postgres advisory lock at the top of `_run_tick`, exiting quietly if another run holds it
 - [ ] **Automated backup-restore verification.** The restore is currently exercised by hand, and a backup nobody has restored is a hypothesis. A script that restores the latest dump into a throwaway container and asserts row counts plus `alembic current` at head turns "we take backups" into "we verify they restore" — the stronger claim, and cheap
 
-### Phase 13 — Thesis writing — not started
+### Phase 14 — Thesis writing — not started
 
 Document, diagram, defend. Includes the business and strategy chapters that elevate the work beyond a pure implementation.
 

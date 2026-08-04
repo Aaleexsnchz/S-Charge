@@ -14,7 +14,7 @@ The plan stays **live** for the phase's duration: slice statuses move, open ques
 | 4 — Frontend redesign + dashboard-first IA | [phase-4.md](phase-4.md) |
 | 5 — Deployment + CI/CD + releases | [phase-5.md](phase-5.md) |
 
-Phases 6–13 are described in [plan.md](../plan.md); their plans get written when they start.
+Phases 6–14 are described in [plan.md](../plan.md); their plans get written when they start.
 
 ## Structure
 

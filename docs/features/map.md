@@ -15,7 +15,7 @@ The whole Spanish catalogue on one map, clustered on the GPU, filterable without
 
 ## Pending — viewport loading
 
-Rendering at this scale is fine; the cost is the initial download and parse. Planned as one backend + frontend slice in [Phase 12](../plan.md):
+Rendering at this scale is fine; the cost is the initial download and parse. Planned as one backend + frontend slice in [Phase 13](../plan.md):
 
 - **Open on the user's position** — cache the last known location in `localStorage`, initialise there at city zoom, then refine via `GeolocateControl`. Avoids the Spain-wide flash on open.
 - **Zoom-gated viewport fetch** — add an optional `bbox` to `GET /api/points/map` (reusing the `Bbox` handling already in `app/services/points.py`); fetch the current bounds on debounced `moveend`. Below roughly city zoom, do not fetch — that would be the full 13.7k again — and show an "acércate para ver los puntos" hint instead.

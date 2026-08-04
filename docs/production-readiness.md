@@ -8,7 +8,7 @@ This is a master's thesis prototype deployed for one demo instance. Its architec
 
 Read it as the answer to *"why didn't you do X?"* — the honest answer is usually "because at one user on one box it costs more than it returns", and that reasoning is recorded per item so a reader can distinguish engineering judgement from oversight.
 
-Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan.md) Phase 13 and to be written as `thesis/despliegue-y-escalado.md`.
+Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan.md) Phase 14 and to be written as `thesis/despliegue-y-escalado.md`.
 
 ---
 
@@ -26,7 +26,7 @@ Where an item is already argued in depth elsewhere, this file links out rather t
 
 **Backups are nightly logical dumps.** `pg_dump` to Backblaze B2 ([operations.md](operations.md)) gives an RPO of up to 24 hours — a bad afternoon loses a day. Production wants continuous WAL archiving and point-in-time recovery, so the recovery target is minutes.
 
-**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan.md) Phase 12.*
+**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan.md) Phase 13.*
 
 **Postgres is self-managed.** Failover, minor-version patching, and connection pooling are all manual or absent. A managed instance moves those to the provider; at scale you would also want a read replica, since the catalogue queries (~13.7k charging points) are read-dominated.
 
@@ -50,7 +50,7 @@ The foundation is better than the absence suggests: the backend already emits st
 
 ## Application security
 
-**No Content-Security-Policy.** Caddy sets `Strict-Transport-Security` and nothing else. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. It is not implemented today because MUI and Emotion inject inline `<style>` tags, which would force `style-src 'unsafe-inline'` and negate much of the benefit; the Phase 6 migration to Tailwind compiles to a static stylesheet and makes a strict policy practical. *Scheduled: [plan.md](plan.md) Phase 12, after the Phase 6 migration.*
+**No Content-Security-Policy.** Caddy sets `Strict-Transport-Security` and nothing else. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. It is not implemented today because MUI and Emotion inject inline `<style>` tags, which would force `style-src 'unsafe-inline'` and negate much of the benefit; the Phase 6 migration to Tailwind compiles to a static stylesheet and makes a strict policy practical. *Scheduled: [plan.md](plan.md) Phase 13, after the Phase 6 migration.*
 
 **Sessions cannot be revoked.** The session is a stateless JWT ([auth-0002](decisions/auth-0002-cookie-session.md)): a stolen token stays valid until it expires, and there is no logout-everywhere, no per-session audit, and no way to eject an attacker. Production backs sessions with a database table carrying `revoked_at`. Argued at length in [auth-0002](decisions/auth-0002-cookie-session.md) and [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md); the same reasoning covers verification and password-reset tokens ([auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md)).
 
@@ -64,7 +64,7 @@ Generic advice stops being useful here. These three would break in non-obvious w
 
 **The scheduler cannot be replicated.** `supercronic` runs inside a single container. Run two, and both fire `refresh_reve` on the same schedule against an API capped at **5 requests per hour** — the budget is exhausted instantly and the ETL enters a permanent rate-limited loop. Any move to multiple hosts requires a single explicitly-unreplicated scheduler, leader election, or a job queue with a distributed lock.
 
-**The ETL cursor row can race.** `reve_etl_cursor` holds one row per endpoint, read-modify-written on every tick. Two concurrent runs corrupt the refresh watermark — the exact field whose loss produced the July 2026 tariff gap. This is reachable *today*, without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two concurrent writers. A Postgres advisory lock taken at the top of the tick fixes it. *Scheduled: [plan.md](plan.md) Phase 12.*
+**The ETL cursor row can race.** `reve_etl_cursor` holds one row per endpoint, read-modify-written on every tick. Two concurrent runs corrupt the refresh watermark — the exact field whose loss produced the July 2026 tariff gap. This is reachable *today*, without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two concurrent writers. A Postgres advisory lock taken at the top of the tick fixes it. *Scheduled: [plan.md](plan.md) Phase 13.*
 
 **Charging-point availability is not modelled** ([be-0002](decisions/be-0002-availability-not-modelled.md)). Points are shown as available with a disclaimer. A real product needs live status, which means either OCPI integration with each CPO or a status feed REVE does not offer — a data-access problem, not an engineering one.
 
@@ -74,7 +74,7 @@ Generic advice stops being useful here. These three would break in non-obvious w
 
 None of this exists, and the erasure path is not merely a missing endpoint — deleting a user has to reckon with what happens to their sessions, bookings and ledger rows.
 
-*Scheduled as thesis content: [plan.md](plan.md) Phase 13, alongside the business chapter.*
+*Scheduled as thesis content: [plan.md](plan.md) Phase 14, alongside the business chapter.*
 
 **No terms of service, and no cookie/consent notice.** The session cookie is strictly necessary so it needs no consent banner under EU rules, but that conclusion should be documented rather than assumed.
 
@@ -82,6 +82,6 @@ None of this exists, and the erasure path is not merely a missing endpoint — d
 
 **One developer, no review.** Every change is written and approved by the same person. Branch protection ([phases/phase-5.md](phases/phase-5.md) Slice 9) enforces that changes arrive through a pull request with green CI, which catches mechanical errors but not design ones.
 
-**No load testing.** No measurement exists of where this stack saturates — concurrent connections, map-viewport query cost, or the RAM contention between a Vite build and Postgres during a deploy. The Phase 13 chapter argues where the box breaks first; nothing has measured it.
+**No load testing.** No measurement exists of where this stack saturates — concurrent connections, map-viewport query cost, or the RAM contention between a Vite build and Postgres during a deploy. The Phase 14 chapter argues where the box breaks first; nothing has measured it.
 
-**Test coverage is not enforced.** Phase 12 targets ≥70% on `services/`; CI does not gate on coverage today.
+**Test coverage is not enforced.** Phase 13 targets ≥70% on `services/`; CI does not gate on coverage today.
