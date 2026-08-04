@@ -20,7 +20,7 @@ One document per feature: what it does, what exists today, and what is still mis
 | [Wallet](wallet.md) | ⬜ | 10 | profile / sessions |
 | [AI assistant](ai-assistant.md) | ⬜ | 11 | to be decided |
 
-Phases 9–11 are **optional** — see the cut order in [plan.md](../plan.md). The **Phase** column is the phase where the feature reaches ✅ — for the mock ones, the phase that replaces the fixture with real data.
+Phases 10–12 are **optional** — see the cut order in [plan.md](../plan.md). The **Phase** column is the phase where the feature reaches ✅ — for the mock ones, the phase that replaces the fixture with real data.
 
 ## Mock fixtures still in the tree
 
@@ -28,6 +28,6 @@ Each of these is a promise to delete something:
 
 | Fixture | Feeds | Removed in |
 | --- | --- | --- |
-| `dashboard.mock.ts` | dashboard stats + next reservation | Phase 9 |
-| `myPoints.mock.ts` | `/my-points` list + stats | Phase 7 |
-| `sessions.mock.ts` | `/sessions` history | Phase 9 |
+| `dashboard.mock.ts` | dashboard stats + next reservation | Phase 10 |
+| `myPoints.mock.ts` | `/my-points` list + stats | Phase 8 |
+| `sessions.mock.ts` | `/sessions` history | Phase 10 |
