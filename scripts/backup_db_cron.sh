@@ -8,18 +8,34 @@
 #   3. Prunes local and offsite seed dumps beyond the most recent $KEEP.
 #
 # See scripts/backup_db.sh for the manual/full-dump variant and the restore
-# command. Cron has a minimal PATH and does not load the shell profile, so the
-# rclone binary and config are referenced by absolute path.
+# command. Cron has a minimal PATH and does not load the shell profile, so both
+# the PATH and the rclone config are set here rather than inherited.
+#
+# Paths are derived from $HOME instead of being written out: they were hardcoded
+# to the development laptop's home, which on any other host resolves to nothing
+# and — this being cron — would have failed into an empty log nobody reads.
+# Every override below can be set in the environment for an unusual host.
 #
 set -euo pipefail
-export PATH="/usr/bin:/bin"
+export PATH="/usr/local/bin:/usr/bin:/bin:${HOME}/.local/bin"
 
 cd "$(dirname "$0")/.."
 
-KEEP=8
-RCLONE=/home/aaleexsnchz/.local/bin/rclone
-export RCLONE_CONFIG=/home/aaleexsnchz/.config/rclone/rclone.conf
-REMOTE="b2:tfm-db-backups"
+KEEP="${KEEP:-8}"
+RCLONE="${RCLONE:-rclone}"
+export RCLONE_CONFIG="${RCLONE_CONFIG:-${HOME}/.config/rclone/rclone.conf}"
+REMOTE="${REMOTE:-b2:tfm-db-backups}"
+
+# Fail loudly and before dumping anything. An unconfigured host must not look
+# like a successful backup.
+command -v "$RCLONE" >/dev/null 2>&1 || {
+    echo "backup aborted: rclone not found (looked on PATH=$PATH)" >&2
+    exit 1
+}
+[ -r "$RCLONE_CONFIG" ] || {
+    echo "backup aborted: no readable rclone config at $RCLONE_CONFIG" >&2
+    exit 1
+}
 
 ./scripts/backup_db.sh --seed
 dump="$(ls -t backups/ev_charging_seed_*.dump | head -1)"
