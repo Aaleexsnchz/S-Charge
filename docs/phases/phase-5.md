@@ -97,18 +97,19 @@ Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 
 - [ ] Repo cloned to `/opt/tfm` (the path `cd.yml` assumes)
 - [ ] The server-side `.env` written with **every secret rotated** — fresh `SECRET_KEY`, new `POSTGRES_PASSWORD`, `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`, empty `CORS_ALLOW_ORIGINS`, prod `APP_BASE_URL` / `GOOGLE_REDIRECT_URI`, `SITE_ADDRESS`; copies kept in a password manager, and **no value containing `$`** ([Slice 14](#slice-14--environment-configuration)). `ENVIRONMENT=production` arms the boot check, so a misconfigured file now restart-loops the backend instead of serving with a development secret
-- [ ] Database bootstrapped from the latest seed dump — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
+- [ ] Database bootstrapped from `backups/ev_charging_seed_20260803T070005Z.dump` — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
 - [ ] `up -d --build` + `alembic upgrade head`
 - [ ] Verified: site on a phone, PWA installs, `/api/health` returns the version, and `docker compose -f docker-compose.prod.yml ps` shows **no** `scheduler` container
-- [ ] **Run `./scripts/backup_db_cron.sh` by hand once**, before trusting the cron entry. Its paths derive from `$HOME`, which has only ever been exercised on the development laptop — the point of [Slice 16](#slice-16--pre-deploy-hardening) was that it would have failed silently as `deploy`
+
+**Not verified here: the weekly backup.** Running `./scripts/backup_db_cron.sh` on the server was going to be this slice's last step, and it cannot pass yet — `backup_db.sh` invokes a bare `docker compose exec -T db pg_dump`, which resolves `docker-compose.yml` and its dev project, where the server has no running `db`. `COMPOSE_FILE=docker-compose.prod.yml` in the environment fixes it with no code change (Compose reads that variable, and it correctly skips the `scheduler` profile), and the database credentials have to come with it, since the script falls back to the development names. It also needs `rclone` and its B2 config on the host, which arrives with the crontab cutover in [Slice 10](#slice-10--security-gate-cutover-first-release). Both belong with the host-script pass there, not wedged into a first deploy. This is the same class of defect [Slice 16](#slice-16--pre-deploy-hardening) caught in the `$HOME` paths — a laptop assumption that fails into a cron log nobody reads — and it survived because that audit checked the paths and not the compose project.
 
 ### Closing the data gap
 
 The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is measured as of 2026-08-01 and keeps growing until the scheduler runs on the server.
 
-- [x] **PVPC prices — recoverable, backfilled.** The hole ran from **2026-07-03** to 2026-08-01, 29 days. `fetch_pvpc.py` gap-backfills from the last stored hour to tomorrow and REE serves history, so it healed completely in one local run ([Step 0](#start-here)) — production is bootstrapped from a seed dump that already contains the full curve. The daily tick keeps it current from there
+- [x] **PVPC prices — recoverable, backfilled.** The hole ran from **2026-07-03** to 2026-08-01, 29 days. `fetch_pvpc.py` gap-backfills from the last stored hour to tomorrow and REE serves history, so it healed completely in one local run ([Step 0](#start-here)) — production is bootstrapped from a seed dump that already contains the full curve. It does not stay current on its own — the curve ends where the dump ends until the scheduler comes on, which is the empty state [Slice 7](#slice-7--first-deploy) accepts
 - [ ] **REVE tariffs — nothing happens here any more.** The recovery is [Phase 7](../plan.md). What this phase owes it is *not touching the watermark*: it is still parked at **2026-07-08 19:30** because the 504 hit while it was recent and it was classed transient, and the first unattended refresh tick would jump it to `now − REVE_REFRESH_LOOKBACK_HOURS`, destroying the value Phase 7 probes from. Deploying with the `scheduler` profile off is what protects it — the ordering constraint that used to live here is now structural rather than remembered
-- [x] **Re-take the seed dump immediately before bootstrapping the server**, after the PVPC backfill, so production starts from the freshest catalogue. Done in [Step 0](#start-here); re-take again if the deploy slips far enough that the dump goes stale
+- [x] **Re-take the seed dump after the PVPC backfill**, so production starts from the freshest catalogue. The bootstrap artifact is **`ev_charging_seed_20260803T070005Z.dump`**, the weekly cron's snapshot, and **it cannot go stale while it waits**: both ETLs are off on the laptop too, so every dump taken since carries the same rows — the price curve still ends `2026-08-01 21:00 UTC` and the watermark still reads `2026-07-08 19:30:03`. There is nothing to gain by re-taking it closer to the deploy
 - [ ] After the first scheduler ticks, confirm in the logs that both jobs ran, that `electricity_prices` reaches today, and whether `reve_refresh_jumped_to_recent` fired
 
 ## Slice 8 — External services on the prod origin
@@ -135,7 +136,7 @@ The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is m
 
 - [ ] `/security-review` run; infra-0001 gate passed (HSTS, only 22/80/443 open, no published `5432`, secrets rotated, cookie `Secure`, CORS empty, backup restorable, auth endpoints rate-limited and logging the real client IP per [Slice 13](#slice-13--auth-surface-hardening))
 - [ ] Laptop crontab refresh/PVPC lines removed — the scheduler container owns them now
-- [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS; its hardcoded paths adjusted)
+- [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS), and **`backup_db.sh` pointed at the right compose project** — it runs a bare `docker compose exec -T db`, which resolves the dev file and finds nothing on the server. `COMPOSE_FILE=docker-compose.prod.yml` in the crontab entry is the whole fix; see [Slice 7](#slice-7--first-deploy). It also **defaults `POSTGRES_USER` and `POSTGRES_DB` to the development names**, which production does not use — the crontab entry has to supply the server's, or the dump names a database that is not there. Verify by running it once by hand before trusting the schedule
 - [ ] **`v0.1.0` tagged**
 - [ ] infra-0001 flipped to `accepted`; B2 lifecycle rule added on `tfm-db-backups`
 

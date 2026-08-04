@@ -19,6 +19,8 @@ docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 docker compose -f docker-compose.prod.yml logs -f scheduler    # ETL job output
 ```
 
+**The `scheduler` service is behind a Compose profile and does not start with `up -d`.** Bringing the ETLs up is `--profile scheduler up -d`, and it must be repeated on every subsequent `up` that should keep them running. The profile exists so a deploy cannot start the refresh by accident: an unattended tick moves the REVE watermark, and it is currently parked deliberately.
+
 Locally, `just prod-up` runs the same stack with `SITE_ADDRESS=localhost` (self-signed cert warning expected) — the way to smoke-test a deploy before pushing. Every CD deploy rebuilds all images, which is cheap when nothing changed because the layer cache hits.
 
 Environment variables are read **at container creation**: after editing a server-side `.env`, use `up -d --force-recreate <service>`, never `restart`, or the container keeps the old values.
@@ -40,7 +42,7 @@ Leave that session open and point any client (DBeaver, `psql`) at `localhost:543
 Both Dockerfiles are multi-stage, and every stage is a production stage — the dev stages were removed when development moved to the host:
 
 - **Backend `prod`** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB.
-- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); runs the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream.
+- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. Gated behind its profile, as above, and not running yet. CI still builds it, via `docker build --target scheduler` rather than through Compose.
 - **Frontend `prod`** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for client-side routing. ~80 MB. Static assets only; Caddy does the API routing.
 
 CI builds all three, so a broken Dockerfile fails there rather than on the server at deploy time.

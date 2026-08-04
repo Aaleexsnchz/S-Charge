@@ -69,9 +69,16 @@ The REVE catalogue took ~12 days to seed under the 5 req/hr cap — **never re-s
 
 **The server's `POSTGRES_USER` / `POSTGRES_DB` must match the database the dump was taken from** (`ev_charging_app` / `ev_charging`) — the placeholders in `.env.example` are `app_user` / `app_db`, and restoring into names that disagree with the archive is the fastest way to lose a 12-day seed to a confusing error.
 
+The dump exists in two places — `backups/` on the development laptop and the B2 bucket. Push it from the laptop unless `rclone` is already configured on the host:
+
+```bash
+scp backups/<latest seed>.dump deploy@s-charge.app:/opt/tfm/   # from the laptop
+```
+
+Then, on the host, from `/opt/tfm`:
+
 ```bash
 docker compose -f docker-compose.prod.yml up -d db
-rclone copy b2:tfm-db-backups/<latest seed>.dump .   # or scp it from the laptop
 docker compose -f docker-compose.prod.yml exec -T db pg_restore \
   -U ev_charging_app -d ev_charging --clean --if-exists --no-owner < <latest seed>.dump
 ```
@@ -86,9 +93,13 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 ```
 
-`APP_VERSION` is a **build argument**, not runtime configuration: it is baked into both images, so a deploy that forgets to export it reports `dev` and only a rebuild fixes it. CD exports it for you; only a by-hand deploy needs the line above.
+`APP_VERSION` is a **build argument**, not runtime configuration: it is baked into both images, so a deploy that forgets to export it reports `dev` and only a rebuild fixes it. CD exports it for you; only a by-hand deploy needs the line above. Before the first tag exists, `git describe --tags --always` yields a short commit sha, and that is what `/api/health` will report.
 
-Verify: `https://s-charge.app` loads the app on a phone, PWA installs, `https://s-charge.app/api/health` returns ok **and the version it reports is the tag you deployed**, `docker compose -f docker-compose.prod.yml logs scheduler` shows supercronic loading the two jobs. Then **remove the refresh/PVPC entries from the laptop crontab** (the scheduler container owns them now) and move the weekly `backup_db_cron.sh` line to the server crontab (requires `rclone` + the B2 config on the VPS; adjust its hardcoded paths).
+**`up -d` deliberately does not start the scheduler.** It sits behind a Compose profile, so the ETLs stay off until they are turned back on with `--profile scheduler up -d`; `docker compose -f docker-compose.prod.yml ps` showing no `scheduler` container is the expected result, not a failed start. Until then the price curve ends where the seed dump ended and `/api/prices/today` serves an empty state.
+
+Verify: `https://s-charge.app` loads the app on a phone, the PWA installs, and `https://s-charge.app/api/health` returns ok **with the version you just deployed**.
+
+The laptop crontab still owns the refresh and backup jobs at this point. Handing them over is a separate step — the scheduler profile has to come on first, and the weekly backup needs `rclone` and its B2 config on the VPS.
 
 ## 6. External services for the prod origin
 
