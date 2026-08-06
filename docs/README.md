@@ -56,13 +56,19 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 | [infra-0002](decisions/infra-0002-manual-release-tagging.md) | Tag releases by hand; derive the running version from the tag |
 | [infra-0003](decisions/infra-0003-deploy-on-tag.md) | Deploy on a tag push, not on every merge to `main` |
 
+### The thesis document
+
+| Where | What |
+| --- | --- |
+| [thesis/memoria/](thesis/memoria/) | **The memoria itself** — the fifteen chapters that get submitted and defended, in Spanish, plus the IEEE bibliography and the appendix outline. Start at its [README](thesis/memoria/README.md). |
+
 ### Thesis chapters
 
-Concept-level write-ups (in Spanish) that feed the thesis document; each links out to the ADRs for deep rationale.
+Concept-level write-ups (in Spanish) that feed the memoria; each links out to the ADRs for deep rationale. These are working notes, not the submitted document.
 
 | Chapter | Covers |
 | --- | --- |
-| [thesis/indice.md](thesis/indice.md) | Thesis structure: chapter outline + the core idea of each chapter (the "memoria" table of contents). |
+| [thesis/indice.md](thesis/indice.md) | The outline the memoria was written from. Superseded by [thesis/memoria/](thesis/memoria/) as the authoritative structure. |
 | [thesis/autenticacion.md](thesis/autenticacion.md) | Identity, password storage, session, OAuth, verification, audit, rate limiting. |
 | [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
 | [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |

@@ -9,7 +9,7 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import type { ResetPasswordActionData } from './actions'
+import { MIN_PASSWORD_LENGTH, type ResetPasswordActionData } from './actions'
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -21,7 +21,7 @@ export function ResetPasswordPage() {
   const { enqueueSnackbar } = useSnackbar()
 
   const [password, setPassword] = useState('')
-  const canSubmit = password.length >= 12 && token !== ''
+  const canSubmit = password.length >= MIN_PASSWORD_LENGTH && token !== ''
 
   useEffect(() => {
     if (actionData && 'success' in actionData) {
@@ -61,8 +61,8 @@ export function ResetPasswordPage() {
             type="password"
             label="Nueva contraseña"
             autoComplete="new-password"
-            helperText="Mínimo 12 caracteres"
-            slotProps={{ htmlInput: { minLength: 12 } }}
+            helperText={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
+            slotProps={{ htmlInput: { minLength: MIN_PASSWORD_LENGTH } }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             fullWidth

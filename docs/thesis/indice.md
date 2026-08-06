@@ -1,13 +1,22 @@
 ---
-status: borrador (estructura de la memoria)
+status: superado por memoria/ — se conserva como guion de origen
 ---
 
 # Estructura de la memoria
 
-Índice de capítulos de la memoria del TFM y la idea central de cada uno. Es un guion
-vivo: se ajusta conforme avanza el desarrollo. Los capítulos se redactan en español;
-se conservan los términos técnicos consolidados en inglés (bearer token, upsert, rate
-limit, ledger, etc.).
+> **La memoria ya está redactada en [memoria/](memoria/)**, con quince capítulos. Este documento
+> fue el guion del que salió y se conserva porque recoge la intención de cada capítulo, pero
+> **la estructura vigente es la de [memoria/README.md](memoria/README.md)**, no la de aquí.
+>
+> Tres diferencias que importan: la memoria añade **Marco regulador** (cap. 12) y **Entorno
+> socioeconómico, presupuesto y planificación** (cap. 13), que la Escuela Politécnica exige y
+> este guion no contemplaba; añade **Uso de IA generativa** (cap. 14) como capítulo propio en
+> lugar de anexo; y separa **Validación y resultados** (cap. 11) de los capítulos de
+> funcionalidad.
+
+Índice de capítulos de la memoria del TFM y la idea central de cada uno. Los capítulos se
+redactan en español; se conservan los términos técnicos consolidados en inglés (bearer token,
+upsert, rate limit, ledger, etc.).
 
 **Tesis central.** El núcleo del trabajo es **la propia aplicación**: una PWA unificada
 de gestión de recarga de vehículo eléctrico que agrupa, bajo una sola app, lo que hoy

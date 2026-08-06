@@ -13,7 +13,7 @@ Claves primarias UUID v4 mediante `SQLAlchemyBaseUserTableUUID` de fastapi-users
 
 ## Almacenamiento de contraseñas
 
-Argon2id mediante [`pwdlib`](https://github.com/frankie567/pwdlib) (el sucesor moderno de `passlib`, incluido con fastapi-users) respaldado por `argon2-cffi`. Parámetros mínimos de OWASP (`memory_cost=19456`, `time_cost=2`, `parallelism=1`). El re-hash automático al verificar permite endurecer los parámetros de coste más adelante sin necesidad de migración. La política de contraseñas es solo de longitud (≥ 12 caracteres), alineada con NIST SP 800-63B § 5.1.1 — sin reglas de composición ni rotación forzada (ambas empujan a los usuarios hacia patrones predecibles).
+Argon2id mediante [`pwdlib`](https://github.com/frankie567/pwdlib) (el sucesor moderno de `passlib`, incluido con fastapi-users) respaldado por `argon2-cffi`. Parámetros mínimos de OWASP (`memory_cost=19456`, `time_cost=2`, `parallelism=1`). El re-hash automático al verificar permite endurecer los parámetros de coste más adelante sin necesidad de migración. La política de contraseñas es solo de longitud (≥ 15 caracteres), sin reglas de composición ni rotación forzada — ambas prohibidas por NIST SP 800-63B-4 § 3.1.1, porque empujan a los usuarios hacia patrones predecibles. Los 15 son el mínimo que esa misma sección exige para una contraseña usada como **factor único**, que es este caso; ocho solo sería admisible dentro de una autenticación multifactor.
 
 Los fallos de autenticación devuelven un único `401 "Invalid credentials"` genérico con independencia de si el email existe; fastapi-users ejecuta un hash ficticio para el caso de usuario inexistente, de modo que el tiempo de respuesta no filtre la existencia de la cuenta (sin oráculo de enumeración de usuarios).
 

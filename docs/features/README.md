@@ -12,13 +12,13 @@ One document per feature: what it does, what exists today, and what is still mis
 | [Vehicle catalogue](vehicles.md) | ✅ | [3](../phases/phase-3.md) | simulation picker |
 | [Electricity prices (PVPC)](prices.md) | ✅ | [3](../phases/phase-3.md) | simulation, optimiser |
 | [Pre-charge simulation](simulation.md) | ✅ | [3](../phases/phase-3.md) | dialog on `/points/:id` |
-| [Dashboard](dashboard.md) | 🟡 | 9 | `/` |
-| [Owner points](owner-points.md) | 🟡 | 7 | `/my-points` |
-| [Smart home charging](smart-charging.md) | ⬜ | 8 | owned point |
-| [Bookings](bookings.md) | ⬜ | 9 | `/bookings` |
-| [Session history](sessions.md) | 🟡 | 9 | `/sessions` |
-| [Wallet](wallet.md) | ⬜ | 10 | profile / sessions |
-| [AI assistant](ai-assistant.md) | ⬜ | 11 | to be decided |
+| [Dashboard](dashboard.md) | 🟡 | 10 | `/` |
+| [Owner points](owner-points.md) | 🟡 | 8 | `/my-points` |
+| [Smart home charging](smart-charging.md) | ⬜ | 9 | owned point |
+| [Bookings](bookings.md) | ⬜ | 10 | `/bookings` |
+| [Session history](sessions.md) | 🟡 | 10 | `/sessions` |
+| [Wallet](wallet.md) | ⬜ | 11 | profile / sessions |
+| [AI assistant](ai-assistant.md) | ⬜ | 12 | to be decided |
 
 Phases 10–12 are **optional** — see the cut order in [plan.md](../plan.md). The **Phase** column is the phase where the feature reaches ✅ — for the mock ones, the phase that replaces the fixture with real data.
 
