@@ -1,6 +1,12 @@
 import { type ActionFunctionArgs, redirect } from 'react-router'
 import { apiClient } from '@/lib/api/client'
 
+/** Mirrors `MIN_PASSWORD_LENGTH` in the backend's user manager; both come from
+ *  NIST SP 800-63B-4 §3.1.1, which requires 15 for a single-factor password. */
+export const MIN_PASSWORD_LENGTH = 15
+
+const PASSWORD_TOO_SHORT = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`
+
 export type AuthActionError = { error: string }
 
 export type LoginUnverified = { unverifiedEmail: string }
@@ -14,7 +20,7 @@ export type ResetPasswordActionData = { error: string; expiredToken?: boolean } 
 const AUTH_ERROR_COPY: Record<string, string> = {
   LOGIN_BAD_CREDENTIALS: 'Email o contraseña inválidos',
   REGISTER_USER_ALREADY_EXISTS: 'Este email ya está registrado',
-  REGISTER_INVALID_PASSWORD: 'La contraseña debe tener al menos 12 caracteres',
+  REGISTER_INVALID_PASSWORD: PASSWORD_TOO_SHORT,
 }
 
 const FIELD_ERROR_COPY: Record<string, string> = {
@@ -153,7 +159,7 @@ export async function resetPasswordAction({
       return { error: 'Enlace inválido o expirado', expiredToken: true }
     }
     if (code === 'RESET_PASSWORD_INVALID_PASSWORD') {
-      return { error: 'La contraseña debe tener al menos 12 caracteres' }
+      return { error: PASSWORD_TOO_SHORT }
     }
     return { error: messageFor(error.detail) }
   }

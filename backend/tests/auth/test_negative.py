@@ -1,3 +1,4 @@
+from app.services.user_manager import MIN_PASSWORD_LENGTH
 from httpx import AsyncClient
 
 EMAIL = "bob@example.com"
@@ -31,7 +32,26 @@ async def test_register_password_too_short(client: AsyncClient) -> None:
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["code"] == "REGISTER_INVALID_PASSWORD"
-    assert "12" in detail["reason"]
+    assert str(MIN_PASSWORD_LENGTH) in detail["reason"]
+
+
+async def test_register_password_one_short_of_minimum_rejected(
+    client: AsyncClient,
+) -> None:
+    resp = await client.post(
+        "/api/auth/register",
+        json={
+            "email": EMAIL,
+            "password": "a" * (MIN_PASSWORD_LENGTH - 1),
+            "name": "Bob",
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "REGISTER_INVALID_PASSWORD"
+
+
+async def test_register_password_at_minimum_accepted(client: AsyncClient) -> None:
+    await _register(client, EMAIL, "a" * MIN_PASSWORD_LENGTH)
 
 
 async def test_login_wrong_password(client: AsyncClient) -> None:

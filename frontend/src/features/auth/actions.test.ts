@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { errorCodeFromDetail, fieldErrorFromValidationArray, messageFor } from './actions'
+import {
+  errorCodeFromDetail,
+  fieldErrorFromValidationArray,
+  MIN_PASSWORD_LENGTH,
+  messageFor,
+} from './actions'
 
 const GENERIC = 'Error del servidor, inténtalo de nuevo'
 
@@ -37,14 +42,17 @@ describe('messageFor', () => {
   it.each([
     ['LOGIN_BAD_CREDENTIALS', 'Email o contraseña inválidos'],
     ['REGISTER_USER_ALREADY_EXISTS', 'Este email ya está registrado'],
-    ['REGISTER_INVALID_PASSWORD', 'La contraseña debe tener al menos 12 caracteres'],
+    [
+      'REGISTER_INVALID_PASSWORD',
+      `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`,
+    ],
   ])('maps known string code %p to Spanish copy', (code, expected) => {
     expect(messageFor(code)).toBe(expected)
   })
 
   it('maps an object detail with a known `code` to Spanish copy', () => {
     expect(messageFor({ code: 'REGISTER_INVALID_PASSWORD', reason: 'too short' })).toBe(
-      'La contraseña debe tener al menos 12 caracteres',
+      `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`,
     )
   })
 

@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from app.models.user import User
+from app.services.user_manager import MIN_PASSWORD_LENGTH
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,4 +91,4 @@ async def test_reset_with_short_password_rejected(
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["code"] == "RESET_PASSWORD_INVALID_PASSWORD"
-    assert "12" in detail["reason"]
+    assert str(MIN_PASSWORD_LENGTH) in detail["reason"]

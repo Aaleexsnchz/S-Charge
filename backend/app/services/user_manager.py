@@ -15,7 +15,9 @@ from app.utils.audit import audit
 from app.utils.auth_backend import auth_backend
 from app.utils.security import password_helper
 
-MIN_PASSWORD_LENGTH = 12
+# NIST SP 800-63B-4 §3.1.1 requires 15 for a password used as a single factor, which is
+# this case. Eight would be permissible only as part of multi-factor authentication.
+MIN_PASSWORD_LENGTH = 15
 PASSWORD_PROVIDER = "password"  # noqa: S105 — login-provider name, not a credential
 
 

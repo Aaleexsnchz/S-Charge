@@ -1,7 +1,7 @@
 import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Form, Link as RouterLink, useActionData, useNavigation } from 'react-router'
-import type { AuthActionError } from './actions'
+import { type AuthActionError, MIN_PASSWORD_LENGTH } from './actions'
 
 export function RegisterPage() {
   const actionData = useActionData() as AuthActionError | undefined
@@ -11,7 +11,7 @@ export function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const canSubmit = email.trim() !== '' && password.length >= 12
+  const canSubmit = email.trim() !== '' && password.length >= MIN_PASSWORD_LENGTH
 
   return (
     <Stack spacing={3}>
@@ -43,7 +43,7 @@ export function RegisterPage() {
             type="password"
             label="Contraseña"
             autoComplete="new-password"
-            helperText="Mínimo 12 caracteres"
+            helperText={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
