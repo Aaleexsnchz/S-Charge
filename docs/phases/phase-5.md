@@ -10,7 +10,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 4 | Toolchain: lefthook + CI hygiene | Done | #14 |
 | 5 | Release plumbing: versioning, CI images, CD, `release.yml` | Done | #16 |
 | 6 | Runtime versions + API contract | Done | #18 |
-| 7 | First deploy | Not started | host work |
+| 7 | First deploy | Done | host work |
 | 8 | External services on the prod origin | Not started | host work |
 | 9 | Close the CI/CD loop | Not started | — |
 | 10 | Security gate, cutover, first release | Not started | host work |
@@ -23,16 +23,18 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 
 Numbering is not the running order. **Slices 13 and 15 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what they fix; they and Slice 14 are numbered last only because they were found after the plan was written.
 
-**Where things stand:** **the host exists and is hardened** (Slices 2–3), but **nothing is deployed to it** — `/opt/tfm` does not exist yet and no container runs there. The app still runs only locally (`just up` + `just api`/`just web`). The REVE/PVPC refresh and DB-backup crons still run from the laptop's crontab and **have not run since early July** — see [Closing the data gap](#closing-the-data-gap); the PVPC half of that gap is already healed and baked into the seed dump. The CD workflow is **enabled** but inert: it fires only on a tag push or a manual run, and no tag has been pushed. `main` is not yet PR-protected, though changes are already going through PRs by convention.
+**Where things stand:** **the application is deployed and publicly reachable at <https://s-charge.app>** (Slice 7, 2026-08-04). Verified from outside the host on 2026-08-05: HTTPS with HSTS, the full security-header set, `Permissions-Policy`, `/api/points` answering `401` without a session, and the interactive docs disabled in production.
+
+What remains: **Slices 8 → 9 → 10**, then 11. The `scheduler` service is deployed but **deliberately not started** — it sits behind a Compose profile so a deploy cannot move the REVE watermark by accident, so the REVE/PVPC refresh **still has not run since early July** ([Phase 7](../plan.md) owns turning it back on). **No tag has been pushed**, so `/api/health` reports the commit hash rather than `v0.1.0`, and the CD workflow stays inert until one is. `main` is not yet PR-protected, though changes are already going through PRs by convention.
 
 ## Start here
 
-**Everything that does not need the host is done** — Slices 1, 4, 5, 6, 13, 14, 15 and 16, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it.
+**Everything that does not need the host is done** — Slices 1, 4, 5, 6, 13, 14, 15 and 16, plus the two local commands that healed the PVPC curve and re-took the seed dump before production is bootstrapped from it. **Slice 7 is done too: the stack is live on the host.**
 
-**What remains, in order: 7 → 8 → 9 → 10**, ending at `v0.1.0`. Then 11.
+**What remains, in order: 8 → 9 → 10**, ending at `v0.1.0`. Then 11.
 
-- **7 → 8 → 9 → 10 is a chain on the host**, each step depending on the one before.
-- **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are checked on the first deploy rather than locally.
+- **8 → 9 → 10 is a chain on the host**, each step depending on the one before.
+- **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are verified on the live host as part of Slice 10's gate.
 - **11 last.** Renovate wants a pipeline already proven end to end. Slice 12 is no longer part of this phase — the tariff backfill became [Phase 7](../plan.md).
 
 **Why this phase comes before the frontend migration** (Phase 6), in case it is asked again: the migration benefits from nearly every slice here — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the rewrite drifting from the API, the pre-push hook covers ~3,200 lines of churn, and a deploy on demand means each migration slice can be opened on a phone, which is the only way to check the one risk no tool verifies. Deployment gains nothing from the migration in return: nginx serves a `dist/` and does not care what is in it. Separately, the REVE tariff gap widens permanently every day the server does not exist.

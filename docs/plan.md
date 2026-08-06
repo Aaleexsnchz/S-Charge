@@ -115,11 +115,11 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 11 | Wallet + paid sessions | **Optional** | Not started | planned at phase start |
 | 12 | AI/agent assistant | **Optional** | Not started | planned at phase start |
 | 13 | Polish, security + hardening | Core | Not started | planned at phase start |
-| 14 | Thesis writing | Core | Not started | planned at phase start |
+| 14 | Thesis writing | Core | In progress | [thesis/memoria/](thesis/memoria/) |
 
 Releases track this table: a minor version marks a phase shipping, `v0.1.0` is the first production deploy, and **`v1.0.0` is the build presented for the thesis** (see [AGENTS.md](../AGENTS.md) → Releases).
 
-**Optional phases and the cut order.** Phases 10–12 are the ones that come out if the schedule tightens, dropped **from the bottom up: 11 (AI) first, then 10 (wallet), then 9 (bookings + sessions)**. They are optional because none of them is load-bearing for a pillar in [What makes this thesis-worthy](#what-makes-this-thesis-worthy) on its own: the platform model is argued by Phase 8, the algorithm chapter by Phase 9, and the deployment pillar by Phase 5.
+**Optional phases and the cut order.** Phases 10–12 are the ones that come out if the schedule tightens, dropped **from the bottom up: 12 (AI) first, then 11 (wallet), then 10 (bookings + sessions)**. They are optional because none of them is load-bearing for a pillar in [What makes this thesis-worthy](#what-makes-this-thesis-worthy) on its own: the platform model is argued by Phase 8, the algorithm chapter by Phase 9, and the deployment pillar by Phase 5.
 
 Everything marked Core is not negotiable. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged — the app must never present a cut feature as if it worked.
 

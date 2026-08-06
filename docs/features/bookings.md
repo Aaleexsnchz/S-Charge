@@ -1,6 +1,6 @@
 # Bookings
 
-**Status:** ⬜ Planned · **Phase** [9](../plan.md)
+**Status:** ⬜ Planned · **Phase** [10](../plan.md)
 
 Reserving a charging point for a time window, and the conflict rules that make a reservation mean something.
 

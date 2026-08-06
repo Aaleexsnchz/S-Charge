@@ -1,6 +1,6 @@
 # AI assistant
 
-**Status:** ⬜ Planned · **Phase** [11](../plan.md)
+**Status:** ⬜ Planned · **Phase** [12](../plan.md)
 
 A natural-language layer over the app's own APIs — points, simulate, recommend, bookings, prices — as tools. No new data sources. Prices, costs, schedules and ledger movements stay deterministic and are computed by the existing services; the model orchestrates and explains.
 
