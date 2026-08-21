@@ -50,7 +50,7 @@ coste es el del más lento y no la suma. Con ese margen no hizo falta sacrificar
 comprobación. A eso se suma el contrato de API versionado: la integración continua lo regenera y
 falla si difiere, con lo que una divergencia
 entre backend y frontend se manifiesta como un fallo de CI y no como un error en ejecución. El
-detalle de la cadena de entrega está en el capítulo 10.
+detalle de la cadena de entrega está en el capítulo 8.
 
 ## Rendimiento medido
 
@@ -96,8 +96,8 @@ geolocalización se probaron en un iPhone y un Android físicos, no en un emulad
 pesa aquí porque el usuario está de pie junto a un poste de recarga, con una mano y con la
 cobertura que haya. Un emulador no reproduce el diálogo de permisos que el navegador del sistema
 presenta para la geolocalización —un permiso que la especificación exige de forma expresa y
-recomienda limitar a una sola sesión [48]—, ni el criterio con que cada plataforma
-decide ofrecer la instalación [36], ni el coste del primer pintado WebGL sobre una GPU
+recomienda limitar a una sola sesión [46]—, ni el criterio con que cada plataforma
+decide ofrecer la instalación [33], ni el coste del primer pintado WebGL sobre una GPU
 móvil. Lo que un emulador valida es el diseño responsivo.
 
 > **[FIGURA 11.2]** — *La aplicación instalada en un teléfono real.* Dos capturas juntas tomadas
@@ -125,7 +125,7 @@ móvil. Lo que un emulador valida es el diseño responsivo.
 **Tabla 11.2.** Comprobaciones ejecutadas contra el servidor de producción real. La política de
 contenido incompleta es una carencia conocida, no un descuido: el motor de estilos actual inyecta
 etiquetas `<style>` en línea, y una política estricta obligaría a permitirlas hasta anularse a sí
-misma [44].
+misma [42].
 
 ## Resultados del sistema como producto
 
@@ -141,7 +141,7 @@ genérica. La aplicación está desplegada, instalable y accesible en
 
 **No hay pruebas de carga.** No existe medición de dónde satura esta pila: ni conexiones
 concurrentes, ni coste de la consulta del mapa, ni la contención de memoria entre la construcción
-de las imágenes y Postgres durante un despliegue. El capítulo 10 argumenta por dónde se rompe
+de las imágenes y Postgres durante un despliegue. El capítulo 8 argumenta por dónde se rompe
 primero un solo servidor; nada lo ha medido.
 
 **No hay cobertura exigida en integración continua**, de modo que «hay 134 pruebas» no garantiza

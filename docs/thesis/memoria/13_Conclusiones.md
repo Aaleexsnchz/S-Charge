@@ -77,7 +77,7 @@ de carga de particulares con precio del propietario, el optimizador que completa
 las funcionalidades opcionales de reservas, monedero y asistente de IA, con su orden de recorte
 ya declarado.
 
-**Lo que exigiría un producto real**, y que el capítulo 10 registra sin disimular: observabilidad
+**Lo que exigiría un producto real**, y que el capítulo 8 registra sin disimular: observabilidad
 —hoy inexistente y la mayor carencia individual del sistema—, cumplimiento efectivo en
 protección de datos con vía de supresión que alcance a las copias de seguridad, verificación
 automática de la restauración, política de seguridad de contenido completa, y el cerrojo que

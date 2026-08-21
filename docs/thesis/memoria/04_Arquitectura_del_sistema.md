@@ -15,7 +15,7 @@ Que los ETL queden fuera de ese camino no es una preferencia estética. La API d
 una llamada a REVE: el catálogo se copia una vez y se mantiene desde entonces. La restricción
 es, con diferencia, la que más forma da al sistema, y el capítulo 5 la argumenta en detalle. Hoy
 el contenedor que dispara esos procesos está desplegado pero deliberadamente detenido, por
-motivos que corresponden al capítulo 10.
+motivos que corresponden al capítulo 8.
 
 **La propiedad que ordena el resto del diseño es el mismo origen.** La aplicación y su API se
 publican bajo un solo dominio: el navegador descarga la SPA de `https://s-charge.app` y todas
@@ -46,7 +46,7 @@ producción, porque en desarrollo tampoco hay dos orígenes.
 > «5 peticiones/hora») y **API de REE `apidatos`**— y una flecha entrante a PostgreSQL rotulada
 > **escrituras periódicas (`upsert`)**. Un marco discontinuo debe englobar Caddy, nginx,
 > FastAPI, PostgreSQL y el `scheduler`, con la etiqueta «un único servidor, Docker Compose
-> (capítulo 10)». Lo que la figura tiene que dejar ver de un vistazo: que el navegador solo
+> (capítulo 8)». Lo que la figura tiene que dejar ver de un vistazo: que el navegador solo
 > conoce un origen, y que la ruta de datos externa no atraviesa la API.
 > **Cómo obtenerla:** diagrama a dibujar en draw.io o Mermaid.
 
@@ -154,12 +154,12 @@ mejor documentación —Mapbox GL JS, Google Maps— exigen todas un identificad
 acabaría empaquetado en el *bundle* de un repositorio abierto.
 
 La aplicación se distribuye como **PWA instalable**: manifiesto de aplicación web, que declara
-nombre, iconos, ámbito y modo de presentación [40], y *service worker* para el
+nombre, iconos, ámbito y modo de presentación [37], y *service worker* para el
 arranque de la carcasa. Es la vía por la que una aplicación construida con tecnologías web se
-instala en el dispositivo y se comporta como una nativa [36], sin dos cadenas de
+instala en el dispositivo y se comporta como una nativa [33], sin dos cadenas de
 construcción ni dos revisiones de tienda para un solo desarrollador. Tiene además una atadura
 con el apartado anterior: las interfaces del *service worker* solo están disponibles en contexto
-seguro [37], de modo que HTTPS no es una buena práctica añadida sino un
+seguro [34], de modo que HTTPS no es una buena práctica añadida sino un
 requisito de instalabilidad.
 
 En el servidor, **FastAPI** con **SQLAlchemy 2.0 en modo asíncrono**, **Alembic** para las
@@ -186,8 +186,8 @@ deliberación y cuál exige una fase propia.
 
 ### De MUI a Tailwind + shadcn/ui
 
-El frontend se construyó sobre MUI con Emotion, y hoy sigue ahí: la migración está diseñada como
-fase 6 y **no se ha ejecutado**. La decisión original fue correcta y conviene decirlo sin
+El frontend se construyó sobre MUI con Emotion, y ahí sigue: se llegó a diseñar una migración a
+Tailwind con shadcn/ui, y **se descartó**. La decisión original fue correcta y conviene decirlo sin
 ambigüedad, porque un solo desarrollador con calendario fijo necesitaba controles de formulario,
 diálogos, navegación y, sobre todo, anillos de foco accesibles y atributos ARIA correctos sin
 escribirlos. Esa decisión permitió tener las pantallas de autenticación, el mapa y la ficha de

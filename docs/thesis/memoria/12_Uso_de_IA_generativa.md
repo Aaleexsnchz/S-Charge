@@ -10,7 +10,7 @@ dónde están sus límites.
 
 La Universidad Carlos III de Madrid admite el uso de IA generativa en los trabajos de fin de
 máster siempre que se declare, y exige cumplimentar el formulario de declaración correspondiente
-e incluirlo como anexo [56]. Su guía distingue entre usos aceptables —procesamiento de
+e incluirlo como anexo [60]. Su guía distingue entre usos aceptables —procesamiento de
 datos con las debidas cautelas, refinamiento de texto previamente propio, apoyo al pensamiento
 crítico— y usos que comprometen las competencias que el título debe acreditar, entre los que
 sitúa expresamente la generación de texto y la estructuración de contenidos. También advierte
@@ -22,7 +22,7 @@ fabricado ningún dato** y **no se ha inventado ninguna referencia**. Todas las 
 memoria proceden del sistema construido, de mediciones hechas sobre él o de fuentes públicas
 verificadas; toda referencia bibliográfica se comprobó contra su documento original antes de
 citarse. Cuando una fuente no pudo verificarse, la memoria lo declara en lugar de rellenarlo,
-como ocurre con los términos de uso de la fuente de datos que se analizan en el capítulo 12.
+como ocurre con los términos de uso de la fuente de datos que se analizan en el capítulo 10.
 
 El uso que sí requiere declaración expresa —y que el formulario del anexo recoge— es el de
 apoyo a la redacción, realizado sobre documentación técnica previa de elaboración propia y
@@ -37,7 +37,7 @@ decisión final son del autor.
 
 Lo que hace este uso defendible no es la herramienta sino **el andamiaje que se construyó
 alrededor**, que es en sí mismo una decisión de ingeniería. Todo cambio atraviesa la misma
-cadena de comprobaciones descrita en el capítulo 10 —linter, formateador, comprobación de tipos,
+cadena de comprobaciones descrita en el capítulo 8 —linter, formateador, comprobación de tipos,
 pruebas de backend contra base de datos real, pruebas y construcción de frontend— antes de poder
 llegar a la rama principal, y esa cadena no distingue quién escribió el código. Las decisiones
 arquitectónicas quedan registradas en documentos de decisión con sus alternativas rechazadas

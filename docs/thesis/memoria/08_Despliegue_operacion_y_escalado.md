@@ -21,7 +21,7 @@ ese origen al nivel del dominio de primer nivel: la exigencia de HTTPS queda cab
 cliente en vez de depender de una cabecera del servidor. La contrapartida merece decirse: el
 origen **nunca** puede servirse por HTTP, ni siquiera para depurar, y un fallo de certificado no
 degrada el sitio, lo deja inaccesible. HTTPS era obligatorio de todas formas: las interfaces del
-*service worker* exigen contexto seguro, igual que la geolocalización [37].
+*service worker* exigen contexto seguro, igual que la geolocalización [34].
 
 El contenedor `scheduler` está construido y desplegado, pero **no arranca**: vive tras un perfil
 de Compose que un `up -d` omite. El perfil es un seguro, no una comodidad —un tick desatendido
@@ -228,7 +228,7 @@ Y tres trampas propias de este sistema, que valen más que cualquier consejo gen
 | Correo transaccional y teselas del mapa | 0 € | Capa gratuita en ambos casos |
 
 **Tabla 10.2.** Coste recurrente de la infraestructura. El presupuesto del proyecto y el modelo
-económico se tratan en el capítulo 13.
+económico se tratan en el capítulo 11.
 
 ## Carencias declaradas
 
@@ -250,7 +250,7 @@ pero comprobar el tamaño no es restaurar, y una copia que nadie ha restaurado e
 agrupación semanal y sin fusión automática —porque etiquetar despliega— está diseñado y aún no
 configurado; y estar al día no es saber si alguna dependencia es vulnerable hoy, siendo la cadena
 de suministro de software una de las categorías de riesgo de la edición vigente del OWASP Top 10
-[44].
+[42].
 
 Ninguna de estas ausencias es un descuido: son decisiones proporcionadas a un servidor, una
 persona y un puñado de usuarios. Lo que las convierte en decisiones y no en olvidos es que están

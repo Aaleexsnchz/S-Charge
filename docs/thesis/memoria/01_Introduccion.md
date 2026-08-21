@@ -2,162 +2,171 @@
 
 ## La recarga pública en España
 
-Recargar un vehículo eléctrico fuera de casa obliga a resolver dos cosas a la vez: encontrar un
-punto que funcione y averiguar con qué aplicación se activa. La primera pregunta tiene desde
-hace poco una respuesta pública y razonablemente buena. La segunda no la tiene ninguna.
+Un conductor de vehículo eléctrico en España encuentra hoy dónde cargar con relativa facilidad y
+puede activar la sesión de carga en casi cualquier red con una sola cuenta. Además, la
+infraestructura ha dejado de ser escasa en términos absolutos. Según el barómetro de
+electromovilidad de ANFAC, a 30 de junio de 2026 había en España 56.682 puntos de recarga de
+acceso público operativos, 3.610 más que al cerrar 2025 [1]. El crecimiento es sostenido, pero la
+comparación europea sigue siendo desfavorable: el indicador global de electromovilidad que publica
+la asociación sitúa a España en 26,9 sobre 100 frente a 40,1 de la UE, por detrás de países como
+Portugal y Francia.
 
-La infraestructura ha dejado de ser escasa en términos absolutos. Según el barómetro de
-electromovilidad de ANFAC, a 30 de junio de 2026 había en España 56.682 puntos de recarga
-de acceso público operativos, 3.610 más que al cerrar 2025 [1]. El crecimiento es
-sostenido, pero la comparación europea sigue siendo desfavorable: el indicador global de
-electromovilidad que publica la asociación sitúa a España en 26,9 sobre 100 frente a 40,1 de la
-UE-27, y la brecha es mayor en el componente de infraestructura (15,4 frente a 31,1) que en el
-de penetración del vehículo electrificado. Solo el 32 % de la red pública supera los 22 kW.
+> **[FIGURA 1.1]** — *Índice global de electromovilidad* [1].
 
-Hay además un dato incómodo. El mismo barómetro estima que 17.821 puntos instalados están
-fuera de servicio, un 23,9 % de todo lo desplegado; de estar operativos, la cifra pública
-rondaría los 74.503. ANFAC advierte en el propio documento que ese estado procede de los
-reportes de los usuarios de Electromaps, porque no dispone de una plataforma oficial de
-información de puntos a escala nacional: es una estimación sectorial, no una medición oficial.
-Aun con esa cautela, apunta a lo que los conductores declaran cuando se les pregunta, que es
-encontrar la estación plenamente operativa al llegar, no esperar, y disponer de información de
-precio clara y transparente [2].
+En el componente de infraestructura, la brecha también es amplia, 15,4 en España frente a 31,1 en
+la UE. Además, solo el 32 % de la red pública supera los 22 kW.
 
-> **[FIGURA 1.1]** — *Infraestructura pública española: operativa, fuera de servicio y posición
-> frente a la UE.* Dos paneles: (a) barras apiladas con los 56.682 puntos operativos y los
-> 17.821 fuera de servicio a 30-06-2026; (b) barras comparadas del indicador global de
-> electromovilidad y de sus componentes (penetración, infraestructura, infraestructura ≥50 kW)
-> para España y la UE-27. Justifica de un vistazo por qué el problema de este trabajo no es la
-> falta de puntos sino el acceso a ellos.
-> **Cómo obtenerla:** gráfico a construir con los datos del barómetro de ANFAC del segundo
-> trimestre de 2026; indicar en el pie que el estado «fuera de servicio» es estimación de ANFAC
-> a partir de Electromaps.
+> **[FIGURA 1.2]** — *Indicador de infraestructura de recarga* [1].
+
+El mismo barómetro estima que 17.821 puntos instalados están fuera de servicio, un 23,9 % de todo
+lo desplegado; de estar operativos, la cifra pública rondaría los 74.503. ANFAC advierte en el
+propio documento que ese estado procede de los reportes de los usuarios de Electromaps, porque no
+dispone de una plataforma oficial de información de puntos a escala nacional: es una estimación
+sectorial, no una medición oficial.
 
 ## El problema
 
-La red está repartida entre decenas de operadores de punto de recarga —CPO, *Charge Point
-Operator*—, y cada uno llega al conductor a través de su propia aplicación, con su propio
-registro de usuario, su propio método de pago y su propia tarifa. El resultado, para quien solo
-quiere enchufar el coche, es una cartera de aplicaciones que hay que instalar por adelantado
-sin saber cuál hará falta. La fragmentación no es un fallo de ningún operador en concreto: es
-la forma que tiene el mercado.
+Preguntados por lo que valoran de una recarga pública, los conductores europeos de vehículo
+eléctrico de batería citan encontrar la estación plenamente operativa al llegar (88 % la considera
+importante o muy importante), no esperar para acceder al punto (88 %) y disponer de información de
+precio clara y transparente (84 %) [2]. Ninguna de las tres depende ya de cuántos postes haya
+instalados, sino de la aplicación con la que se usa. Actualmente, el mercado de aplicaciones de
+recarga no está vacío: está fragmentado.
 
-Sobre ese panorama, el Estado publicó una respuesta parcial. REVE, dirigido por el Ministerio
-para la Transición Ecológica y el Reto Demográfico y operado por Red Eléctrica de España como
-agente neutral y no comercial, reúne la información de la infraestructura pública y la sirve en
-un mapa y en una aplicación móvil; incorpora, además, un planificador de rutas que calcula
-paradas, tiempos y coste energético a partir de la capacidad de la batería y de la potencia de
-carga [3]. Resuelve, y bien, el descubrimiento: dónde hay puntos y cómo llegar.
+- **Descubrir puntos y activar la sesión.** Los agregadores publican mapas de cientos de miles de
+  puntos y activan la recarga en redes ajenas con una sola cuenta: Electromaps ordena su propuesta
+  en encontrar puntos, activar sesiones y planificar viajes, y declara más de 522.864 puntos [3].
+  Las aplicaciones de los operadores hacen lo propio sobre su red y la de sus socios de
+  itinerancia: IONITY informa de disponibilidad en tiempo real e inicia la sesión, con suscripción
+  o pago por uso [4], y Zunder declara acceso a su red y a las de sus socios sin registros
+  adicionales [5]. Además, lo habitual es encontrar la tarifa de un punto antes de enchufar un
+  vehículo.
+- **Planificar un viaje largo.** El mapa oficial del Estado, REVE, calcula el trayecto según la
+  capacidad de la batería, el consumo y la potencia de carga del vehículo, y devuelve tiempo
+  estimado, coste energético y paradas necesarias [6]; Electromaps también planifica viajes [3].
+  El cálculo de cuánta energía, tiempo y dinero para un coche concreto existe también en productos.
+- **Elegir la hora más barata para cargar en casa.** LuzPorHora calcula la ventana continua más
+  económica contra el precio horario regulado [7]; Gridio, además de calcularla, programa y ejecuta
+  la recarga contra precios de mercado y excedente solar, sin hardware adicional [8].
+- **Ofrecer el punto propio y cobrar por su uso.** Place to Plug conecta a conductores con
+  anfitriones —particulares, empresas o instituciones— que ofrecen su enchufe, con descubrimiento y
+  reserva previa [9]. A cambio, los anfitriones pueden gestionar sus puntos de carga de forma
+  sencilla y obtener ingresos adicionales cuando otros usuarios los usan.
 
-Lo que REVE describe termina ahí. No es una plataforma de gestión: no reserva una plaza, no
-simula lo que costará y durará una recarga concreta para un modelo de coche concreto, no
-propone cuándo conviene cargar en función del precio de la electricidad y no da cabida al punto
-de un particular, que por definición no está en el registro de operadores. Ese es el hueco.
-Entre la consulta pública de infraestructura y la aplicación cerrada de cada operador no hay
-una capa que gestione la recarga completa del conductor, y esa capa es lo que este trabajo
-construye.
+Comparar precios entre puntos ya lo hacen varios agregadores; lo que no está resuelto es comparar
+el coste de la recarga concreta para un coche determinado entre los puntos que uno tiene cerca, y
+decidir con esa vista delante.
+
+Ninguna de esas capacidades es, por separado, un problema abierto, y varias aplicaciones reúnen
+unas cuantas. Lo que no se ha encontrado es una que las tenga todas. El conductor que las quiere
+termina con tres o cuatro instaladas, cada una con su alta de usuario, su mapa y su catálogo de
+puntos, teniendo que combinarlas para contar con todas las funcionalidades. La unión que ninguna
+hace es además la más útil: la recarga pública y la doméstica viven en herramientas distintas, de
+modo que quien optimiza el precio horario no conoce el catálogo de puntos y quien conoce el
+catálogo no razona sobre el precio de la electricidad ni permite gestionar el punto propio.
+
+Del lado público, REVE es la pieza más completa. Está dirigida por el Ministerio para la Transición
+Ecológica y el Reto Demográfico y operado por Red Eléctrica de España como agente neutral y no
+comercial [6], su función es informativa y su operador tiene prohibido por estatuto competir en el
+mercado. No reserva, no propone cuándo cargar y no da cabida al punto de un particular, que por
+definición no está en el registro de operadores: es un espacio que el actor público no puede
+ocupar.
+
+El problema del que parte esta memoria es, por tanto, de completitud y no de invención: no se ha
+encontrado ninguna aplicación lo bastante completa como para que un conductor la elija y desinstale
+las demás. El capítulo 2 sitúa el panorama actual y, producto a producto, se compara quién cubre
+qué.
+
+## Qué hace este trabajo
+
+Este trabajo propone esa aplicación —S-Charge— y la lleva construida tan lejos como alcanza un
+trabajo de fin de máster desarrollado por un solo alumno con tiempo y recursos limitados. No todo
+llega a producto: una parte está diseñada y desarrollada, otra queda diseñada y sin implementar, y
+algunas piezas se quedan en idea y se recogen al final, entre las mejoras futuras. La frontera
+entre unas y otras está marcada en todo momento: el capítulo 7 la traza funcionalidad por
+funcionalidad y el 13 evalúa lo conseguido.
+
+Que el catálogo quede incompleto no convierte el resultado en una maqueta, porque la prioridad ha
+sido levantar una base funcional estable y desplegada antes que acumular funcionalidades. Algunas
+quedan a medio camino, y se señala dónde; la decisión responde a que sobre una base sólida se puede
+seguir construyendo, mientras que un catálogo amplio sin cimientos no se sostiene. Lo implementado
+trabaja sobre datos reales —el catálogo nacional de puntos de recarga del registro oficial y la
+ingesta diaria del precio regulado horario de la electricidad—, y la simulación de una parada se
+calcula con las especificaciones del vehículo y del conector, no con valores de ejemplo.
+
+La misma exigencia se aplica a cómo se entrega el sistema. La aplicación está desplegada y
+accesible públicamente bajo HTTPS, es instalable en el móvil como aplicación web progresiva y se
+publica mediante una cadena de integración y despliegue continuos, con la autenticación, los
+límites de tasa y el endurecimiento del servidor que describe el capítulo 6. Ahí está la ambición
+de fondo: dejar el modelo de datos, la arquitectura y el despliegue ya resueltos y en
+funcionamiento, de manera que completar el producto sea seguir desarrollando y no empezar de nuevo.
+Este capítulo y el siguiente dibujan hacia dónde va S-Charge y dónde se sitúa en el panorama
+actual, mientras que el resto de la memoria se centra en qué se ha desarrollado y cómo.
 
 ## Motivación
 
-El problema tiene tres propiedades que lo hacen buen material para un trabajo de fin de máster.
-Es real, en el sentido de que lo padece cualquiera que conduzca un eléctrico en España hoy. Se
-apoya en datos públicos reales: el catálogo nacional de puntos y la curva horaria del PVPC
-—Precio Voluntario para el Pequeño Consumidor— que publica Red Eléctrica en una API abierta y
-sin autenticación [4]. Y viene con restricciones que no se pueden negociar, que es
-justamente lo que convierte un ejercicio de programación en un problema de ingeniería: la API
-de REVE admite 5 peticiones/hora, un techo que descarta consultarla en tiempo real y obliga
-a construir el sistema alrededor de una copia local sembrada poco a poco. Esa restricción
-condiciona el modelo de datos, la planificación de la siembra y el diseño del proceso de
-actualización, y se argumenta en el capítulo 5.
+Lo que mueve este trabajo es cubrir una necesidad concreta de quien conduce un eléctrico en España,
+ya que hoy reparte entre varias aplicaciones lo que debería poder resolver en una. Es una necesidad
+real, no una carencia teórica, y está al alcance de una aplicación bien planteada.
 
-A eso se suma el atractivo de recorrer el ciclo entero. Concebir el producto, decidir su
-arquitectura, escribir el backend y el cliente, desplegarlo en un servidor propio con HTTPS y
-dejarlo accesible a cualquiera es un trabajo que rara vez cabe completo en un trabajo
-académico, y es exactamente la parte que se defiende aquí.
+A eso se suma el atractivo de construir algo desde cero y hacerlo bien: tener una idea, plantearla
+y llevarla de principio a fin. Concebir el producto, decidir su arquitectura, escribir el backend y
+el cliente, desplegarlo en un servidor propio bajo HTTPS y dejarlo accesible a cualquiera. El reto
+no está en que funcione una demostración, sino en que cada pieza esté resuelta con criterio y el
+conjunto se sostenga.
+
+El terreno, eso sí, impone sus condiciones. La materia prima es pública —el catálogo nacional de
+puntos de recarga de REVE [6] y la curva horaria del PVPC (Precio Voluntario para el Pequeño
+Consumidor) que publica Red Eléctrica [10]—, pero no toda llega en las mismas condiciones. La del
+PVPC es abierta, no pide autenticación y puede consultarse sin restricciones; la del registro
+nacional de puntos de recarga (REVE) exige clave de API y admite cinco peticiones por hora, un
+techo que descarta consultarla en vivo y obliga a dar un rodeo: construir el sistema alrededor de
+una copia local que se siembra poco a poco y se refresca por partes. Esto ha supuesto un reto:
+diseñar contra lo que hay y no contra lo que convendría tener obliga a replantear el modelo de
+datos y el proceso de actualización desde el primer día, además de encontrar una solución que
+funcione dentro de ese margen. El capítulo 5 la desarrolla.
 
 ## Objetivos
 
-**Objetivo general.** Concebir, diseñar, desarrollar de extremo a extremo, desplegar y
-argumentar la viabilidad de *S-Charge*, una PWA (*Progressive Web App*) que unifique en una
-sola aplicación la gestión de la recarga de vehículo eléctrico en España, cubriendo lo que la
-consulta pública de infraestructura no cubre.
+**Objetivo general.** Diseñar, construir de extremo a extremo, desplegar y argumentar S-Charge, una
+PWA (*Progressive Web App*) que unifique en una sola aplicación la gestión de la recarga de vehículo
+eléctrico en España.
+
+A continuación, se enumeran los objetivos específicos del trabajo:
 
 | Id | Objetivo específico | Criterio de verificación |
 | --- | --- | --- |
 | **OE1** | Construir la aplicación de extremo a extremo: cliente instalable en el móvil, API propia, base de datos y sistema de identidad, con la cadena de comprobaciones automatizada. | La aplicación se instala y se usa en un móvil real; la API sirve las funcionalidades descritas en el capítulo 7; las comprobaciones de estilo, tipos y pruebas pasan en cada cambio. |
-| **OE2** | Espejar en base de datos propia el catálogo nacional de puntos de recarga publicado por REVE, respetando su límite de 5 peticiones/hora, con un esquema alineado con el estándar sectorial OCPI (véase el capítulo 2). | Volumen de operadores, puntos, EVSE (*Electric Vehicle Supply Equipment*), conectores y tarifas almacenados y consultables desde la API, y siembra completada de forma desatendida. |
-| **OE3** | Simular una recarga antes de enchufar, para el modelo de vehículo del usuario y el conector concreto de un punto, devolviendo energía, duración y coste. | Existe un servicio de simulación accesible desde la ficha del punto, con un algoritmo formulado y contrastable (capítulo 7). |
-| **OE4** | Optimizar el momento de la recarga contra precios reales, ingiriendo a diario la curva horaria del PVPC y proponiendo la franja más barata para una necesidad energética y una hora de salida dadas. | La ingesta diaria de precios funciona y acumula histórico; el algoritmo queda formulado y evaluado en el capítulo 8. |
-| **OE5** | Desplegar el sistema en producción y dejarlo accesible públicamente en un dominio propio bajo HTTPS, con entrega automatizada desde el repositorio. | La aplicación responde en `https://s-charge.app`, se instala desde producción y un cambio llega al servidor sin intervención manual (capítulo 10). |
-| **OE6** | Argumentar la viabilidad del producto: coste de operación, modelo de ingresos, camino de escalado y límites conocidos del sistema. | Los capítulos 10 y 13 presentan costes reales, economía unitaria y los puntos de ruptura de un único servidor, y el capítulo 11 recoge lo medido frente a lo declarado. |
+| **OE2** | Localizar una fuente de datos válida para el catálogo nacional de puntos de recarga y resolver cómo explotarla dentro de sus condiciones de acceso. | Volumen de operadores, puntos, EVSE (*Electric Vehicle Supply Equipment*), conectores y tarifas almacenados y consultables desde la API, y siembra completada de forma desatendida. |
+| **OE3** | Reunir en un único flujo capacidades que hoy están repartidas entre productos distintos. | Funcionalidades desarrolladas e integradas en la aplicación. |
+| **OE4** | Desplegar el sistema en un entorno real y dejarlo accesible a cualquiera en un dominio propio bajo HTTPS, con entrega automatizada desde el repositorio. | La aplicación responde en `https://s-charge.app`, se instala desde el entorno desplegado y un cambio llega al servidor sin intervención manual (capítulo 8). |
+| **OE5** | Valorar cómo encajaría el producto en el mercado y estudiar su viabilidad: hueco que ocupa frente a la oferta existente, coste de operación, modelo de ingresos, camino de escalado y límites conocidos del sistema. | Los capítulos 8 y 11 presentan costes reales, economía unitaria y los puntos de ruptura de un único servidor, y el capítulo 9 recoge lo logrado frente a lo declarado. |
 
-**Tabla 1.1.** Objetivos específicos y criterio con el que se evalúa cada uno. El capítulo 15
-los revisa uno por uno.
+**Tabla 1.1.** Objetivos específicos y criterio con el que se evalúa cada uno.
 
 ## Alcance y límites
 
-Cuatro límites se fijan aquí porque afectan a la lectura de todo lo demás.
+Cuatro límites afectan a la lectura de todo lo demás, y son distintos de la frontera entre lo
+construido y lo diseñado: estos quedan fuera incluso del diseño.
 
-**La disponibilidad en tiempo real no se modela.** El sistema no recibe un flujo constante de
-estado de los puntos, de modo que la ocupación que muestra el mapa es ilustrativa. La
-infraestructura de datos para admitir una fuente real existe, pero no hay tal fuente conectada,
-y el trabajo lo declara en lugar de fabricar una ocupación verosímil.
+- **La disponibilidad en tiempo real no se modela.** El sistema no recibe estado de los puntos
+  desde sus operadores, de modo que la ocupación que muestra el mapa no procede de la
+  infraestructura, sino de las reservas y las sesiones que los usuarios inician en la propia
+  aplicación. Es una simulación coherente entre usuarios, no un reflejo del estado real, y así se
+  declara; el apartado 3.2 explica la decisión de diseño y el capítulo 5, el modelo que la
+  sostiene.
+- **El monedero es simulado.** El movimiento económico entre conductor y propietario de un punto se
+  registra en un libro de apuntes interno; no hay pasarela de pago ni dinero real en ninguna parte
+  del sistema.
+- **No hay acuerdo con operadores ni integración con el hardware.** Este trabajo no tiene acuerdo
+  con ningún operador de puntos de recarga ni actúa como prestador de servicios de movilidad, de
+  modo que no hay interlocutor a quien pedir una reserva o el arranque de una sesión. El capítulo
+  10 sitúa esta aplicación frente a las capas que quedan por debajo, OCPP entre ellas, y examina
+  qué haría falta para cruzar esa frontera.
+- **El despliegue es un único servidor.** El escalado horizontal se argumenta —dónde se rompe
+  primero y qué lo sustituye en cada escalón— pero no se construye: la configuración concreta y ese
+  argumento están en el capítulo 8.
 
-**El monedero es simulado.** El movimiento económico entre conductor y propietario de un punto
-se registra en un libro de apuntes interno; no hay pasarela de pago ni dinero real en ninguna
-parte del sistema.
-
-**No hay integración con el hardware de recarga.** El protocolo que comunica una estación con
-el sistema de gestión de su operador, OCPP (*Open Charge Point Protocol*), queda fuera: vive
-por debajo del operador, y esta aplicación se sitúa en el nivel de agregación, no en el de
-control del equipo. La consecuencia práctica es que el sistema no arranca ni detiene una sesión
-física.
-
-**El despliegue es un único servidor.** Una máquina virtual con Docker Compose detrás de un
-proxy inverso. El escalado horizontal se argumenta —dónde se rompe primero y qué lo sustituye
-en cada escalón— pero no se construye (capítulo 10).
-
-Queda un límite más, este sobre lo que se puede afirmar. La combinación que propone este
-trabajo no es un territorio virgen: existe al menos una plataforma española, Place to Plug, que
-ya conecta a conductores con anfitriones particulares que ofrecen su enchufe y permite
-reservarlo [5]. La contribución defendible no es haber inventado la recarga entre
-particulares, sino la **combinación** concreta —catálogo nacional espejado del registro
-oficial, más puntos de particulares, más simulación por modelo de vehículo, más optimización
-contra la curva de precios real, en una sola aplicación instalable— y el hecho de haberla
-concebido, construido, desplegado y argumentado de principio a fin. El capítulo 2 sitúa a los
-competidores con el detalle que merecen.
-
-> **[FIGURA 1.2]** — *El hueco que ocupa S-Charge.* Diagrama de tres columnas: a la izquierda,
-> las aplicaciones de operador (registro propio, tarifa propia, cobertura de su red); en el
-> centro, la consulta pública de REVE (descubrimiento y planificación de ruta sobre toda la
-> red); a la derecha, S-Charge, marcando qué toma de cada lado y qué añade (simulación,
-> optimización de precio, puntos de particulares, reserva). Debe verse que las tres columnas no
-> compiten en lo mismo.
-> **Cómo obtenerla:** diagrama a dibujar en draw.io o Mermaid. No atribuir a un operador
-> concreto ninguna función que no esté verificada en el capítulo 2.
-
-## Estructura de la memoria
-
-- **Capítulo 2 — Estado del arte.** REVE, las aplicaciones de operador, los agregadores y las
-  plataformas entre particulares; los estándares del sector y dónde queda el hueco.
-- **Capítulo 3 — Análisis y requisitos.** Roles, casos de uso, requisitos y metodología de
-  trabajo por fases.
-- **Capítulo 4 — Arquitectura del sistema.** Estructura de la solución, pila tecnológica y
-  decisiones de diseño con sus alternativas descartadas.
-- **Capítulo 5 — Modelo de datos y fuentes.** El estándar OCPI, el espejo del catálogo de REVE
-  bajo el límite de peticiones, los precios y el catálogo de vehículos.
-- **Capítulo 6 — Autenticación y seguridad.** Identidad, credenciales, sesión, límites de tasa,
-  auditoría y el modelo de amenazas de robo de sesión.
-- **Capítulo 7 — Funcionalidades de la aplicación.** Mapa, ficha de punto, simulación de
-  recarga y las funcionalidades de plataforma.
-- **Capítulo 8 — Optimización de la carga.** Formulación, pseudocódigo y evaluación del
-  optimizador sobre la curva de precios.
-- **Capítulo 9 — Asistente de IA.** La capa conversacional prevista sobre las APIs propias.
-- **Capítulo 10 — Despliegue, operación y escalado.** La producción real, la cadena de entrega,
-  el escalado argumentado y los costes.
-- **Capítulo 11 — Validación y resultados.** Qué se ha probado y qué se ha medido.
-- **Capítulo 12 — Marco regulador.** AFIR, la normativa española de información de recarga, el
-  PVPC, la protección de datos y los derechos sobre los datos espejados.
-- **Capítulo 13 — Entorno socioeconómico.** Negocio, viabilidad, presupuesto y planificación.
-- **Capítulo 14 — Uso de IA generativa.** Cómo se ha empleado y con qué controles.
-- **Capítulo 15 — Conclusiones.** Evaluación de los objetivos, aprendizajes y trabajo futuro.
+Y un límite más, este sobre lo que se puede afirmar: cada capacidad que reúne esta propuesta tiene
+ya al menos un producto que la sirve en el mercado español, de modo que la contribución está en la
+combinación y en haber planteado la idea y llevarla a cabo a través de un sistema desplegado.

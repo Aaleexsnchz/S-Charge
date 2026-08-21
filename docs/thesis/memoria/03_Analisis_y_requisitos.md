@@ -127,22 +127,21 @@ indica la fase que lo construiría.
 | --- | --- | --- | --- |
 | **RNF-01** | Diseño *mobile-first* con 360 px como anchura de referencia | Cada pantalla se recorre completa a 360 px sin desbordamiento horizontal, comprobado en emulador y en un iPhone y un Android reales | Cumplido en lo construido |
 | **RNF-02** | Interfaz en español; código, comentarios, *commits* y documentación técnica en inglés | Ninguna cadena visible en inglés en las vistas; los códigos de error del backend se traducen en el cliente | Cumplido |
-| **RNF-03** | Rendimiento en móvil medido, no declarado | Auditoría Lighthouse sobre la construcción de producción con perfil móvil. Medición de 13-06-2026: 94 en `/login` y 31 en `/map`, con FCP 3,0 s y LCP 4,5 s en el mapa tras reducir su carga útil un 35 % | Medido; pendiente de mejora en la fase 6 |
-| **RNF-04** | Instalable como PWA en el móvil desde la instancia de producción | Manifiesto y *service worker* servidos; instalación efectiva probada en iPhone y Android [36] | Cumplido |
+| **RNF-03** | Rendimiento en móvil medido, no declarado | Auditoría Lighthouse sobre la construcción de producción con perfil móvil. Medición de 13-06-2026: 94 en `/login` y 31 en `/map`, con FCP 3,0 s y LCP 4,5 s en el mapa tras reducir su carga útil un 35 % | Medido; pendiente de mejora |
+| **RNF-04** | Instalable como PWA en el móvil desde la instancia de producción | Manifiesto y *service worker* servidos; instalación efectiva probada en iPhone y Android [33] | Cumplido |
 | **RNF-05** | La sesión viaja en una cookie `HttpOnly` de primera parte, con vida de 14 días, sin credenciales accesibles desde JavaScript | Inspección de la cookie emitida y ausencia de credenciales en el almacenamiento del navegador (capítulo 6) | Cumplido |
-| **RNF-06** | Cifrado en tránsito obligatorio | HTTPS con certificado automático y HSTS activo; sin contexto seguro no funcionarían ni el *service worker* ni la geolocalización [37] | Cumplido |
+| **RNF-06** | Cifrado en tránsito obligatorio | HTTPS con certificado automático y HSTS activo; sin contexto seguro no funcionarían ni el *service worker* ni la geolocalización [34] | Cumplido |
 | **RNF-07** | Límites de tasa por IP de cliente y por ruta en las operaciones sensibles | 10 por minuto en acceso, 10 por hora en registro y 5 por hora en los envíos de correo, respondiendo `429` con `Retry-After` | Cumplido |
-| **RNF-08** | Minimización de datos personales | El sistema almacena correo electrónico y, en su caso, el identificador de la cuenta de Google; la dirección IP se trata con finalidad de seguridad. El desarrollo del marco y lo que falta para una operación con usuarios reales está en el capítulo 12 [38] | Parcial |
+| **RNF-08** | Minimización de datos personales | El sistema almacena correo electrónico y, en su caso, el identificador de la cuenta de Google; la dirección IP se trata con finalidad de seguridad. El desarrollo del marco y lo que falta para una operación con usuarios reales está en el capítulo 10 [35] | Parcial |
 | **RNF-09** | Copia de seguridad de la base de datos y capacidad de restauración demostrada | Copia semanal fuera de la máquina —restringida al volcado sin datos personales, que es la parte irrecuperable— y volcado completo automático antes de cada migración; restauración ensayada a mano con recuento de filas idéntico. La verificación automática de la restauración es criterio de la fase 13 | Parcial |
 | **RNF-10** | Mantenibilidad sostenida por comprobaciones automatizadas, no por disciplina | Estilo, formato, tipos y pruebas se ejecutan antes de cada envío al repositorio y en cada *pull request*; la batería completa tarda 8 s de reloj. 134 pruebas de backend y 27 de frontend. El contrato de la API está versionado y la integración continua falla si el cliente y el servidor divergen | Cumplido |
-| **RNF-11** | Accesibilidad de la interfaz construida | Puntuación de accesibilidad de Lighthouse de 100 en `/map` y 98 en `/login` en la medición de junio de 2026, sobre los criterios de contraste y etiquetado de WCAG 2.2 [39] | Cumplido en lo construido |
+| **RNF-11** | Accesibilidad de la interfaz construida | Puntuación de accesibilidad de Lighthouse de 100 en `/map` y 98 en `/login` en la medición de junio de 2026, sobre los criterios de contraste y etiquetado de WCAG 2.2 [36] | Cumplido en lo construido |
 | **RNF-12** | Trazabilidad de los eventos de identidad | Cada registro, acceso, verificación y restablecimiento emite una línea JSON de auditoría a la salida estándar del proceso | Cumplido |
 
 **Tabla 3.4.** Requisitos no funcionales y criterio con el que se comprueba cada uno.
 
-> **PENDIENTE:** repetir la auditoría Lighthouse de `/map` y `/login` al cerrar la fase 6 y
-> sustituir aquí el estado de RNF-03 por la comparación antes/después con la construcción sin
-> CSS-en-JavaScript.
+> **PENDIENTE:** repetir la auditoría Lighthouse de `/map` y `/login` tras optimizar la carga
+> útil del mapa y sustituir aquí el estado de RNF-03 por la comparación antes/después.
 
 ## Restricciones
 
@@ -166,12 +165,12 @@ observarse, medirse ni contrastarse. Eso obliga a que la simulación sea un mode
 especificaciones —potencia mínima entre vehículo y conector, con reducción por encima del 80 %
 de carga en corriente continua— y no un ajuste sobre sesiones reales; y explica que el monedero
 sea un libro de apuntes interno y no un cobro. La consecuencia para la validación se recoge en
-el capítulo 11.
+el capítulo 9.
 
 **El presupuesto de infraestructura es mínimo.** Un único servidor virtual pequeño y un
 dominio. Eso elimina de partida las arquitecturas con varios nodos, base de datos gestionada u
 orquestador, y convierte el escalado en un capítulo argumentado en vez de construido
-(capítulo 10).
+(capítulo 8).
 
 **Un solo desarrollador y una fecha de entrega fija.** No hay reparto posible del trabajo ni
 paralelismo entre personas, así que el alcance es la única variable que se puede mover. De ahí
@@ -222,7 +221,7 @@ antes de necesitarlo es gestión; decidirlo cuando falta una semana es otra cosa
 La rama principal está protegida: todo entra por *pull request* con las comprobaciones en
 verde, sin envíos directos ni reescrituras de historia, y es lo que ejecuta producción, de modo
 que debe quedar desplegable en cada *commit*. La cadena de comprobaciones que hace cumplir esa
-regla —ganchos locales e integración continua— se describe en el capítulo 10.
+regla —ganchos locales e integración continua— se describe en el capítulo 8.
 
 | # | Fase | Carácter | Estado a 5 de agosto de 2026 |
 | --- | --- | --- | --- |
