@@ -46,6 +46,12 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE'
+          # The brace group is load-bearing. `bash -s` reads this script from
+          # the same stdin the commands inside it inherit, so `docker compose`
+          # swallowed everything after the line it ran on and bash exited 0
+          # having silently skipped the build. Grouping forces bash to parse to
+          # the closing brace before running anything.
+          {
           set -euo pipefail
           cd /opt/s-charge
           compose="docker compose -f docker-compose.prod.yml"
@@ -72,4 +78,5 @@ jobs:
           $compose up -d --build
           $compose exec -T backend alembic upgrade head
           docker image prune -f
+          }
           REMOTE
