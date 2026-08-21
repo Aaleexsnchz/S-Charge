@@ -226,10 +226,10 @@ sencilla.
 
 | Aplicación | Mapa de puntos | Planificación ruta | Estimación coste | Optimización carga | Puntos de particulares | Reserva / inicio de sesión |
 | --- | --- | --- | --- | --- | --- | --- |
-| REVE | Sí, registro oficial | Sí | No | No | No | No |
-| Electromaps | Sí, declara >522.864 | Solo guía al punto elegido | Solo la tarifa del punto | No | Gestión de cargadores privados para organizaciones | Inicio de sesión |
-| Chargemap | Sí, declara >1.000.000 | Sí | Sí | No | No | Inicio de sesión |
-| Zunder | Sí, su red y la de sus socios de itinerancia | Solo indica estaciones de camino como parada | No | No | No, opera su propia red | Inicio de sesión en su red y socios |
+| REVE | Sí | Sí | No | No | No | No |
+| Electromaps | Sí | Solo guía al punto elegido | Solo la tarifa del punto | No | Gestión de cargadores privados para organizaciones | Inicio de sesión |
+| Chargemap | Sí | Sí | Sí | No | No | Inicio de sesión |
+| Zunder | Sí | Solo indica estaciones de camino como parada | No | No | No, opera su propia red | Inicio de sesión en su red y socios |
 | Gridio | No | No | No | Sí | No | Programa carga |
 | Place to Plug | Sí | No | Solo la tarifa del punto | No | Sí | Sí |
 
