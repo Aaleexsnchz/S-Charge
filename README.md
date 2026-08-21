@@ -1,15 +1,24 @@
-# TFM — EV Charging PWA
+# S-Charge
 
-A Progressive Web App for managing EV charging in Spain. It unifies in one app what is today fragmented across each operator's own application: the real charging network seeded from the public **REVE** API, plus what REVE does not offer — user-registered private charging points with paid use, bookings, charge simulation for your car model, and charging schedules optimised against real hourly electricity prices.
+**A Progressive Web App for managing EV charging in Spain.** Charging today is fragmented across one application per operator: a driver needs several accounts to find a point, and private chargers sitting idle in garages are invisible to everyone.
 
-Master's thesis project (IoT), solo developer. Scope and roadmap: [docs/plan.md](docs/plan.md).
+S-Charge puts both in one app. The real network is mirrored from the public **REVE** API, and on top of it sits what REVE does not offer:
+
+- **Private charging points** — register your own charger and offer it for paid use.
+- **Bookings** — reserve a slot instead of driving to an occupied point.
+- **Charge simulation** — time and cost for your car model at a given point.
+- **Price-optimised schedules** — plan a charge against real hourly electricity prices.
+
+Built mobile-first at a 360px reference width, because the user is standing next to a charging point holding a phone.
+
+Developed as a Master's thesis in IoT by a single developer. Scope and roadmap: [docs/plan.md](docs/plan.md).
 
 ## Quick start
 
 Needs [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io), and Docker with the Compose plugin (for Postgres). The task runner is optional but assumed below: `uv tool install rust-just`.
 
 ```bash
-git clone <repo> tfm && cd tfm
+git clone https://github.com/Aaleexsnchz/S-Charge.git && cd S-Charge
 cp .env.example .env    # one file for the whole project
 
 just install     # uv sync + pnpm install + git hooks
@@ -56,14 +65,14 @@ Optional integrations (the app runs without them):
 
 **Database** — PostgreSQL 18 (with `citext` for case-insensitive email).
 
-**Production** — the same Compose stack on one EU VPS behind Caddy (automatic HTTPS), deployed by GitHub Actions on merge to `main`.
+**Production** — the same Compose stack on one EU VPS behind Caddy (automatic HTTPS), deployed by GitHub Actions when a `v*` tag is pushed ([infra-0003](docs/decisions/infra-0003-deploy-on-tag.md)).
 
 Every library and the reason it was chosen: [docs/tech-stack.md](docs/tech-stack.md).
 
 ## Repo layout
 
 ```text
-tfm/
+S-Charge/
 ├── backend/             FastAPI + Postgres backend
 ├── frontend/            React + Vite PWA
 ├── docs/                all project docs — see docs/README.md for the index
@@ -96,4 +105,4 @@ The categorized index is at **[docs/README.md](docs/README.md)**. Most-reached e
 
 ## License
 
-Master's thesis project; licensing to be determined before any public release.
+Licensing to be determined before any public release.

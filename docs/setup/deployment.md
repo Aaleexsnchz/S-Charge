@@ -43,12 +43,12 @@ DNS is on Cloudflare. Set the record to **DNS only — grey cloud, not the orang
 ## 3. Clone + configure
 
 ```bash
-sudo mkdir -p /opt/tfm && sudo chown deploy:deploy /opt/tfm
-git clone https://github.com/Aaleexsnchz/EV-Charging-Management-App.git /opt/tfm
-cd /opt/tfm
+sudo mkdir -p /opt/s-charge && sudo chown deploy:deploy /opt/s-charge
+git clone https://github.com/Aaleexsnchz/S-Charge.git /opt/s-charge
+cd /opt/s-charge
 ```
 
-The CD workflow assumes `/opt/tfm`; if you choose another path, update `cd.yml`.
+The CD workflow assumes `/opt/s-charge`; if you choose another path, update `cd.yml`.
 
 Create the server-side `.env` — one file at the root, never committed. Start from [.env.example](../../.env.example) and set prod values:
 
@@ -72,10 +72,10 @@ The REVE catalogue took ~12 days to seed under the 5 req/hr cap — **never re-s
 The dump exists in two places — `backups/` on the development laptop and the B2 bucket. Push it from the laptop unless `rclone` is already configured on the host:
 
 ```bash
-scp backups/<latest seed>.dump deploy@s-charge.app:/opt/tfm/   # from the laptop
+scp backups/<latest seed>.dump deploy@s-charge.app:/opt/s-charge/   # from the laptop
 ```
 
-Then, on the host, from `/opt/tfm`:
+Then, on the host, from `/opt/s-charge`:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d db
@@ -119,7 +119,7 @@ Then **test the loop end to end** — merge a trivial PR, confirm nothing deploy
 A deploy is a git checkout plus a rebuild, so going back is the same operation aimed at an older commit:
 
 ```bash
-cd /opt/tfm
+cd /opt/s-charge
 git fetch --tags
 git checkout v0.1.0                       # or the previous good commit
 export APP_VERSION="$(git describe --tags --always)"

@@ -1,4 +1,4 @@
-# TFM project memory
+# S-Charge project memory
 
 Master's thesis (IoT): a PWA for managing EV charging. Solo developer project.
 
@@ -26,6 +26,7 @@ Read before proposing architectural or scope changes:
 
 ## Git workflow
 
+- **This project is personal, never the work account.** `gh` must run as `Aaleexsnchz` and commits carry the personal identity set in `.git/config` — the global `~/.gitconfig` is the work one.
 - **`main` is protected and is what production runs.** Every change reaches it through a pull request; no direct commits, no force-pushes. It must stay deployable at every commit.
 - **The pre-push hook is `just ci`** — both run [lefthook.yml](lefthook.yml)'s `pre-push` jobs, which mirror CI. A commit only lints and formats its staged files, so `basedpyright` and the test suites first speak at push time.
 - **Never `--no-verify`.** The hooks are the gate. No secrets or credentials in the diff — the commit-time secret scan is best-effort (it needs `betterleaks` on `PATH`), and the authoritative one is a CI job over the full history.

@@ -47,7 +47,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE'
           set -euo pipefail
-          cd /opt/tfm
+          cd /opt/s-charge
           compose="docker compose -f docker-compose.prod.yml"
 
           # Detached on purpose: the server tracks the deployed ref, never a
