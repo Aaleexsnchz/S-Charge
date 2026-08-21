@@ -28,8 +28,6 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 
 ## Frontend
 
-> **The frontend stack is mid-migration.** [Phase 6](plan.md) replaces MUI + Emotion with Tailwind + shadcn/ui, React Router with TanStack Router, and adds a form layer the app never had. The **Status** column says what is in the tree today: *shipped* is running, *Phase 6* is not installed yet, *leaving* is what it replaces. Full rationale, alternatives and the measurement plan: [thesis/migracion-del-stack.md](thesis/migracion-del-stack.md).
-
 | Tool | Status | Why |
 | --- | --- | --- |
 | **React + TypeScript** | shipped | The default for a component-heavy PWA, and the ecosystem everything below assumes. |
@@ -42,19 +40,16 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **Vitest** | shipped | Tests, sharing Vite's transform pipeline. |
 | **Biome** ([fe-0006](decisions/fe-0006-biome.md)) | shipped | Lint, format and import sorting in one pinned Rust binary, replacing ESLint + Prettier — the same consolidation Ruff and uv give the backend, so the mental model matches across both halves of the repo. Its `recommended` set is stricter than what it replaced (a11y rules, `noArrayIndexKey`). |
 | **pnpm** | shipped | Package manager; content-addressed store, strict by default. Pinned via `packageManager` so CI and the image agree. |
-| **Tailwind CSS v4** | Phase 6 | Styling. Build-time CSS instead of Emotion's runtime CSS-in-JS: no styling engine in the bundle, nothing to serialise per render. The s-charge design tokens are re-expressed as Tailwind theme tokens — same design, different implementation. |
-| **shadcn/ui** (+ Base UI primitives) | Phase 6 | Components are **copied into the repo**, not imported, so adapting the design system means editing our own files rather than overriding a vendor's from outside. Accessibility comes from the underlying headless primitives. |
-| **lucide-react** | Phase 6 | Icons, tree-shakeable per import — the same rule the MUI icon ban enforced, without the barrel hazard. |
-| **TanStack Router** | Phase 6 | Compile-time typed route params and validated search params, turning a class of runtime bug into a build error; shares conventions with TanStack Query. Keeps the auth bootstrap in a root loader. |
-| **TanStack Form + Zod** | Phase 6 | The app has no form layer; the point-registration wizard is the first real form. One Zod schema validates client-side and mirrors what Pydantic enforces server-side. |
-| **sonner** | Phase 6 | Toasts, replacing notistack. |
-| **MUI v9 + Emotion** ([fe-0001](decisions/fe-0001-mui.md), superseded by [fe-0007](decisions/fe-0007-frontend-stack-migration.md)), MUI X Charts, notistack, React Router v8 | leaving | What Phase 6 removes. MUI carried the app from zero to a working product on a fixed timeline and is being replaced for cost-per-new-screen and runtime-styling reasons, not because it failed — see the chapter. |
+| **MUI v9 + Emotion** ([fe-0001](decisions/fe-0001-mui.md)) | shipped | Component library. Buys accessible form controls, dialogs, bottom sheets and navigation — with focus rings and ARIA — without writing them, which is where a solo project on a fixed timeline should not spend its hours. Emotion is its styling engine. |
+| **React Router** | shipped | Routing and per-route data loading; the auth bootstrap is a root loader. |
+| **MUI X Charts** | shipped | Charts. Nothing renders a chart on real data yet, so this is a placeholder choice. |
+| **notistack** | shipped | Toasts. |
 
 ## Infrastructure
 
 | Tool | Why |
 | --- | --- |
-| **PostgreSQL 18** | Relational data with real constraints, plus `citext` for case-insensitive email lookup. Bumped from 17 for the asynchronous I/O subsystem, in use today, and for temporal `WITHOUT OVERLAPS` primary keys, which make booking conflicts a schema invariant when Phase 10 designs that table ([be-0003](decisions/README.md)). **`uuidv7()` was evaluated and rejected**: its gain is insert locality, and the largest table here is ~47k rows seeded once against roughly two dozen inserts a day, so the difference is unmeasurable — ids stay application-side v4. The reasoning, and the one place it would still be worth adopting, is in [thesis/migracion-del-stack.md](thesis/migracion-del-stack.md). Dev, CI and production all run 18; **a major upgrade is a dump/restore and a mount-path change, not a tag flip** — see [operations.md](operations.md). |
+| **PostgreSQL 18** | Relational data with real constraints, plus `citext` for case-insensitive email lookup. Bumped from 17 for the asynchronous I/O subsystem, in use today, and for temporal `WITHOUT OVERLAPS` primary keys, which make booking conflicts a schema invariant when Phase 10 designs that table ([be-0003](decisions/README.md)). **`uuidv7()` was evaluated and rejected**: its gain is insert locality, and the largest table here is ~47k rows seeded once against roughly two dozen inserts a day, so the difference is unmeasurable — ids stay application-side v4, and adopting it would mean either rewriting every existing id across nine tables and their foreign keys or carrying two UUID versions in one column. The one place it would still be worth taking is the sessions and bookings tables: they are the first with a real insert rate, so they can be born with the server-side default if it earns itself there. Dev, CI and production all run 18; **a major upgrade is a dump/restore and a mount-path change, not a tag flip** — see [operations.md](operations.md). |
 | **Docker Compose** | Runs Postgres in dev and the whole stack in production, so the deployed artifact is built from this repo and can be smoke-tested locally (`just prod-up`). Details: [operations.md](operations.md). |
 | **Caddy** | Reverse proxy in production: automatic Let's Encrypt certificates, HTTP→HTTPS redirect, HSTS, and same-origin serving of the SPA and `/api/*`. See [infra-0001](decisions/infra-0001-deployment.md). |
 | **nginx** (frontend prod image only) | Serves the built `dist/` with SPA fallback. Caddy does the routing; nginx just serves files. |

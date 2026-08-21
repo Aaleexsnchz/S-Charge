@@ -52,13 +52,11 @@ Optional integrations (the app runs without them):
 
 **Backend** — Python 3.13, FastAPI, SQLAlchemy 2.0 (async via asyncpg), Alembic, Pydantic v2, `fastapi-users`. Managed with `uv`; linted by Ruff, type-checked by basedpyright, tested with pytest.
 
-**Frontend** — React + Vite + TypeScript, TanStack (Query · Router · Form) + Zod, Tailwind CSS v4 + shadcn/ui, MapLibre GL JS, installable as a PWA. Managed with `pnpm`; linted and formatted by Biome, tested with Vitest.
+**Frontend** — React + Vite + TypeScript, MUI v9 + Emotion, React Router, TanStack Query, MapLibre GL JS, installable as a PWA. Managed with `pnpm`; linted and formatted by Biome, tested with Vitest.
 
 **Database** — PostgreSQL 18 (with `citext` for case-insensitive email).
 
 **Production** — the same Compose stack on one EU VPS behind Caddy (automatic HTTPS), deployed by GitHub Actions on merge to `main`.
-
-> **The frontend is mid-migration.** What is in the tree today is MUI v9 + Emotion and React Router; Tailwind + shadcn/ui, TanStack Router and TanStack Form + Zod land in Phase 6. [docs/tech-stack.md](docs/tech-stack.md) marks every row *shipped* / *Phase 6* / *leaving*, and [docs/thesis/migracion-del-stack.md](docs/thesis/migracion-del-stack.md) argues this and the other stack changes (PostgreSQL 18, Python 3.13, native dev, tooling).
 
 Every library and the reason it was chosen: [docs/tech-stack.md](docs/tech-stack.md).
 

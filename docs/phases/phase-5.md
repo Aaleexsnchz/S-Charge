@@ -37,7 +37,7 @@ What remains: **Slices 8 → 9 → 10**, then 11. The `scheduler` service is dep
 - **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are verified on the live host as part of Slice 10's gate.
 - **11 last.** Renovate wants a pipeline already proven end to end. Slice 12 is no longer part of this phase — the tariff backfill became [Phase 7](../plan.md).
 
-**Why this phase comes before the frontend migration** (Phase 6), in case it is asked again: the migration benefits from nearly every slice here — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the rewrite drifting from the API, the pre-push hook covers ~3,200 lines of churn, and a deploy on demand means each migration slice can be opened on a phone, which is the only way to check the one risk no tool verifies. Deployment gains nothing from the migration in return: nginx serves a `dist/` and does not care what is in it. Separately, the REVE tariff gap widens permanently every day the server does not exist.
+**Why this phase came before the remaining feature work:** every later phase benefits from it — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the client drifting from the API, the pre-push hook gates every change, and a deploy on demand means each slice can be opened on a real phone. Separately, the REVE tariff gap widened permanently every day the server did not exist.
 
 ## Decisions taken
 
@@ -45,7 +45,7 @@ What remains: **Slices 8 → 9 → 10**, then 11. The `scheduler` service is dep
 - **A real registered domain** (~€10/yr) over a free DuckDNS subdomain. `duckdns.org` sits on the Public Suffix List, so Google treats the subdomain as the top private domain and wants it verified before accepting it as an OAuth authorised domain. A registrable domain removes that friction and reads better at the defense.
 - **Prod images build in CI**, not only on the VPS. As built, a change that breaks either Dockerfile passes CI green and fails on the server at deploy time.
 - **Releases are tagged manually**, version derived from the tag — [infra-0002](../decisions/infra-0002-manual-release-tagging.md).
-- **A tag push deploys; merging does not** — [infra-0003](../decisions/infra-0003-deploy-on-tag.md), decided mid-phase and superseding the "deploy on merge to `main`" criterion in [plan.md](../plan.md). The manual run of the CD workflow covers looking at unreleased work on a phone, which is what the frontend migration needs.
+- **A tag push deploys; merging does not** — [infra-0003](../decisions/infra-0003-deploy-on-tag.md), decided mid-phase and superseding the "deploy on merge to `main`" criterion in [plan.md](../plan.md). The manual run of the CD workflow covers looking at unreleased work on a phone.
 
 ## Release policy
 
@@ -67,7 +67,7 @@ Key-only SSH on a non-root `deploy` user, `ufw` limited to SSH + 80/443 on v4 an
 
 ## Slice 4 — Toolchain: lefthook + CI hygiene [x]
 
-pre-commit replaced by [lefthook.yml](../../lefthook.yml): staged-file ruff and biome with auto-restage on commit, and a pre-push hook mirroring CI that `just ci` also runs, so the two lists cannot drift. The whole battery takes **8 s** of wall time against ~29 s of CPU because the jobs run in parallel — the measurement that decided a full CI gate could live in a hook, and it is in [migracion-del-stack.md](../thesis/migracion-del-stack.md). betterleaks moved to a CI job over full history, leaving the local scan best-effort.
+pre-commit replaced by [lefthook.yml](../../lefthook.yml): staged-file ruff and biome with auto-restage on commit, and a pre-push hook mirroring CI that `just ci` also runs, so the two lists cannot drift. The whole battery takes **8 s** of wall time against ~29 s of CPU because the jobs run in parallel — the measurement that decided a full CI gate could live in a hook, since the cost is the slowest job rather than the sum and no check had to be sacrificed to fit. betterleaks moved to a CI job over full history, leaving the local scan best-effort.
 
 CI hygiene closed with it: `--frozen-lockfile`, the pnpm version single-sourced from `packageManager`, `.nvmrc`, least-privilege `permissions`, dependency caching, and a `concurrency` group whose `cancel-in-progress` is conditioned on the event so a superseded run on `main` is never cancelled.
 
@@ -87,7 +87,7 @@ Python 3.13 everywhere, including `backend/.python-version`, which decides the i
 
 `openapi.json` is exported by `scripts/export_openapi.py`, committed, and gated at two levels: the schema must match the app, and the generated types must match the schema. Both were verified to fail on a real drift. The export sorts keys, so regeneration is reproducible.
 
-**`uuidv7()` was evaluated and rejected** — its gain is insert locality, and the largest table is ~47k rows seeded once against roughly two dozen inserts a day. The reasoning is in [migracion-del-stack.md](../thesis/migracion-del-stack.md) as a *camino no tomado*; the mount-path trap a major upgrade carries is in [operations.md](../operations.md).
+**`uuidv7()` was evaluated and rejected** — its gain is insert locality, and the largest table is ~47k rows seeded once against roughly two dozen inserts a day. The reasoning is in [tech-stack.md](../tech-stack.md); the mount-path trap a major upgrade carries is in [operations.md](../operations.md).
 
 ## Slice 7 — First deploy
 

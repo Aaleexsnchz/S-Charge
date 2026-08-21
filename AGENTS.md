@@ -48,10 +48,10 @@ Semantic versioning, tagged **manually**; a minor marks a phase shipping and **`
 
 - **Feature-first**: a file lives with the feature that owns it. `components/` and `lib/` hold only what is shared across features; a feature-specific component never goes there.
 - Features stay **flat** until they grow — add a `components/`/`hooks/` subfolder inside a feature only when the first file needs it. Don't pre-create empty buckets.
-- **No barrel files.** No per-feature `index.ts`, and **icons are imported per path**, never from a barrel — both defeat tree-shaking. Biome's `noRestrictedImports` enforces the icon rule (`@mui/icons-material` today, `lucide-react` after the Phase 6 migration).
+- **No barrel files.** No per-feature `index.ts`, and **icons are imported per path**, never from a barrel — both defeat tree-shaking. Biome's `noRestrictedImports` enforces the icon rule for `@mui/icons-material`.
 - Cross-folder imports use the `@/` alias (`@/* → src/*`); same-folder imports stay relative (`./`).
 - **API types are generated**, never hand-written. **`just gen-api`** exports the schema to the committed root `openapi.json` and regenerates `lib/api/schema.d.ts` from it — run it after any change to a router or a response model, and commit both files. CI fails if either is stale, so a contract change breaks the build rather than production.
-- **The frontend stack is mid-migration** (Phase 6: Tailwind + shadcn/ui, TanStack Router, TanStack Form + Zod, replacing MUI + Emotion and React Router). Check [docs/tech-stack.md](docs/tech-stack.md) for what is actually installed before writing UI code.
+- **The frontend ships on MUI + Emotion and React Router.** Replacing them with Tailwind + shadcn/ui and TanStack Router + Form was proposed and cancelled, so do not write UI against that stack. Check [docs/tech-stack.md](docs/tech-stack.md) for what is actually installed before writing UI code.
 
 ## Documentation discipline
 

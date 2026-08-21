@@ -1,14 +1,11 @@
 ---
 id: fe-0001
-status: superseded
-superseded_by: fe-0007
+status: accepted
 phase: 1
 date: 2026-06
 ---
 
 # fe-0001: Use MUI (Material UI) as the frontend component library
-
-> **Superseded by [fe-0007](fe-0007-frontend-stack-migration.md).** Kept because it explains why the codebase looks the way it does today, and because the reversal is itself thesis material. The record below is the decision as taken; it is not current.
 
 **Decision.** The PWA is built with [MUI](https://mui.com) (Material UI) as the component library, styled via [Emotion](https://emotion.sh) (`@emotion/react` + `@emotion/styled`). Theming, typography (Inter + JetBrains Mono via `@fontsource`), and a shared palette are centralised in a single MUI theme. Icons are imported per-path from `@mui/icons-material` (never from the barrel), enforced by Biome's `noRestrictedImports` ([fe-0006](fe-0006-biome.md)).
 
@@ -29,4 +26,3 @@ The per-icon import rule is load-bearing: a single `import { Foo } from '@mui/ic
 
 - MUI v7 documentation
 - Emotion documentation
-- [thesis/migracion-del-stack.md](../thesis/migracion-del-stack.md) — why this decision was right when taken, and why it expired.
