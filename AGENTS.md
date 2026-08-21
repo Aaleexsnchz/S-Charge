@@ -6,6 +6,8 @@ This file holds the rules that are **not discoverable by reading the code**. Any
 
 In dev only **Postgres** is containerised; the backend and frontend run natively (`just api`, `just web`). Production runs the whole stack in containers.
 
+**Never run commands against the production VPS.** They may prompt for a passphrase or a decision at the terminal. Write them out for the user to execute.
+
 ## Source of truth
 
 Read before proposing architectural or scope changes:
