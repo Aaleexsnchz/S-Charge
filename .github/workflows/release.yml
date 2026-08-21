@@ -1,8 +1,8 @@
 name: Release
 
 # Tags are pushed by hand; this only turns one into a GitHub Release whose notes
-# are the merged pull request titles (infra-0002). Deploying is CD's job and
-# happens on merge to main, not here.
+# are the merged pull request titles (infra-0002). Deploying is CD's job, which
+# the same tag push triggers in parallel (infra-0003), not here.
 on:
   push:
     tags:
