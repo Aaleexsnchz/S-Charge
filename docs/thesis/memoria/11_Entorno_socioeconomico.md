@@ -32,8 +32,8 @@ a ser uno simple.
 
 Conviene acotar la novedad. La recarga entre particulares existe: **Place to Plug** opera ya en
 España conectando conductores con anfitriones particulares y permitiendo reservar
-[5], y la literatura académica estudia el modelo tanto desde la percepción de los
-usuarios como desde la de los anfitriones reales [17][18][19]. Lo
+[9], y la literatura académica estudia el modelo tanto desde la percepción de los
+usuarios como desde la de los anfitriones reales [25][26][27]. Lo
 que aquí se defiende es la combinación —catálogo nacional espejado del registro oficial, puntos de
 particulares, simulación por modelo de vehículo y optimización contra la curva PVPC real en una
 sola PWA—, no la invención del modelo.
@@ -132,14 +132,14 @@ correo transaccional y la copia de seguridad externa caben en software libre o e
 El coste del proyecto es, con más de un 99 % del presupuesto, tiempo de una persona.
 
 > **PENDIENTE:** registrar el coste real de las suscripciones de asistencia de IA generativa
-> empleadas durante el desarrollo (véase el capítulo 14) e incorporarlo como línea propia de la
+> empleadas durante el desarrollo (véase el capítulo 12) e incorporarlo como línea propia de la
 > tabla 13.3, recalculando los totales.
 
 ## Impacto socioeconómico y ambiental
 
 De adoptarse, el efecto más directo es de **utilización, no de despliegue**: la literatura de
 planificación de infraestructura de recarga se ocupa de cuántos puntos hacen falta y dónde
-situarlos [29][30]; poner en circulación los que ya están instalados actúa sobre
+situarlos [58][59]; poner en circulación los que ya están instalados actúa sobre
 el mismo problema por el lado del aprovechamiento, y es la palanca más barata de las dos. En un
 país donde casi una cuarta parte del parque instalado se reporta como no operativo, mejorar el
 rendimiento de lo existente no es una idea menor [1].
@@ -157,7 +157,7 @@ evita.
 El tercero es la **reducción de fricción** en la adopción del vehículo eléctrico: menos altas,
 menos aplicaciones y el precio visible antes de enchufar, en la dirección que la propia regulación
 europea ya impone a los operadores al exigir precios comparables y transparentes y su
-presentación antes de iniciar la sesión [24] (el marco completo, en el capítulo 12).
+presentación antes de iniciar la sesión [15] (el marco completo, en el capítulo 10).
 
 De los Objetivos de Desarrollo Sostenible, dos son defendibles sin forzar el argumento: el
 **ODS 7**, por el desplazamiento de consumo hacia horas de mayor peso renovable y por el mejor
@@ -175,7 +175,7 @@ identificados en el registro de carencias del proyecto.
 **Protección de datos.** El sistema almacena datos personales de sujetos de la UE y hoy no tiene
 política de privacidad publicada, base jurídica documentada, acuerdos de encargo con sus
 proveedores, política de retención, vía funcional de supresión ni procedimiento de notificación de
-brechas en las 72 horas que exige el reglamento [38]. La supresión, además, no es un
+brechas en las 72 horas que exige el reglamento [35]. La supresión, además, no es un
 *endpoint* que falte: borrar una cuenta obliga a decidir qué ocurre con sus sesiones, sus reservas
 y sus apuntes de monedero.
 
@@ -192,7 +192,7 @@ usuario* es leer los registros del contenedor. Con usuarios reales, los incident
 los usuarios.
 
 La vía de crecimiento pasa por **acuerdos con operadores**, y ahí el diseño ya dejó la puerta
-abierta: el esquema sigue la jerarquía de OCPI [20], que es además el protocolo que la
+abierta: el esquema sigue la jerarquía de OCPI [28], que es además el protocolo que la
 propia normativa española impone para el intercambio de información dinámica con el sistema
-público [6]. Integrar a un operador comercial es extender el origen de los datos, no
+público [11]. Integrar a un operador comercial es extender el origen de los datos, no
 rehacer el modelo.

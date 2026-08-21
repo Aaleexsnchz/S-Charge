@@ -5,29 +5,29 @@
 El Reglamento (UE) 2023/1804 (AFIR) obliga a cada operador de punto de recarga (CPO) a poner a
 disposición sin coste los datos estáticos de sus instalaciones y los dinámicos —estado
 operativo, disponibilidad y precio por operación— mediante una API de «acceso libre y no
-restringido» comunicada a los puntos de acceso nacionales [24]. Que exista un catálogo
+restringido» comunicada a los puntos de acceso nacionales [15]. Que exista un catálogo
 nacional consultable por un tercero no es una cortesía de quien lo publica, sino el resultado de
 una norma; en qué condiciones ese tercero puede copiarlo y volver a servirlo es otra cuestión, y
 queda abierta al final del capítulo. El artículo 5 fija además cómo se presenta el precio: en
 puntos de 50 kW o más el importe de la operación se basa en el precio por kWh y debe mostrarse
-antes de iniciar la sesión [24]. De ahí que el sistema modele la tarifa en €/kWh como
+antes de iniciar la sesión [15]. De ahí que el sistema modele la tarifa en €/kWh como
 magnitud primaria: no es una simplificación de diseño, es la unidad que la norma impone al
 operador.
 
 La cadena española es más precisa, y de ella sale la decisión de diseño más determinante del
 trabajo. El Real Decreto 184/2022 obliga en su artículo 10 a remitir al MITECO la localización,
-características, disponibilidad y precio de venta al público de cada instalación [7];
+características, disponibilidad y precio de venta al público de cada instalación [12];
 la Orden TED/445/2023 lo desarrolla y sitúa la información estática en el registro RIPREE
-[8]; y la **Resolución de 2 de abril de 2025** crea el Sistema de Gestión y
+[13]; y la **Resolución de 2 de abril de 2025** crea el Sistema de Gestión y
 Visualización para la información dinámica, encarga su operación a Red Eléctrica de España y
-fija **OCPI —2.2.1, 2.2 y 2.1.1— como protocolo estándar de comunicación** [6].
+fija **OCPI —2.2.1, 2.2 y 2.1.1— como protocolo estándar de comunicación** [11].
 
 La consecuencia suele contarse al revés: el esquema de datos de esta aplicación reproduce la
-topología OCPI —emplazamiento, EVSE, conector [20]— **porque una norma española la
+topología OCPI —emplazamiento, EVSE, conector [28]— **porque una norma española la
 impone en origen**, no por afinidad técnica con un estándar. El manual de integración del
 operador del sistema lo formula igual: el punto de recarga «tiene equivalencia con el objeto
 EVSE del protocolo OCPI y es coherente con la definición que se hace en el Reglamento AFIR»
-[21]. Un modelo distinto no habría sido una alternativa de ingeniería, sino una
+[29]. Un modelo distinto no habría sido una alternativa de ingeniería, sino una
 capa de traducción sobre una jerarquía fijada desde el BOE.
 
 > **[FIGURA 12.1]** — *La cadena normativa hasta el modelo de datos.* Diagrama de flujo vertical
@@ -44,7 +44,7 @@ capa de traducción sobre una jerarquía fijada desde el BOE.
 El Real Decreto 216/2014 sigue siendo la norma base del Precio Voluntario para el Pequeño
 Consumidor (PVPC) y el Real Decreto 446/2023 lo **modifica**, no lo sustituye: reescribe el
 término de ajuste como $TaE = (A - 1)\cdot P_{mah} + B\cdot F_t$, indexando parte del precio a
-una cesta de futuros para reducir su volatilidad [49][50]. Los coeficientes
+una cesta de futuros para reducir su volatilidad [47][52]. Los coeficientes
 $A = 0,45$ y $B = 0,55$ rigen desde 2026, tras un transitorio en 2024 y 2025 con más peso del
 mercado diario, y la norma obliga al operador del sistema a publicar los términos del coste de
 producción antes de las 20:15 del día anterior al del suministro. De esa hora sale la ventana de
@@ -54,7 +54,7 @@ está obligado a calcular con una fórmula publicada y a difundir a una hora fij
 
 Sobre la granularidad conviene ser exacto. La API pública de REData devuelve el PVPC en 24
 valores horarios mientras el precio spot ya viene en 96 períodos cuarto-horarios
-[4]; el sistema está construido sobre esos 24 valores y los consume así. Cómo se ha
+[10]; el sistema está construido sobre esos 24 valores y los consume así. Cómo se ha
 adaptado formalmente el PVPC a esa granularidad no se ha verificado, y este capítulo no afirma
 que la norma vigente lo defina como horario.
 
@@ -72,17 +72,17 @@ Correo, nombre e identidad de proveedor son los datos sin los cuales no hay cuen
 para prestar el servicio que el usuario solicita al registrarse. La IP exige más argumentación.
 *Breyer* no declara que toda IP dinámica sea dato personal en abstracto: condiciona la
 calificación a que el responsable disponga de medios legales para identificar al interesado con
-datos adicionales del proveedor de acceso [47]. En un servicio abierto al público
+datos adicionales del proveedor de acceso [45]. En un servicio abierto al público
 en España esa condición se cumple con normalidad, así que se trata como dato personal. La base
 jurídica es el interés legítimo del artículo 6.1.f, y el considerando 49 declara legítimo el
 tratamiento «estrictamente necesario y proporcionado para garantizar la seguridad de la red y de
-la información» [38]: un registro de auditoría de autenticación y una clave de límite de
+la información» [35]: un registro de auditoría de autenticación y una clave de límite de
 tasa son ese caso. Lo que obliga no es el consentimiento, sino informar, no reutilizar el dato y
 acotar su conservación —hoy acotada por volumen y no por tiempo (capítulo 6).
 
 Los derechos de acceso, rectificación, supresión y portabilidad de los artículos 15 a 20, y la
 notificación de brechas en un máximo de 72 horas del artículo 33.1, son exigibles desde el primer
-usuario real [38]. **Ninguno está implementado**, ni hay política de privacidad
+usuario real [35]. **Ninguno está implementado**, ni hay política de privacidad
 publicada, ni contratos de encargado con los tres proveedores que procesan datos por cuenta del
 servicio —alojamiento, correo transaccional e identidad—, ni política de conservación.
 
@@ -103,9 +103,9 @@ legítimo; no haberlo pensado no lo sería.
 
 El artículo 22.2 de la LSSI exceptúa el almacenamiento «en la medida que resulte estrictamente
 necesario, para la prestación de un servicio de la sociedad de la información expresamente
-solicitado por el destinatario» [51]. La guía de la AEPD desarrolla la excepción
+solicitado por el destinatario» [53]. La guía de la AEPD desarrolla la excepción
 con una lista cerrada de finalidades y, en lo que aquí importa, la enuncia así: cookies «de
-autenticación o identificación de usuario (**únicamente de sesión**)» [52].
+autenticación o identificación de usuario (**únicamente de sesión**)» [54].
 
 El sistema instala una sola cookie, y su contenido es un JWT firmado con 14 días de vida. La
 tentación es darla por exenta. El análisis honesto es menos cómodo: por finalidad encaja de
@@ -129,17 +129,17 @@ cualquier otro título. Si el catálogo atrae el derecho *sui generis* sobre bas
 Directiva 96/9/CE lo concede a quien acredite una inversión sustancial en la obtención,
 verificación o presentación del contenido y le permite impedir la extracción o reutilización de
 una parte sustancial, con un plazo que una base actualizada de forma continua puede renovar
-[53]; un registro nacional mantenido de forma permanente encaja en ese perfil, y el
+[55]; un registro nacional mantenido de forma permanente encaja en ese perfil, y el
 derecho opera **al margen** del derecho de autor. Y la atribución: si se debe, con qué texto y
 dónde. Que el dato se sirva solo a usuarios autenticados ayuda menos de lo que parece: reduce
 exposición y volumen, no convierte la reutilización en otra cosa.
 
 **Los términos de uso de la fuente no se han podido verificar.** El *endpoint* que consume el
 proyecto responde `HTTP 403` sin credenciales y no se localizó aviso legal legible, al servirse
-el sitio como aplicación de una sola página [3]. Este capítulo no concluye que el
+el sitio como aplicación de una sola página [6]. Este capítulo no concluye que el
 espejado esté permitido ni que no lo esté: «se espeja un dato público» no es por sí solo un
 argumento jurídico. La misma laguna afecta a la licencia de reutilización de los precios, con
-menor riesgo por tratarse de una API abierta sin autenticación [4].
+menor riesgo por tratarse de una API abierta sin autenticación [10].
 
 > **PENDIENTE:** abrir `mapareve.es` en un navegador real, leer aviso legal y condiciones y, si
 > no hay licencia explícita, solicitarla por escrito al MITECO y a Red Eléctrica; repetir la
@@ -151,14 +151,14 @@ menor riesgo por tratarse de una API abierta sin autenticación [4].
 
 La Directiva (UE) 2016/2102 impone requisitos de accesibilidad a los sitios y aplicaciones de
 **los organismos del sector público**, de modo que una aplicación privada queda fuera de su
-ámbito [54]. La que sí podría alcanzarla es la Directiva (UE) 2019/882, aplicable
+ámbito [56]. La que sí podría alcanzarla es la Directiva (UE) 2019/882, aplicable
 desde el 28 de junio de 2025, que cubre servicios de consumo entre los que figura el comercio
-electrónico y exime del lado de los servicios a las microempresas [55]. Ambas se
+electrónico y exime del lado de los servicios a las microempresas [57]. Ambas se
 conocen aquí por fuentes secundarias, así que el encaje se plantea como hipótesis: un servicio
 que hoy solo consulta información probablemente no presta un servicio de comercio electrónico,
 pero el monedero y las sesiones de pago de las fases 11 y 12 cambiarían esa conversación.
 
-La referencia técnica es WCAG 2.2 [39], y lo hecho es modesto: el analizador estático del
+La referencia técnica es WCAG 2.2 [36], y lo hecho es modesto: el analizador estático del
 frontend aplica el conjunto de reglas de accesibilidad y rompe la compilación cuando se
 incumplen, y la auditoría Lighthouse de junio de 2026 dio 100 en accesibilidad en `/map` y 98 en
 `/login`. No conviene venderlo como conformidad: una puntuación automática cubre una fracción de

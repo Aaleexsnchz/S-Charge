@@ -12,10 +12,10 @@ veces.
 ## Anexo A — Declaración de uso de IA generativa
 
 **Obligatorio.** Formulario oficial de la Universidad Carlos III de Madrid, cumplimentado y
-firmado por el autor, declarando los usos descritos en el capítulo 14.
+firmado por el autor, declarando los usos descritos en el capítulo 12.
 
 > **PENDIENTE:** descargar el formulario vigente de la guía de la biblioteca de la UC3M sobre IA
-> generativa en el TFM, cumplimentarlo marcando los usos que el capítulo 14 describe —asistencia
+> generativa en el TFM, cumplimentarlo marcando los usos que el capítulo 12 describe —asistencia
 > a la redacción sobre documentación técnica propia previa, y asistencia al desarrollo del
 > software— y adjuntarlo aquí.
 
@@ -57,7 +57,7 @@ Los quince registros de decisión, cada uno con su decisión, sus razones, sus c
 **Cómo generarlo:** desde `docs/decisions/`. Conviene una tabla índice al principio —
 identificador, título, fase, estado — y a continuación el contenido de cada registro. Si el
 espacio aprieta, la tabla índice más los cuatro o cinco registros más significativos
-(`be-0001` espejo frente a proxy, `auth-0002` sesión por cookie, `fe-0007` migración del stack,
+(`be-0001` espejo frente a proxy, `auth-0002` sesión por cookie, `be-0002` disponibilidad no modelada,
 `infra-0001` despliegue) cubren lo esencial.
 
 ## Anexo F — Galería de pantallas
@@ -75,7 +75,7 @@ porque documentan la disciplina de no presentar como real lo que no lo es.
 
 Qué *skills* de agente se usaron durante el desarrollo, para qué sirvió cada una en este
 proyecto concreto, y cómo se reproducen desde el fichero de anclaje de versiones. Complementa el
-capítulo 14.
+capítulo 12.
 
 **Cómo generarlo:** desde `docs/thesis/skills.md` y `skills-lock.json`.
 
