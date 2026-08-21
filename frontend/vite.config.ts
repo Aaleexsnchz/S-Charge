@@ -26,6 +26,9 @@ export default defineConfig({
       devOptions: {
         enabled: true,
         type: 'module',
+        // In dev there is no build output to precache, so workbox warns that its
+        // glob matched nothing on every restart. Nothing to fix, just noise.
+        suppressWarnings: true,
       },
       manifest: {
         name: 'S-Charge',
