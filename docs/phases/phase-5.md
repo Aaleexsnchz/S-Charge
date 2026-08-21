@@ -97,7 +97,7 @@ Python 3.13 everywhere, including `backend/.python-version`, which decides the i
 
 Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 
-- [ ] Repo cloned to `/opt/tfm` (the path `cd.yml` assumes)
+- [ ] Repo cloned to `/opt/s-charge` (the path `cd.yml` assumes)
 - [ ] The server-side `.env` written with **every secret rotated** — fresh `SECRET_KEY`, new `POSTGRES_PASSWORD`, `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`, empty `CORS_ALLOW_ORIGINS`, prod `APP_BASE_URL` / `GOOGLE_REDIRECT_URI`, `SITE_ADDRESS`; copies kept in a password manager, and **no value containing `$`** ([Slice 14](#slice-14--environment-configuration)). `ENVIRONMENT=production` arms the boot check, so a misconfigured file now restart-loops the backend instead of serving with a development secret
 - [ ] Database bootstrapped from `backups/ev_charging_seed_20260803T070005Z.dump` — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
 - [ ] `up -d --build` + `alembic upgrade head`
