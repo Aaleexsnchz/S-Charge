@@ -47,10 +47,12 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "DEPLOY_REF='${DEPLOY_REF}' bash -s" <<'REMOTE'
           # The brace group is load-bearing. `bash -s` reads this script from
-          # the same stdin the commands inside it inherit, so `docker compose`
-          # swallowed everything after the line it ran on and bash exited 0
-          # having silently skipped the build. Grouping forces bash to parse to
-          # the closing brace before running anything.
+          # the same stdin the commands inside it inherit, and `compose exec -T`
+          # forwards stdin into the container -- `-T` only drops the TTY. So
+          # pg_dump below ate the rest of this script and bash exited 0 having
+          # skipped the build entirely, reporting a successful deploy that never
+          # happened. Grouping forces bash to parse through to the closing brace
+          # before running anything. Any `exec` added here has the same hazard.
           {
           set -euo pipefail
           cd /opt/s-charge

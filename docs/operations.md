@@ -9,6 +9,23 @@ Docker has two jobs here, and they are separate:
 - **In dev it runs Postgres, nothing else.** The backend and frontend run natively (`just api`, `just web`), so the toolchain that gates commits and runs in CI is the same one that runs the app. The root `.env` therefore points `DATABASE_URL` at `@localhost:5432`, and Alembic, pytest and `python -m scripts.X` all run on the host.
 - **In production it runs everything** — the stack in [docker-compose.prod.yml](../docker-compose.prod.yml), built from this repo and deployed by CI.
 
+## Reaching the production host
+
+```bash
+ssh s-charge          # ~/.ssh/config alias -> deploy@s-charge.app, key id_ed25519_tfm
+cd /opt/s-charge      # the checkout cd.yml deploys into
+```
+
+The key is passphrase-protected, so a non-interactive `ssh -o BatchMode=yes` fails with *"Permission denied (publickey)"* even though the key is authorized — that is the prompt being suppressed, not a broken alias.
+
+**Three different keys are in play, and confusing them wastes an afternoon:**
+
+| Key | Authenticates | Passphrase |
+| --- | --- | --- |
+| `~/.ssh/id_ed25519_tfm` | you → the host, interactively | yes |
+| `~/.ssh/tfm_deploy` (secret `DEPLOY_SSH_KEY`) | GitHub Actions → the host | no — CI cannot type one |
+| repository deploy key, on the host | the host → GitHub, to `git fetch` | no |
+
 ## Production stack
 
 [docker-compose.prod.yml](../docker-compose.prod.yml) is **standalone** (own project name `ev-charging-app-prod`, not an override): Caddy terminates TLS on 80/443 ([Caddyfile](../Caddyfile), `SITE_ADDRESS` from the root `.env`) and proxies `/api/*` to the backend and everything else to nginx; Postgres has **no published port**.

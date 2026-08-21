@@ -44,9 +44,17 @@ DNS is on Cloudflare. Set the record to **DNS only — grey cloud, not the orang
 
 ```bash
 sudo mkdir -p /opt/s-charge && sudo chown deploy:deploy /opt/s-charge
-git clone https://github.com/Aaleexsnchz/S-Charge.git /opt/s-charge
+git clone git@github.com:Aaleexsnchz/S-Charge.git /opt/s-charge
 cd /opt/s-charge
 ```
+
+**Clone over SSH, not HTTPS.** The repository is private and CD fetches unattended, so there is
+nobody to answer a credential prompt — over HTTPS `git fetch` dies with *"could not read Username
+for 'https://github.com'"* and the deploy fails at its first step. The host needs its own key
+registered as a **deploy key** on the repository (Settings → Deploy keys, read-only is enough);
+generate it on the server with `ssh-keygen -t ed25519` and add the public half there. This is a
+different key from the CI `DEPLOY_SSH_KEY`, which authenticates GitHub Actions *to the server*,
+not the server to GitHub.
 
 The CD workflow assumes `/opt/s-charge`; if you choose another path, update `cd.yml`.
 
