@@ -28,6 +28,6 @@ Each of these is a promise to delete something:
 
 | Fixture | Feeds | Removed in |
 | --- | --- | --- |
-| `dashboard.mock.ts` | dashboard stats + next reservation | Phase 10 |
-| `myPoints.mock.ts` | `/my-points` list + stats | Phase 8 |
-| `sessions.mock.ts` | `/sessions` history | Phase 10 |
+| `dashboard.mock.ts` | dashboard stats + next reservation | Phase 9 |
+| `myPoints.mock.ts` | `/my-points` list + stats | Phase 7 |
+| `sessions.mock.ts` | `/sessions` history | Phase 9 |

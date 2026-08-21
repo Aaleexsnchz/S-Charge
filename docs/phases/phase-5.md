@@ -1,6 +1,6 @@
 # Phase 5 — Deployment + CI/CD + releases
 
-Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the refresh ETLs shipped to an always-on server (started in [Phase 7](../plan.md), not here), a complete CI/CD pipeline, and semantic-version releases toward **`v1.0.0` = the build presented for evaluation**. Architecture and rejected alternatives: [infra-0001](../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../setup/deployment.md).
+Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the refresh ETLs shipped to an always-on server (started in [Phase 6](../plan.md), not here), a complete CI/CD pipeline, and semantic-version releases toward **`v1.0.0` = the build presented for evaluation**. Architecture and rejected alternatives: [infra-0001](../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../setup/deployment.md).
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 9 | Close the CI/CD loop | Done | #27, #30 |
 | 10 | Security gate, cutover, first release | Not started | host work |
 | 11 | Renovate | Not started | — |
-| 12 | REVE tariff backfill | Moved to [Phase 7](../plan.md) | — |
+| 12 | REVE tariff backfill | Moved to [Phase 6](../plan.md) | — |
 | 13 | Auth surface hardening | Code done, verify on the host | #19 |
 | 14 | Environment configuration | Done | #15 |
 | 15 | Authenticate the read endpoints | Done | #20 |
@@ -25,9 +25,11 @@ Numbering is not the running order. **Slices 13 and 15 must land before [Slice 1
 
 **Where things stand:** **the application is deployed and publicly reachable at <https://s-charge.app>**, running **`v0.1.0`** (Slice 7, first deployed 2026-08-04; CD proven and tagged 2026-08-21). Verified from outside the host on 2026-08-05: HTTPS with HSTS, the full security-header set, `Permissions-Policy`, `/api/points` answering `401` without a session, and the interactive docs disabled in production.
 
-The CI/CD loop is closed: `main` is PR-protected with the four CI checks required, a tag push deploys and cuts a GitHub Release, and a merge deploys nothing. The `scheduler` service is deployed but **deliberately not started** — it sits behind a Compose profile so a deploy cannot move the REVE watermark by accident, so the REVE/PVPC refresh **still has not run since early July** ([Phase 7](../plan.md) owns turning it back on).
+The CI/CD loop is closed: `main` is PR-protected with the four CI checks required, a tag push deploys and cuts a GitHub Release, and a merge deploys nothing. The `scheduler` service is deployed but **deliberately not started** — it sits behind a Compose profile so a deploy cannot move the REVE watermark by accident, so the REVE/PVPC refresh **still has not run since early July** ([Phase 6](../plan.md) owns turning it back on).
 
-What remains: **Slices 8 and 10**, then 11. Note `v0.1.0` was tagged when CD was proven, **ahead of Slice 10's security gate** rather than after it — the release marks the pipeline working, not the gate passing, and the gate items below are still outstanding.
+**The phase is Done in [plan.md](../plan.md)** on the strength of that: deployed, released, and a proven pipeline is what the thesis needs from it. The slices still open here — **8** (external services on the prod origin), **10** (security gate and backup cutover), **11** (Renovate) and **13**'s host verification — are real work that belongs to this phase, but nothing downstream waits on them and they can land whenever there is room.
+
+`v0.1.0` was therefore tagged when CD was proven, **ahead of Slice 10's gate** rather than after it: the release marks the pipeline working, not the gate passing.
 
 ## Start here
 
@@ -37,7 +39,7 @@ What remains: **Slices 8 and 10**, then 11. Note `v0.1.0` was tagged when CD was
 
 - **8 → 9 → 10 is a chain on the host**, each step depending on the one before.
 - **[13](#slice-13--auth-surface-hardening) carries one item into that chain**: its two fixes only exist behind the proxy, so they are verified on the live host as part of Slice 10's gate.
-- **11 last.** Renovate wants a pipeline already proven end to end. Slice 12 is no longer part of this phase — the tariff backfill became [Phase 7](../plan.md).
+- **11 last.** Renovate wants a pipeline already proven end to end. Slice 12 is no longer part of this phase — the tariff backfill became [Phase 6](../plan.md).
 
 **Why this phase came before the remaining feature work:** every later phase benefits from it — CI building the frontend prod image catches a broken build on the PR that caused it, the committed `openapi.json` stops the client drifting from the API, the pre-push hook gates every change, and a deploy on demand means each slice can be opened on a real phone. Separately, the REVE tariff gap widened permanently every day the server did not exist.
 
@@ -95,7 +97,7 @@ Python 3.13 everywhere, including `backend/.python-version`, which decides the i
 
 **Acceptance:** the app loads over HTTPS on a phone, the PWA installs, `/api/health` reports ok with a version, and **the `scheduler` service is not running** — deliberately, not by accident.
 
-**The ETLs stay off until [Phase 7](../plan.md).** Turning them on is a decision about REVE's frozen watermark and a 504 that still needs measuring, and it should not ride along with a deploy. The mechanism is a Compose profile on the `scheduler` service, so `docker compose up -d` skips it and `cd.yml` needs no flag it could forget; enabling it later is `--profile scheduler up -d`. CI is unaffected, since it builds that image with `docker build --target scheduler` rather than through Compose. **The cost is that `/api/prices/today` returns nothing from the day of the deploy** — the seed's curve stops at `2026-08-01 21:00 UTC` — so the prices and dashboard views sit on an empty state until Phase 7. That is accepted, not overlooked.
+**The ETLs stay off until [Phase 6](../plan.md).** Turning them on is a decision about REVE's frozen watermark and a 504 that still needs measuring, and it should not ride along with a deploy. The mechanism is a Compose profile on the `scheduler` service, so `docker compose up -d` skips it and `cd.yml` needs no flag it could forget; enabling it later is `--profile scheduler up -d`. CI is unaffected, since it builds that image with `docker build --target scheduler` rather than through Compose. **The cost is that `/api/prices/today` returns nothing from the day of the deploy** — the seed's curve stops at `2026-08-01 21:00 UTC` — so the prices and dashboard views sit on an empty state until Phase 6. That is accepted, not overlooked.
 
 Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 
@@ -112,7 +114,7 @@ Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is measured as of 2026-08-01 and keeps growing until the scheduler runs on the server.
 
 - [x] **PVPC prices — recoverable, backfilled.** The hole ran from **2026-07-03** to 2026-08-01, 29 days. `fetch_pvpc.py` gap-backfills from the last stored hour to tomorrow and REE serves history, so it healed completely in one local run ([Step 0](#start-here)) — production is bootstrapped from a seed dump that already contains the full curve. It does not stay current on its own — the curve ends where the dump ends until the scheduler comes on, which is the empty state [Slice 7](#slice-7--first-deploy) accepts
-- [ ] **REVE tariffs — nothing happens here any more.** The recovery is [Phase 7](../plan.md). What this phase owes it is *not touching the watermark*: it is still parked at **2026-07-08 19:30** because the 504 hit while it was recent and it was classed transient, and the first unattended refresh tick would jump it to `now − REVE_REFRESH_LOOKBACK_HOURS`, destroying the value Phase 7 probes from. Deploying with the `scheduler` profile off is what protects it — the ordering constraint that used to live here is now structural rather than remembered
+- [ ] **REVE tariffs — nothing happens here any more.** The recovery is [Phase 6](../plan.md). What this phase owes it is *not touching the watermark*: it is still parked at **2026-07-08 19:30** because the 504 hit while it was recent and it was classed transient, and the first unattended refresh tick would jump it to `now − REVE_REFRESH_LOOKBACK_HOURS`, destroying the value Phase 6 probes from. Deploying with the `scheduler` profile off is what protects it — the ordering constraint that used to live here is now structural rather than remembered
 - [x] **Re-take the seed dump after the PVPC backfill**, so production starts from the freshest catalogue. The bootstrap artifact is **`ev_charging_seed_20260803T070005Z.dump`**, the weekly cron's snapshot, and **it cannot go stale while it waits**: both ETLs are off on the laptop too, so every dump taken since carries the same rows — the price curve still ends `2026-08-01 21:00 UTC` and the watermark still reads `2026-07-08 19:30:03`. There is nothing to gain by re-taking it closer to the deploy
 - [ ] After the first scheduler ticks, confirm in the logs that both jobs ran, that `electricity_prices` reaches today, and whether `reve_refresh_jumped_to_recent` fired
 
@@ -157,11 +159,11 @@ Lands **after** Slice 9, so the first automated PRs arrive against a pipeline th
 - [ ] `vulnerabilityAlerts` unscheduled, so security updates are not held for the weekly window
 - [ ] No automerge — every dependency PR merges by hand and reaches production with the next tag ([infra-0003](../decisions/infra-0003-deploy-on-tag.md))
 
-## Slice 12 — REVE tariff backfill — moved to Phase 7
+## Slice 12 — REVE tariff backfill — moved to Phase 6
 
-**This slice does not run in Phase 5.** It became [Phase 7](../plan.md), because turning the ETLs on is a decision about a frozen watermark and an unmeasured 504, not a step of a deploy. The method below is kept here rather than deleted — it is the probing plan Phase 7 starts from, and it is the only part of this phase whose outcome is not under the project's control.
+**This slice does not run in Phase 5.** It became [Phase 6](../plan.md), because turning the ETLs on is a decision about a frozen watermark and an unmeasured 504, not a step of a deploy. The method below is kept here rather than deleted — it is the probing plan Phase 6 starts from, and it is the only part of this phase whose outcome is not under the project's control.
 
-**Acceptance (in Phase 7):** the tariff watermark has been advanced from 2026-07-08 by the largest span REVE will actually serve, the unrecoverable remainder is measured rather than assumed, and both numbers are written into [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+**Acceptance (in Phase 6):** the tariff watermark has been advanced from 2026-07-08 by the largest span REVE will actually serve, the unrecoverable remainder is measured rather than assumed, and both numbers are written into [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
 
 **The constraint.** `/connectors/tariffs` takes `date_from` and no `date_to`, so a stale range cannot be sliced into chunks — the only lever is *how far back `date_from` points*. A wide window makes REVE scan too much and time out; a narrow one returns quickly but recovers less history. There is therefore no way to backfill the gap in pieces, and the whole slice reduces to one measurement: **the oldest `date_from` REVE will answer with a 200.** Everything older than that is unrecoverable through this endpoint at any price.
 
@@ -237,7 +239,7 @@ Found by auditing the repo against the [infra-0001](../decisions/infra-0001-depl
 - [x] **The interactive docs are disabled when `ENVIRONMENT=production`.** Defence in depth rather than a fix: they were **never** reachable from the internet, because Caddy forwards only `/api/*` to the backend while FastAPI mounts them at `/docs`. Confirmed by putting the prod image behind the real Caddyfile — `/docs` reaches the frontend upstream, not the API. The change closes the case where something else reaches the backend
 - [x] **The weekly backup would not have run on the server.** `backup_db_cron.sh` hardcoded the development laptop's `$HOME` for both the `rclone` binary and its config; on the VPS neither path exists, and cron would have failed into a log nobody reads. Paths now derive from `$HOME`, and the script checks `rclone` and its config are present **before** dumping
 - [x] **The dump is sized and its exit status kept.** The 0-byte dump that reached the offsite bucket on 2026-07-13 is [recorded in operations.md](../operations.md) as having no size check. Both halves are needed: the shell creates the file before `pg_dump` runs, so `set -e` alone leaves a plausible artifact behind — verified by pointing the script at a database that does not exist
-- [x] **Recorded why only the seed dump goes offsite**, and the trigger that ends it — a wallet balance in Phase 11 makes "just register again" false, at which point the offsite copy must be a full dump encrypted client-side
+- [x] **Recorded why only the seed dump goes offsite**, and the trigger that ends it — a wallet balance in Phase 10 makes "just register again" false, at which point the offsite copy must be a full dump encrypted client-side
 
 **Not addressed, deliberately:** the 14-day session with no revocation ([auth-0002](../decisions/auth-0002-cookie-session.md)), the deploy key with no `command=` restriction, and the boot check verifying `SECRET_KEY` differs from the placeholder without checking it is strong. All three are known, recorded, and unchanged by this slice.
 

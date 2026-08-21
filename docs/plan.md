@@ -89,7 +89,7 @@ One document per feature, with live implementation status: [features/](features/
 | `/points/:id` | Point detail + pre-charge simulation dialog |
 | `/sessions` | Driver session history |
 | `/my-points` | Owner point management + stats |
-| `/bookings` | Driver bookings (Phase 10) |
+| `/bookings` | Driver bookings (Phase 9) |
 | `/profile`, `/login`, … | Profile (opened from the avatar) + auth |
 
 Per-screen implementation status: [features/](features/).
@@ -106,31 +106,33 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 2 | REVE seed + Map | Core | Done | [phase-2](phases/phase-2.md) |
 | 3 | Simulation + algorithm | Core | Done | [phase-3](phases/phase-3.md) |
 | 4 | Frontend redesign + dashboard-first IA | Core | Done | [phase-4](phases/phase-4.md) |
-| 5 | Deployment + CI/CD + releases | Core | In progress | [phase-5](phases/phase-5.md) |
-| 7 | ETL reactivation + backfill | Core | Not started | planned at phase start |
-| 8 | Private charging points + owner pricing | Core | Not started | planned at phase start |
-| 9 | Smart charging optimiser | Core | Not started | planned at phase start |
-| 10 | Bookings + session recording | Core | Not started | planned at phase start |
-| 11 | Wallet + paid sessions | Core | Not started | planned at phase start |
+| 5 | Deployment + CI/CD + releases | Core | Done | [phase-5](phases/phase-5.md) |
+| 6 | ETL reactivation + backfill | Core | Not started | planned at phase start |
+| 7 | Private charging points + owner pricing | Core | Not started | planned at phase start |
+| 8 | Smart charging optimiser | Core | Not started | planned at phase start |
+| 9 | Bookings + session recording | Core | Not started | planned at phase start |
+| 10 | Wallet + paid sessions | Core | Not started | planned at phase start |
+| 11 | Trip planner with charging stops | Core | Not started | planned at phase start |
 | 12 | AI/agent assistant | **Optional** | Not started | planned at phase start |
 | 13 | Polish, security + hardening | Core | Not started | planned at phase start |
 | 14 | Thesis writing | Core | In progress | [thesis/memoria/](thesis/memoria/) |
 
 Releases track this table: a minor version marks a phase shipping, `v0.1.0` is the first production deploy, and **`v1.0.0` is the build presented for the thesis** (see [AGENTS.md](../AGENTS.md) → Releases).
 
-**The frontend stack migration is cancelled.** Replacing MUI + Emotion with Tailwind + shadcn/ui, and React Router with TanStack Router, was proposed and is not happening: it was the one phase that converted roughly ten working screens into ten identical-looking ones, and the calendar went to the capabilities the thesis argues. The app ships on MUI + Emotion + React Router, and the thesis justifies that stack on its own merits rather than as an interim state. Phase 6 is retired; the numbering of the phases after it is unchanged so that existing references keep resolving.
+**The frontend stack migration is cancelled.** Replacing MUI + Emotion with Tailwind + shadcn/ui, and React Router with TanStack Router, was proposed and is not happening: it was the one phase that converted roughly ten working screens into ten identical-looking ones, and the calendar went to the capabilities the thesis argues. The app ships on MUI + Emotion + React Router, and the thesis justifies that stack on its own merits rather than as an interim state. It held the Phase 6 slot; that number now belongs to the ETL reactivation and the phases after it have closed up, so the table runs 1–14 with no gap.
 
-**The scope is now five features, prototyped end to end.** The rule that makes that defensible: **only the physical actuation is simulated, never the logic**. The data model, the business rules, the API and the interface are the ones a real integration would use, and each simulated boundary sits exactly where the real component would plug in.
+**The scope is now six features, prototyped end to end.** The rule that makes that defensible: **only the physical actuation is simulated, never the logic**. The data model, the business rules, the API and the interface are the ones a real integration would use, and each simulated boundary sits exactly where the real component would plug in.
 
 | Capability | Phase | What is simulated | Where the real seam is |
 | --- | --- | --- | --- |
-| Book a public point / start a session | 10 | The command to the charger | OCPI `RESERVE_NOW` / `START_SESSION`; the session is recorded either way |
-| Connect and manage a domestic point | 8 | Control of the wallbox | A `ChargerController` port — real implementations are per-manufacturer cloud APIs, or acting as the charger's OCPP backend |
-| Rent out a private point, owner earns a commission | 8 + 11 | The movement of money | A payment processor. The append-only ledger and the balances are **real** |
-| Optimise charging against price | 9 | **Nothing** | Prices are real PVPC; the system recommends rather than executes, which is a scope limit, not a simulation |
+| Book a public point / start a session | 9 | The command to the charger | OCPI `RESERVE_NOW` / `START_SESSION`; the session is recorded either way |
+| Connect and manage a domestic point | 7 | Control of the wallbox | A `ChargerController` port — real implementations are per-manufacturer cloud APIs, or acting as the charger's OCPP backend |
+| Rent out a private point, owner earns a commission | 7 + 10 | The movement of money | A payment processor. The append-only ledger and the balances are **real** |
+| Optimise charging against price | 8 | **Nothing** | Prices are real PVPC; the system recommends rather than executes, which is a scope limit, not a simulation |
+| Plan a trip with charging stops | 11 | **Nothing** | Routing and the catalogue are real; the stops are recommendations, not commands to a charger |
 | AI agent plans a route with stops | 12 | **Nothing essential** | Calls the app's own APIs as tools |
 
-Two of the five simulate nothing, and in a third the accounting is genuine even though the money is not. Every boundary is declared in the thesis rather than glossed over.
+Three of the six simulate nothing, and in a fourth the accounting is genuine even though the money is not. Every boundary is declared in the thesis rather than glossed over.
 
 **Cut order.** Phase 12 (AI) is the first and only planned cut; it is the one capability nothing else depends on. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged — the app must never present a cut feature as if it worked.
 
@@ -180,19 +182,22 @@ Adopted the `s-charge` dark design system (theme tokens, mono-numeric typography
 - [x] Sessions / My-points / stats / next-reservation as badged placeholder UI behind `*.mock.ts`
 - [x] Lint + build green; merged to `main`
 
-### Phase 5 — Deployment + CI/CD + releases — in progress (deployed, `v0.1.0`)
+### Phase 5 — Deployment + CI/CD + releases — done (`v0.1.0`)
 
-Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early, with the refresh ETLs on an always-on server instead of a laptop — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](decisions/infra-0001-deployment.md).
+Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](decisions/infra-0001-deployment.md).
+
+**Running `v0.1.0`.** Getting the ETLs onto the server was originally a criterion here; it is [Phase 6](#phase-6--etl-reactivation--backfill--not-started)'s, because the stack ships with `scheduler` deliberately stopped and turning it on is a decision about a frozen watermark rather than a step of a deploy.
+
+**Done means done for the thesis, not exhausted.** The application is deployed, reachable and released, and the pipeline that keeps it that way is proven — which is everything this phase owes the thesis. [phases/phase-5.md](phases/phase-5.md) still carries open slices that are genuine improvements rather than blockers: the security gate and backup cutover, external services on the prod origin, Renovate, and verifying the auth hardening on the host. They belong to this phase and can land whenever there is room; nothing downstream waits on them. The security-gate box below stays unticked because it is not done, not because it is scheduled.
 
 **Done when:**
 
 - [x] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
 - [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
-- [ ] REVE/PVPC refresh ETLs run on the server, not the laptop
 - [x] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
 - [x] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
-### Phase 7 — ETL reactivation + backfill — not started
+### Phase 6 — ETL reactivation + backfill — not started
 
 Turn the refresh jobs back on, recover what is still recoverable, and fix what made them fragile. Both have been off since the laptop's crons stopped in early July 2026, and [Phase 5](phases/phase-5.md) deploys with the `scheduler` service **deliberately not started** — freezing the state so it can be inspected before anything overwrites it, rather than because the deploy failed.
 
@@ -208,7 +213,7 @@ Small and deliberately scheduled before the feature work: the ETLs are backend-o
 - [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](decisions/infra-0001-deployment.md) — re-read that before reopening it
 - [ ] **Both jobs observed running unattended** on the server, with the first ticks confirmed in the logs and `electricity_prices` reaching today
 
-### Phase 8 — Private charging points + owner pricing — not started
+### Phase 7 — Private charging points + owner pricing — not started
 
 The platform contribution: a user registers their own charging point, chooses whether it is private or publicly listed, and prices it. Replaces the placeholder My-points UI with real data.
 
@@ -219,9 +224,9 @@ The platform contribution: a user registers their own charging point, chooses wh
 - [ ] Public points priced as PVPC + margin (live) or a fixed €/kWh, owner's choice
 - [ ] `/my-points` lists, edits and deletes the user's real points (mock removed)
 
-### Phase 9 — Smart charging optimiser — not started
+### Phase 8 — Smart charging optimiser — not started
 
-The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule to charge tonight given the PVPC curve and a departure time. It depends only on owned points (Phase 8) and the price history (Phase 3), so it ships as soon as that dependency exists rather than behind the rest of the feature work — it is a thesis pillar and must not be what gets cut.
+The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule to charge tonight given the PVPC curve and a departure time. It depends only on owned points (Phase 7) and the price history (Phase 3), so it ships as soon as that dependency exists rather than behind the rest of the feature work — it is a thesis pillar and must not be what gets cut.
 
 **Done when:**
 
@@ -229,7 +234,7 @@ The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule 
 - [ ] Optimiser UI at an owned point
 - [ ] Algorithm write-up in [thesis/](thesis/): formulation, pseudocode, evaluation
 
-### Phase 10 — Bookings + session recording — not started
+### Phase 9 — Bookings + session recording — not started
 
 Reserving a point and recording what actually happened. Turns the dashboard's next-reservation card and the Sessions screen into real data.
 
@@ -241,7 +246,7 @@ Reserving a point and recording what actually happened. Turns the dashboard's ne
 - [ ] `/sessions` shows real history (mock removed); dashboard stats derive from it
 - [ ] Owner sees per-point sessions and energy delivered on `/my-points`
 
-### Phase 11 — Wallet + paid sessions — not started
+### Phase 10 — Wallet + paid sessions — not started
 
 The economics: a simulated wallet/ledger so a session at someone else's public point moves money from driver to owner.
 
@@ -251,6 +256,19 @@ The economics: a simulated wallet/ledger so a session at someone else's public p
 - [ ] A paid session debits the driver and credits the owner; both see the movement
 - [ ] Owner dashboard shows revenue derived from the ledger
 - [ ] **The offsite backup must start carrying user data — this phase is the trigger.** Today only the PII-free seed dump leaves the machine ([operations.md](operations.md)), which is right while accounts are reproducible: the irreplaceable asset is the REVE catalogue, ~12 days under a 5 req/hr cap, and an owner can re-register in a minute. A balance cannot be re-registered. From here, losing the host means losing money that existed, so the weekly copy has to become a **full dump encrypted client-side** — an `rclone crypt` remote, because B2's server-side encryption leaves the keys with Backblaze and the point is that the processor cannot read it. That in turn brings retention and right-to-erasure into scope for the backups, not just the database: a deleted account must age out of the offsite copies on a stated schedule
+
+### Phase 11 — Trip planner with charging stops — not started
+
+Plan a route and get the charging stops it needs: given an origin, a destination and a vehicle, where to stop, for how long, and what it costs. It reads the catalogue (Phase 2), the vehicle and consumption model (Phase 3) and the owner pricing (Phase 7), so it is the feature that ties the others together rather than adding a new data source.
+
+Deterministic, and separate from [Phase 12](#phase-12--aiagent-assistant--not-started) on purpose: the planner is the capability, and the AI assistant is a natural-language surface over it. The planner must stand on its own, because Phase 12 is the planned cut.
+
+**Done when:**
+
+- [ ] Route between two points with the charging stops required for the vehicle's range
+- [ ] Each stop shows the point, the energy to take on, the dwell time and the cost at that point's price
+- [ ] Total trip time and cost, against the same trip with no range constraint
+- [ ] Planner screen, mobile-first, and the write-up of the algorithm in [thesis/](thesis/)
 
 ### Phase 12 — AI/agent assistant — not started
 
