@@ -8,7 +8,7 @@ Per [plan.md](../plan.md): vehicle catalogue, PVPC price ingest, and per-car pre
 | 2 | PVPC price ingest | Done | #6 |
 | 3 | `/api/simulate` + UI | Done | direct to `main` |
 
-**Pricing rule set here and used from Phase 8 on:** serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin`, recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Detail: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+**Pricing rule set here and used from Phase 7 on:** serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin`, recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Detail: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
 
 ## Slice 1 — Vehicle catalogue
 

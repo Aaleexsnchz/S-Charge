@@ -1,6 +1,6 @@
 # Session history
 
-**Status:** 🟡 Mock UI · **Real in** [Phase 10](../plan.md)
+**Status:** 🟡 Mock UI · **Real in** [Phase 9](../plan.md)
 
 A record of charges that actually happened: energy, duration, cost, per user and per point.
 
@@ -9,7 +9,7 @@ A record of charges that actually happened: energy, duration, cost, per user and
 - **Backend** — nothing. There is no charging-session model.
 - **Frontend** — `features/sessions` renders `sessions.mock.ts`, badged "datos de ejemplo".
 
-## Planned (Phase 10)
+## Planned (Phase 9)
 
 A `charging_sessions` table written when a booking completes, `GET /api/sessions` for the driver's own history, `/sessions` on real data with the mock deleted, and the [dashboard](dashboard.md) stat tiles derived from it. Owner-side per-point usage lands here too; revenue waits for the [wallet](wallet.md).
 

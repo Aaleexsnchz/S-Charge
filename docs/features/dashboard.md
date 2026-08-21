@@ -11,4 +11,4 @@ The landing screen at `/`: who you are, what is near you, and a summary of your 
 - 🟡 **Stat tiles** (sessions, kWh, €, CO₂) — `dashboard.mock.ts`, badged "datos de ejemplo". Needs [session history](sessions.md) to be real; CO₂ needs a defensible emissions factor or it should be dropped from the UI.
 - 🟡 **Next reservation card** — `dashboard.mock.ts`. Needs [bookings](bookings.md).
 
-Both mock surfaces become real in [Phase 10](../plan.md).
+Both mock surfaces become real in [Phase 9](../plan.md).
