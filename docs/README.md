@@ -46,12 +46,11 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 | [auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation |
 | [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it |
 | [be-0002](decisions/be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so |
-| [fe-0001](decisions/fe-0001-mui.md) | MUI as the component library *(superseded by fe-0007)* |
+| [fe-0001](decisions/fe-0001-mui.md) | MUI as the frontend component library |
 | [fe-0002](decisions/fe-0002-pwa.md) | Ship the frontend as an installable PWA |
 | [fe-0003](decisions/fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles |
 | [fe-0004](decisions/fe-0004-tanstack-query.md) | TanStack Query for server state |
 | [fe-0006](decisions/fe-0006-biome.md) | Biome for linting and formatting |
-| [fe-0007](decisions/fe-0007-frontend-stack-migration.md) | Migrate to Tailwind + shadcn/ui and TanStack Router + Form |
 | [infra-0001](decisions/infra-0001-deployment.md) | Deploy the Docker Compose stack on a single small VPS behind Caddy |
 | [infra-0002](decisions/infra-0002-manual-release-tagging.md) | Tag releases by hand; derive the running version from the tag |
 | [infra-0003](decisions/infra-0003-deploy-on-tag.md) | Deploy on a tag push, not on every merge to `main` |
@@ -60,7 +59,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 
 | Where | What |
 | --- | --- |
-| [thesis/memoria/](thesis/memoria/) | **The memoria itself** — the fifteen chapters that get submitted and defended, in Spanish, plus the IEEE bibliography and the appendix outline. Start at its [README](thesis/memoria/README.md). |
+| [thesis/memoria/](thesis/memoria/) | **The memoria itself** — the thirteen chapters that get submitted and defended, in Spanish, plus the IEEE bibliography and the appendix outline. Start at its [README](thesis/memoria/README.md). |
 
 ### Thesis chapters
 
@@ -73,7 +72,6 @@ Concept-level write-ups (in Spanish) that feed the memoria; each links out to th
 | [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
 | [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |
 | [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md) | Pre-charge simulation: spec-based power/energy/duration model (AC flat, DC taper) and cost. |
-| [thesis/migracion-del-stack.md](thesis/migracion-del-stack.md) | The mid-project stack changes as revised decisions: frontend (MUI → Tailwind + shadcn/ui + TanStack), PostgreSQL 18, Python 3.13, native dev, tooling. Alternatives and how each is verified. |
 | [thesis/planificacion-de-siembra.md](thesis/planificacion-de-siembra.md) | Why cron, the per-tick contract, bootstrap → steady state, the WSL2 idle caveat. |
 | [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) | Threat model for infostealer + cookie replay; what an app can and cannot defend. |
 | [thesis/skills.md](thesis/skills.md) | Which agent skills the project uses and what for; how to materialise them on a fresh clone. Add a row the first time you use a new one. |

@@ -52,7 +52,7 @@ The foundation is better than the absence suggests: the backend already emits st
 
 ## Application security
 
-**No Content-Security-Policy.** Caddy sets `Strict-Transport-Security` and nothing else. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. It is not implemented today because MUI and Emotion inject inline `<style>` tags, which would force `style-src 'unsafe-inline'` and negate much of the benefit; the Phase 6 migration to Tailwind compiles to a static stylesheet and makes a strict policy practical. *Scheduled: [plan.md](plan.md) Phase 13, after the Phase 6 migration.*
+**The Content-Security-Policy is incomplete.** Caddy ships the OWASP header set — HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` — and a CSP carrying only `frame-ancestors 'none'`; `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src` are missing. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. The blocked directive is `style-src`: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate much of the benefit. Shipping the directives that do not depend on it, and recording why the remaining one is held back, is the honest interim. *Scheduled: [plan.md](plan.md) Phase 13.*
 
 **Sessions cannot be revoked.** The session is a stateless JWT ([auth-0002](decisions/auth-0002-cookie-session.md)): a stolen token stays valid until it expires, and there is no logout-everywhere, no per-session audit, and no way to eject an attacker. Production backs sessions with a database table carrying `revoked_at`. Argued at length in [auth-0002](decisions/auth-0002-cookie-session.md) and [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md); the same reasoning covers verification and password-reset tokens ([auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md)).
 
@@ -68,7 +68,16 @@ Generic advice stops being useful here. These three would break in non-obvious w
 
 **The ETL cursor row can race.** `reve_etl_cursor` holds one row per endpoint, read-modify-written on every tick. Two concurrent runs corrupt the refresh watermark — the exact field whose loss produced the July 2026 tariff gap. This is reachable *today*, without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two concurrent writers. A Postgres advisory lock taken at the top of the tick fixes it. *Scheduled: [plan.md](plan.md) Phase 13.*
 
-**Charging-point availability is not modelled** ([be-0002](decisions/be-0002-availability-not-modelled.md)). Points are shown as available with a disclaimer. A real product needs live status, which means either OCPI integration with each CPO or a status feed REVE does not offer — a data-access problem, not an engineering one.
+**Charging-point availability is not modelled** ([be-0002](decisions/be-0002-availability-not-modelled.md)). Points are shown as available with a disclaimer. A real product needs live status — a data-access problem, not an engineering one, and the schema already has the column waiting for a source.
+
+Four routes exist today, none of them taken. The first two are **access rights**, not commercial negotiations, which is what makes this tractable:
+
+1. **Ask for access to the official system.** The SGV already *receives* status and price: the Resolución de 2 de abril de 2025 obliges CPOs at 43 kW and above to send them over OCPI, and the public REVE map displays them. The data exists and is already centralised. Its interface answers `403 Missing Authentication Token` rather than `404`, which suggests a credentialed path exists — what is missing is knowing who grants it and on what terms. Cheapest route if it works.
+2. **Invoke AFIR against each CPO.** Article 20.3 of Regulation (EU) 2023/1804 requires *every* CPO to expose an API giving "free and unrestricted access" to static **and dynamic** data, including operational status, availability and price. A CPO refusing is in breach of an EU regulation. The cost is fan-out — 142 operators — so this works better as the legal backing for route 1 than as the primary plan.
+3. **Contract a roaming hub** (Hubject, Gireve). One agreement, hundreds of CPOs, over OCPI — which is already the schema. The industry's normal path, and the only one that also unlocks reservations via OCPI's `Commands` module (`RESERVE_NOW` / `CANCEL_RESERVATION`). Commercial and paid.
+4. **Push for dynamic publication at the National Access Point.** This does not rest on interpreting AFIR: the Resolución de 2 de abril de 2025 states that the information sent to the SGV *"será publicada en el Punto de Acceso Nacional de Información de Tráfico"* — will be published, not may be. Spain currently serves only the static half: the DGT publishes `EnergyInfrastructureTablePublication` (verified 2026-08-06 — 85.5 MB, 12,337 sites, 36,972 refill points, 44,105 connectors, CC-BY, no API key) while the predictable `EnergyInfrastructureStatusPublication` paths return `404`. Slowest route, and the only one that would benefit any third party rather than just this application.
+
+**The NAP is not a drop-in replacement for the seed source.** Measured on the full file: it carries **no price field at all**, so it cannot feed the price cascade that the cost simulation rests on. It would solve the licence question and the 5 req/hr cap, and nothing else. Reasoning in [thesis/memoria/05_Modelo_de_datos_y_fuentes.md](thesis/memoria/05_Modelo_de_datos_y_fuentes.md) and [10_Marco_regulador.md](thesis/memoria/10_Marco_regulador.md).
 
 ## Legal and compliance
 
@@ -77,6 +86,10 @@ Generic advice stops being useful here. These three would break in non-obvious w
 None of this exists, and the erasure path is not merely a missing endpoint — deleting a user has to reckon with what happens to their sessions, bookings and ledger rows.
 
 *Scheduled as thesis content: [plan.md](plan.md) Phase 14, alongside the business chapter.*
+
+**The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — see [thesis/memoria/10_Marco_regulador.md](thesis/memoria/10_Marco_regulador.md).
+
+There is a documented way out if this ever blocks anything: the DGT's National Access Point publishes the same catalogue under **CC-BY** with no key, so migrating the seed would turn an open question into an attribution line. It costs the price data (see above), so it is a trade, not a free fix.
 
 **No terms of service, and no cookie/consent notice.** The session cookie is strictly necessary so it needs no consent banner under EU rules, but that conclusion should be documented rather than assumed.
 

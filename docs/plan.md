@@ -31,7 +31,7 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 
 ## Tech stack
 
-React + Vite + TypeScript with the TanStack family (Query, Router, Form) and Tailwind + shadcn/ui on the frontend; FastAPI + SQLAlchemy + PostgreSQL on the backend; Docker Compose everywhere; one EU VPS behind Caddy in production. The frontend stack is mid-migration — [tech-stack.md](tech-stack.md) marks what is shipped and what Phase 6 brings, and [thesis/migracion-del-stack.md](thesis/migracion-del-stack.md) argues why.
+React + Vite + TypeScript with MUI, React Router and TanStack Query on the frontend; FastAPI + SQLAlchemy + PostgreSQL on the backend; Docker Compose everywhere; one EU VPS behind Caddy in production. Every dependency and the reason it is there: [tech-stack.md](tech-stack.md).
 
 ---
 
@@ -40,7 +40,7 @@ React + Vite + TypeScript with the TanStack family (Query, Router, Form) and Tai
 ```text
   ┌──────────────────────────────────┐
   │  PWA Frontend (frontend/)        │
-  │  React + Vite + Tailwind/shadcn  │
+  │  React + Vite + MUI              │
   └────────────────┬─────────────────┘
                    │ HTTPS, /api/*
                    ▼
@@ -107,21 +107,34 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 3 | Simulation + algorithm | Core | Done | [phase-3](phases/phase-3.md) |
 | 4 | Frontend redesign + dashboard-first IA | Core | Done | [phase-4](phases/phase-4.md) |
 | 5 | Deployment + CI/CD + releases | Core | In progress | [phase-5](phases/phase-5.md) |
-| 6 | Frontend stack migration | Core | Not started | planned at phase start |
 | 7 | ETL reactivation + backfill | Core | Not started | planned at phase start |
 | 8 | Private charging points + owner pricing | Core | Not started | planned at phase start |
 | 9 | Smart charging optimiser | Core | Not started | planned at phase start |
-| 10 | Bookings + session recording | **Optional** | Not started | planned at phase start |
-| 11 | Wallet + paid sessions | **Optional** | Not started | planned at phase start |
+| 10 | Bookings + session recording | Core | Not started | planned at phase start |
+| 11 | Wallet + paid sessions | Core | Not started | planned at phase start |
 | 12 | AI/agent assistant | **Optional** | Not started | planned at phase start |
 | 13 | Polish, security + hardening | Core | Not started | planned at phase start |
 | 14 | Thesis writing | Core | In progress | [thesis/memoria/](thesis/memoria/) |
 
 Releases track this table: a minor version marks a phase shipping, `v0.1.0` is the first production deploy, and **`v1.0.0` is the build presented for the thesis** (see [AGENTS.md](../AGENTS.md) → Releases).
 
-**Optional phases and the cut order.** Phases 10–12 are the ones that come out if the schedule tightens, dropped **from the bottom up: 12 (AI) first, then 11 (wallet), then 10 (bookings + sessions)**. They are optional because none of them is load-bearing for a pillar in [What makes this thesis-worthy](#what-makes-this-thesis-worthy) on its own: the platform model is argued by Phase 8, the algorithm chapter by Phase 9, and the deployment pillar by Phase 5.
+**The frontend stack migration is cancelled.** Replacing MUI + Emotion with Tailwind + shadcn/ui, and React Router with TanStack Router, was proposed and is not happening: it was the one phase that converted roughly ten working screens into ten identical-looking ones, and the calendar went to the capabilities the thesis argues. The app ships on MUI + Emotion + React Router, and the thesis justifies that stack on its own merits rather than as an interim state. Phase 6 is retired; the numbering of the phases after it is unchanged so that existing references keep resolving.
 
-Everything marked Core is not negotiable. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged — the app must never present a cut feature as if it worked.
+**The scope is now five features, prototyped end to end.** The rule that makes that defensible: **only the physical actuation is simulated, never the logic**. The data model, the business rules, the API and the interface are the ones a real integration would use, and each simulated boundary sits exactly where the real component would plug in.
+
+| Capability | Phase | What is simulated | Where the real seam is |
+| --- | --- | --- | --- |
+| Book a public point / start a session | 10 | The command to the charger | OCPI `RESERVE_NOW` / `START_SESSION`; the session is recorded either way |
+| Connect and manage a domestic point | 8 | Control of the wallbox | A `ChargerController` port — real implementations are per-manufacturer cloud APIs, or acting as the charger's OCPP backend |
+| Rent out a private point, owner earns a commission | 8 + 11 | The movement of money | A payment processor. The append-only ledger and the balances are **real** |
+| Optimise charging against price | 9 | **Nothing** | Prices are real PVPC; the system recommends rather than executes, which is a scope limit, not a simulation |
+| AI agent plans a route with stops | 12 | **Nothing essential** | Calls the app's own APIs as tools |
+
+Two of the five simulate nothing, and in a third the accounting is genuine even though the money is not. Every boundary is declared in the thesis rather than glossed over.
+
+**Cut order.** Phase 12 (AI) is the first and only planned cut; it is the one capability nothing else depends on. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged — the app must never present a cut feature as if it worked.
+
+**The memoria freezes before the app does.** The document is delivered on 31 August; the defence follows one to two weeks later and the application can keep improving in between. Nothing may be claimed in the memoria that is not finished when it closes — work landing afterwards is demo material, and is introduced as such.
 
 ### Phase 1 — Foundation — done
 
@@ -179,38 +192,18 @@ Deployment comes before the remaining feature work so there is a secure, phone-a
 - [ ] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
 - [ ] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
-### Phase 6 — Frontend stack migration — not started
-
-Move the frontend onto one coherent stack before any new screens are built on the old one: **Tailwind v4 + shadcn** replacing MUI and Emotion, **TanStack Router** replacing React Router, and **TanStack Form + Zod** for the forms the app does not yet have. The s-charge dark design system is preserved — it is re-expressed as Tailwind tokens, not redesigned.
-
-Two things justify the timing. Every later phase adds screens (registration wizard, optimiser, bookings, wallet, owner dashboard), so migrating now converts ~10 screens instead of ~18. And dropping Emotion removes runtime CSS-in-JS entirely, which is measurable: the Phase 2 Lighthouse audit scored `/map` at 31, and the before/after belongs in the thesis performance section as a result rather than a claim.
-
-**Runs after the deployment**, not before: the migration consumes almost everything Phase 5 builds — CI building the frontend prod image, the committed API schema, the pre-push gate, and a deployed URL to check each slice on a real phone — while the deployment gains nothing from the migration in return. The ordering argument in full: [phases/phase-5.md](phases/phase-5.md) → Start here. The full argument — why the original MUI decision was right, why it expires, the alternatives weighed (including staying on MUI with Pigment CSS, which MUI documents as early alpha) and how the result gets measured — is the thesis chapter [migracion-del-stack.md](thesis/migracion-del-stack.md), which covers this and the other stack changes.
-
-**Done when:**
-
-- [ ] Lighthouse + bundle size measured **before** the first change, and again at the end
-- [ ] Tailwind v4 + shadcn installed; the s-charge tokens (palette, surfaces, radii, mono-numeric type) expressed as Tailwind theme tokens
-- [ ] Every screen converted; `@mui/*`, Emotion and notistack removed from `package.json`
-- [ ] TanStack Router replaces React Router, with typed params and the auth root loader preserved
-- [ ] **Handle the expired session.** Since [phase-5](phases/phase-5.md) slice 15 the whole API answers `401` without one, and the client has no global handler: TanStack Query is set to `retry: 2`, so an expired session on the map costs three requests and lands on an error state instead of the login screen. Two parts — stop retrying `401` (retrying an auth failure is wrong regardless) and send it to `/login`. Deferred to here rather than fixed in slice 15 because the router that would own the redirect is the one being replaced
-- [ ] **Preserve the intended destination through login.** `ProtectedRoute` redirects with a bare `<Navigate to="/login" replace />`, so a deep link into a specific charging point returns to the dashboard rather than the point. Pre-existing and unrelated to the migration, but the router swap is when it is cheap — and it is what a QR code pointing at anything other than the app root would need
-- [ ] TanStack Form + Zod in place as the form layer
-- [ ] Charts moved off MUI X Charts (nothing renders charts on real data yet, so this is a swap of the placeholder)
-- [ ] Re-tested on a real phone at the 360px reference width; no visual regressions against the current build
-
 ### Phase 7 — ETL reactivation + backfill — not started
 
 Turn the refresh jobs back on, recover what is still recoverable, and fix what made them fragile. Both have been off since the laptop's crons stopped in early July 2026, and [Phase 5](phases/phase-5.md) deploys with the `scheduler` service **deliberately not started** — freezing the state so it can be inspected before anything overwrites it, rather than because the deploy failed.
 
-Small and deliberately placed after the migration: the ETLs are backend work with no UI, so nothing here competes with Phase 6, and the frozen watermark is worth more than fresh data during a rewrite.
+Small and deliberately scheduled before the feature work: the ETLs are backend-only, and the frozen watermark is worth more than fresh data until it has been measured.
 
 **Done when:**
 
 - [ ] **The REVE watermark is read before the scheduler ever ticks.** It is parked at `2026-07-08 19:30`; the first unattended run jumps it to `now − REVE_REFRESH_LOOKBACK_HOURS` and the pre-jump value is gone. Record it first — [Phase 5](phases/phase-5.md) Slice 12 holds the probing method and the measured ceiling, and moves here
 - [ ] **The recoverable span is measured, not assumed**, and the gap that is written off is recorded as a number in [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md). The prior measurement says a ~24-day hole is lost almost in full; this phase turns "almost" into a figure
 - [ ] **The 504 ceiling is re-probed** and `REVE_REFRESH_LOOKBACK_HOURS` moved if it has shifted. The failure is a REVE-side performance regression that has self-healed once before, so the answer is empirical each time
-- [ ] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but note the curve stops at `2026-08-01 21:00 UTC` in the seed, meaning the prices views show an empty "today" for the whole of Phase 6
+- [ ] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but note the curve stops at `2026-08-01 21:00 UTC` in the seed, meaning the prices views show an empty "today" until the ETLs are turned back on
 - [ ] **The cursor race is fixed rather than worked around.** `reve_etl_cursor` is read-modify-written every tick, and two concurrent runs corrupt the watermark — the field whose loss caused the gap this phase exists to measure. Running a refresh by hand while the cron ticks is enough to trigger it, so "stop the scheduler first" is a discipline, not a fix. Currently listed under [Phase 13](#phase-13--polish-security--hardening--not-started); decide when planning this phase whether it belongs here instead, since this is when the ETLs are open on the bench
 - [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](decisions/infra-0001-deployment.md) — re-read that before reopening it
 - [ ] **Both jobs observed running unattended** on the server, with the first ticks confirmed in the logs and `electricity_prices` reaching today
@@ -279,7 +272,7 @@ Responsive QA, error/empty states, test coverage, a full security review and a p
 - [ ] Backend tests pass with ≥70% coverage on `services/`
 - [ ] Security review pass (auth, secrets, headers, dependencies, rate limits)
 - [ ] Performance pass (bundle/code-split, query + index review, map payload/viewport)
-- [ ] **The rest of the Content-Security-Policy in the `Caddyfile`.** Phase 5 slice 16 shipped the OWASP header set and a CSP carrying only `frame-ancestors 'none'`; what is missing is `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src`. `HttpOnly` stops JavaScript reading the session cookie but not an XSS payload issuing authenticated requests with it, so CSP is the control that actually limits the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses — a chapter that currently argues about DBSC and DPoP while the cheap mitigation is absent. **Must come after the Phase 6 migration**: MUI and Emotion inject inline `<style>` tags, forcing `style-src 'unsafe-inline'` and negating most of the benefit; Tailwind compiles to a static stylesheet and makes a strict policy practical. **Roll it out with `Content-Security-Policy-Report-Only` first** — the same policy, reported and not enforced — so violations are collected from the real app instead of discovered as a blank map. The map is where the breakage will be: MapLibre fetches its style and tiles from `tiles.openfreemap.org`, so that host needs `connect-src` and `img-src`, and it spawns workers from blob URLs. **`Cross-Origin-Embedder-Policy` is deliberately not part of this**: per MDN it exists to enable cross-origin isolation for `SharedArrayBuffer` and unthrottled timers, which this app does not use, so `require-corp` would block the tiles for no benefit. If it is ever wanted, `credentialless` loads CORP-less cross-origin resources by stripping credentials
+- [ ] **The rest of the Content-Security-Policy in the `Caddyfile`.** Phase 5 slice 16 shipped the OWASP header set and a CSP carrying only `frame-ancestors 'none'`; what is missing is `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src`. `HttpOnly` stops JavaScript reading the session cookie but not an XSS payload issuing authenticated requests with it, so CSP is the control that actually limits the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses — a chapter that currently argues about DBSC and DPoP while the cheap mitigation is absent. **The `style-src` directive is the blocked one**: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate most of the benefit. Ship the directives that do not depend on it and record why the remaining one is held back. **Roll it out with `Content-Security-Policy-Report-Only` first** — the same policy, reported and not enforced — so violations are collected from the real app instead of discovered as a blank map. The map is where the breakage will be: MapLibre fetches its style and tiles from `tiles.openfreemap.org`, so that host needs `connect-src` and `img-src`, and it spawns workers from blob URLs. **`Cross-Origin-Embedder-Policy` is deliberately not part of this**: per MDN it exists to enable cross-origin isolation for `SharedArrayBuffer` and unthrottled timers, which this app does not use, so `require-corp` would block the tiles for no benefit. If it is ever wanted, `credentialless` loads CORP-less cross-origin resources by stripping credentials
 - [ ] **`Cache-Control` on the public read endpoints.** The backend sets no cache headers at all, so `/api/points/map` rebuilds an aggregate over ~13.6k points and re-ships ~503 KB gzipped on every load, with nothing telling the browser, the service worker or Caddy that the previous copy is still good. The catalogue changes at the ETL's hourly cadence, not per request. This is also the right answer to "should the public endpoints be rate-limited" — they are cheap to *serve* repeatedly and expensive to *rebuild* repeatedly, so caching removes the cost that a limit would only ration. Pairs with the service-worker runtime caching deferred out of [phase-2](phases/phase-2.md)
 - [ ] **Advisory lock on the REVE ETL tick.** `reve_etl_cursor` is one row per endpoint, read-modify-written every tick, and two concurrent runs corrupt the refresh watermark — the field whose loss produced the July 2026 tariff gap. This is reachable without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two writers. A Postgres advisory lock at the top of `_run_tick`, exiting quietly if another run holds it
 - [ ] **Automated backup-restore verification.** The restore is currently exercised by hand, and a backup nobody has restored is a hypothesis. A script that restores the latest dump into a throwaway container and asserts row counts plus `alembic current` at head turns "we take backups" into "we verify they restore" — the stronger claim, and cheap

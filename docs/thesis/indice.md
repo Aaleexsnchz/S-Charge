@@ -47,10 +47,9 @@ desplegar y argumentar la viabilidad del producto.
    vivo, con una línea de justificación por herramienta, vive en
    [tech-stack.md](../tech-stack.md) y no se duplica aquí.
 
-   4.2. **Decisiones revisadas** — la **migración del stack**
-   ([migracion-del-stack.md](migracion-del-stack.md)): frontend de MUI a Tailwind + shadcn/ui,
-   PostgreSQL 18, Python 3.13, entorno de desarrollo nativo y cadena de herramientas. Por qué
-   las decisiones iniciales fueron correctas, por qué caducan y cómo se verifica cada cambio.
+   4.2. **Decisiones revisadas** — PostgreSQL 18, Python 3.13, entorno de desarrollo nativo y
+   cadena de herramientas, recogidas en [tech-stack.md](../tech-stack.md). Por qué las
+   decisiones iniciales fueron correctas, por qué caducan y cómo se verifica cada cambio.
 
 5. **Datos y modelo** — REVE como _mirror_ sembrado una sola vez y servido desde Postgres
    ([data-model.md](modelo-de-datos.md)); precios PVPC de REE y estrategia de estimación
@@ -107,8 +106,7 @@ Estos documentos existen y alimentan los capítulos anteriores:
 [auth.md](autenticacion.md) · [data-model.md](modelo-de-datos.md) ·
 [precios-y-actualizacion.md](precios-y-actualizacion.md) ·
 [seed-scheduling.md](planificacion-de-siembra.md) · [session-theft.md](robo-de-sesion.md) ·
-[simulacion-de-recarga.md](simulacion-de-recarga.md) ·
-[migracion-del-stack.md](migracion-del-stack.md) · [skills.md](skills.md).
+[simulacion-de-recarga.md](simulacion-de-recarga.md) · [skills.md](skills.md).
 
 Los capítulos de negocio, despliegue/escalado y hoja de ruta se redactan en la fase de
 redacción (`modelo-de-negocio.md`, `despliegue-y-escalado.md`, `hoja-de-ruta.md`); aún no

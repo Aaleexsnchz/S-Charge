@@ -24,7 +24,7 @@ Rendering at this scale is fine; the cost is the initial download and parse. Pla
 
 ### Performance baseline
 
-Lighthouse, production build, mobile preset, 2026-06-13 — **the comparison point for the Phase 6 migration**, so it is recorded here rather than only in the phase that measured it:
+Lighthouse, production build, mobile preset, 2026-06-13 — recorded here rather than only in the phase that measured it:
 
 | Page | Performance | Accessibility | Best practices | SEO |
 | --- | --- | --- | --- | --- |

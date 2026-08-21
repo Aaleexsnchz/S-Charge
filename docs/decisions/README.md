@@ -18,7 +18,7 @@ Note this only excuses *givens*, not casual choices: a dependency you would have
 
 - **Ids are area-prefixed**, not globally sequential: `auth-`, `be-` (backend, non-auth), `fe-` (frontend), `infra-`. The area is readable without opening the file. Numbers are never reused, including after a supersession.
 - **Sections:** Decision · Rationale · Consequences · Rejected alternatives · References, with `Implementation` where the rollout detail is worth keeping. Front-matter carries `id`, `status`, `phase`, `date`, and `related` / `supersedes` / `superseded_by`.
-- **Statuses:** `proposed` — decided, not yet implemented. `accepted` — implemented and in force. `superseded` — replaced; add `superseded_by:` and a banner at the top.
+- **Statuses:** `proposed` — decided, not yet implemented. `accepted` — implemented and in force. `superseded` — replaced; add `superseded_by:` and a banner at the top. `rejected` — decided against, or abandoned before implementation; keep the record with a banner explaining what closed it, because the analysis still saves the next person the work.
 - **Thesis chapters may narrate abandoned approaches** as a *camino no tomado*; that is content there, not clutter.
 
 ## Auth
@@ -43,14 +43,11 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 
 | ID | Title | Phase | Status |
 | --- | --- | --- | --- |
-| [fe-0001](fe-0001-mui.md) | MUI as the frontend component library | 1 | superseded by fe-0007 |
+| [fe-0001](fe-0001-mui.md) | MUI as the frontend component library | 1 | accepted |
 | [fe-0002](fe-0002-pwa.md) | Ship the frontend as an installable PWA | 1 | accepted |
 | [fe-0003](fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles | 2 | accepted |
 | [fe-0004](fe-0004-tanstack-query.md) | TanStack Query for server state | 2 | accepted |
 | [fe-0006](fe-0006-biome.md) | Biome for linting and formatting | 3 | accepted |
-| [fe-0007](fe-0007-frontend-stack-migration.md) | Migrate to Tailwind + shadcn/ui and TanStack Router + Form | 6 | proposed |
-
-`fe-0005` was MUI X Charts and stays retired: nothing renders a chart on real data yet, and the choice constrained nothing beyond one component's API — its replacement is covered by fe-0007. Restore it from git history if that judgement turns out to be wrong; the number is not reused either way.
 
 ## Infrastructure
 
