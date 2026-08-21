@@ -12,7 +12,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 | 6 | Runtime versions + API contract | Done | #18 |
 | 7 | First deploy | Done | host work |
 | 8 | External services on the prod origin | Not started | host work |
-| 9 | Close the CI/CD loop | Not started | — |
+| 9 | Close the CI/CD loop | Done | #27, #30 |
 | 10 | Security gate, cutover, first release | Not started | host work |
 | 11 | Renovate | Not started | — |
 | 12 | REVE tariff backfill | Moved to [Phase 7](../plan.md) | — |
@@ -23,9 +23,11 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance with the re
 
 Numbering is not the running order. **Slices 13 and 15 must land before [Slice 10](#slice-10--security-gate-cutover-first-release)**, whose gate checks for what they fix; they and Slice 14 are numbered last only because they were found after the plan was written.
 
-**Where things stand:** **the application is deployed and publicly reachable at <https://s-charge.app>** (Slice 7, 2026-08-04). Verified from outside the host on 2026-08-05: HTTPS with HSTS, the full security-header set, `Permissions-Policy`, `/api/points` answering `401` without a session, and the interactive docs disabled in production.
+**Where things stand:** **the application is deployed and publicly reachable at <https://s-charge.app>**, running **`v0.1.0`** (Slice 7, first deployed 2026-08-04; CD proven and tagged 2026-08-21). Verified from outside the host on 2026-08-05: HTTPS with HSTS, the full security-header set, `Permissions-Policy`, `/api/points` answering `401` without a session, and the interactive docs disabled in production.
 
-What remains: **Slices 8 → 9 → 10**, then 11. The `scheduler` service is deployed but **deliberately not started** — it sits behind a Compose profile so a deploy cannot move the REVE watermark by accident, so the REVE/PVPC refresh **still has not run since early July** ([Phase 7](../plan.md) owns turning it back on). **No tag has been pushed**, so `/api/health` reports the commit hash rather than `v0.1.0`, and the CD workflow stays inert until one is. `main` is not yet PR-protected, though changes are already going through PRs by convention.
+The CI/CD loop is closed: `main` is PR-protected with the four CI checks required, a tag push deploys and cuts a GitHub Release, and a merge deploys nothing. The `scheduler` service is deployed but **deliberately not started** — it sits behind a Compose profile so a deploy cannot move the REVE watermark by accident, so the REVE/PVPC refresh **still has not run since early July** ([Phase 7](../plan.md) owns turning it back on).
+
+What remains: **Slices 8 and 10**, then 11. Note `v0.1.0` was tagged when CD was proven, **ahead of Slice 10's security gate** rather than after it — the release marks the pipeline working, not the gate passing, and the gate items below are still outstanding.
 
 ## Start here
 
@@ -97,10 +99,10 @@ Python 3.13 everywhere, including `backend/.python-version`, which decides the i
 
 Full detail in [setup/deployment.md](../setup/deployment.md) §3–5.
 
-- [ ] Repo cloned to `/opt/s-charge` (the path `cd.yml` assumes)
+- [x] Repo cloned to `/opt/s-charge` (the path `cd.yml` assumes) — **over SSH**, using a read-only repository deploy key; an HTTPS remote cannot authenticate unattended and breaks CD at `git fetch`
 - [ ] The server-side `.env` written with **every secret rotated** — fresh `SECRET_KEY`, new `POSTGRES_PASSWORD`, `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`, empty `CORS_ALLOW_ORIGINS`, prod `APP_BASE_URL` / `GOOGLE_REDIRECT_URI`, `SITE_ADDRESS`; copies kept in a password manager, and **no value containing `$`** ([Slice 14](#slice-14--environment-configuration)). `ENVIRONMENT=production` arms the boot check, so a misconfigured file now restart-loops the backend instead of serving with a development secret
-- [ ] Database bootstrapped from `backups/ev_charging_seed_20260803T070005Z.dump` — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
-- [ ] `up -d --build` + `alembic upgrade head`
+- [x] Database bootstrapped from `backups/ev_charging_seed_20260803T070005Z.dump` — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
+- [x] `up -d --build` + `alembic upgrade head`
 - [ ] Verified: site on a phone, PWA installs, `/api/health` returns the version, and `docker compose -f docker-compose.prod.yml ps` shows **no** `scheduler` container
 
 **Not verified here: the weekly backup.** Running `./scripts/backup_db_cron.sh` on the server was going to be this slice's last step, and it cannot pass yet — `backup_db.sh` invokes a bare `docker compose exec -T db pg_dump`, which resolves `docker-compose.yml` and its dev project, where the server has no running `db`. `COMPOSE_FILE=docker-compose.prod.yml` in the environment fixes it with no code change (Compose reads that variable, and it correctly skips the `scheduler` profile), and the database credentials have to come with it, since the script falls back to the development names. It also needs `rclone` and its B2 config on the host, which arrives with the crontab cutover in [Slice 10](#slice-10--security-gate-cutover-first-release). Both belong with the host-script pass there, not wedged into a first deploy. This is the same class of defect [Slice 16](#slice-16--pre-deploy-hardening) caught in the `$HOME` paths — a laptop assumption that fails into a cron log nobody reads — and it survived because that audit checked the paths and not the compose project.
@@ -125,12 +127,12 @@ The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is m
 
 ## Slice 9 — Close the CI/CD loop
 
-**Acceptance:** merging a PR to `main` deploys to production automatically, and `main` cannot be pushed to directly or force-pushed.
+**Acceptance:** a tag push deploys to production, merging to `main` does not, and `main` cannot be pushed to directly or force-pushed ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)).
 
-- [ ] Repo secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`)
+- [x] Repo secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`)
 - [x] CD workflow enabled in the Actions tab — safe to do before the server exists now that it only fires on a tag push or a manual run ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)), so nothing can trigger it by accident
-- [ ] Branch protection ruleset on `main`: **require a pull request**, require the CI checks, block force-push and deletion
-- [ ] **End-to-end test:** trivial PR → merge → CI green → **nothing deploys** → push a tag → CD deploys → `/api/health` reports that tag. Both halves matter: that merging is inert is as much a claim to verify as that tagging ships ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)).
+- [x] Branch protection ruleset on `main`: **require a pull request**, require the CI checks, block force-push and deletion. Zero approvals required — a solo developer cannot approve their own PR, and any higher number locks the repository
+- [x] **End-to-end test:** trivial PR → merge → CI green → **nothing deploys** → push a tag → CD deploys → `/api/health` reports that tag. Both halves matter: that merging is inert is as much a claim to verify as that tagging ships ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)).
 
 ## Slice 10 — Security gate, cutover, first release
 
@@ -139,7 +141,7 @@ The ETLs stopped when the laptop did. The PVPC hole is closed; the REVE one is m
 - [ ] `/security-review` run; infra-0001 gate passed (HSTS, only 22/80/443 open, no published `5432`, secrets rotated, cookie `Secure`, CORS empty, backup restorable, auth endpoints rate-limited and logging the real client IP per [Slice 13](#slice-13--auth-surface-hardening))
 - [ ] Laptop crontab refresh/PVPC lines removed — the scheduler container owns them now
 - [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS), and **`backup_db.sh` pointed at the right compose project** — it runs a bare `docker compose exec -T db`, which resolves the dev file and finds nothing on the server. `COMPOSE_FILE=docker-compose.prod.yml` in the crontab entry is the whole fix; see [Slice 7](#slice-7--first-deploy). It also **defaults `POSTGRES_USER` and `POSTGRES_DB` to the development names**, which production does not use — the crontab entry has to supply the server's, or the dump names a database that is not there. Verify by running it once by hand before trusting the schedule
-- [ ] **`v0.1.0` tagged**
+- [x] **`v0.1.0` tagged** (2026-08-21)
 - [ ] infra-0001 flipped to `accepted`; B2 lifecycle rule added on `tfm-db-backups`
 
 ## Slice 11 — Renovate

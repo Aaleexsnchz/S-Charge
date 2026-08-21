@@ -180,17 +180,17 @@ Adopted the `s-charge` dark design system (theme tokens, mono-numeric typography
 - [x] Sessions / My-points / stats / next-reservation as badged placeholder UI behind `*.mock.ts`
 - [x] Lint + build green; merged to `main`
 
-### Phase 5 — Deployment + CI/CD + releases — in progress
+### Phase 5 — Deployment + CI/CD + releases — in progress (deployed, `v0.1.0`)
 
 Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early, with the refresh ETLs on an always-on server instead of a laptop — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](decisions/infra-0001-deployment.md).
 
 **Done when:**
 
-- [ ] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
+- [x] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
 - [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
 - [ ] REVE/PVPC refresh ETLs run on the server, not the laptop
-- [ ] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
-- [ ] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
+- [x] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
+- [x] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
 ### Phase 7 — ETL reactivation + backfill — not started
 
