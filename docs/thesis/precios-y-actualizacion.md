@@ -64,17 +64,40 @@ al no ser un parámetro, no cambiaba nada. En junio de 2026 un fallo puntual de 
 congeló la marca de agua y, al no avanzar, el hueco creció día a día hasta volverse
 irrecuperable (cada consulta abarcaba ya días de cambios).
 
-**Recuperación sin bloqueo.** Como sin `date_to` no se puede trocear un rango
-antiguo, un `504` con la marca de agua vieja se resuelve **saltándola a
-`ahora − REVE_REFRESH_LOOKBACK_HOURS`** (2 h por defecto, un tamaño que sí responde
-`200`) y siguiendo; el tramo saltado es irrecuperable por este endpoint, pero es
-justo un periodo en el que apenas cambió nada. Un `504` con la marca de agua **ya
-reciente** se trata como un fallo transitorio de REVE: se deja igual para
-reintentar en el siguiente tick, sin saltar ni perder datos. Un `429` detiene el
-tick. El reintento del cliente se desactiva aquí (`max_retries=0`): bajo 5
-llamadas/hora no compensa gastar una segunda llamada en un `504`. Cada salto se
-audita (`reve_refresh_jumped_to_recent`). Así, el fallo puntual que en su día
-bloqueó el refresco para siempre ahora se autocorrige en el siguiente tick.
+**Un `504` nunca mueve la marca de agua.** El tick registra el error y deja la
+posición intacta, tenga la antigüedad que tenga. Un `429` detiene el tick. El
+reintento del cliente se desactiva aquí (`max_retries=0`): bajo 5 llamadas/hora no
+compensa gastar una segunda llamada en un `504`.
+
+**El camino no tomado: saltar la marca de agua.** Una versión anterior resolvía el
+`504` de una marca vieja **saltándola a `ahora − 2 h`** —un tamaño que sí responde
+`200`— y siguiendo. Mantenía el refresco en marcha, y el tramo saltado se daba por
+perdido con el argumento de que era «justo un periodo en el que apenas cambió
+nada». El argumento resultó ser circular: nadie había medido cuánto cambiaba.
+
+Se retiró en la Fase 6. Al no existir `date_to`, una marca adelantada no se puede
+volver a apuntar hacia atrás, de modo que el salto es **silencioso e
+irreversible**: la única traza es una entrada de auditoría en un log que nadie
+lee. Es exactamente el mecanismo que habría convertido la parada de julio de 2026
+en una pérdida definitiva. Hoy el `504` deja la marca donde está y lo dice en
+`last_error`; el coste es que una ventana que REVE no sirve gasta una llamada por
+tick hasta que alguien interviene, y ese es el intercambio buscado: **quedarse
+parado es recuperable, saltar no lo es.** La intervención se hace con
+`--date-from`, que apunta una sonda sin escribir el cursor.
+
+**El estado congelado, para que conste.** La parada dejó el cursor en este punto,
+medido el 2026-08-22 antes de reactivar nada:
+
+| Campo | Valor |
+| --- | --- |
+| `refresh_watermark` | `2026-07-08 19:30:03.120191+00` |
+| `last_attempted_at` | `2026-07-08 21:30:32.375417+00` |
+| `last_error` | `504 Gateway Timeout` sobre `date_from=2026-07-08T19:30:03` |
+| `refresh_cycle_end` | vacío (ningún ciclo a medias) |
+
+Sobrevivió precisamente porque el `504` llegó cuando la marca tenía dos horas y se
+clasificó como transitorio. Con la regla del salto, una marca de 45 días se habría
+descartado en el primer tick desatendido.
 
 Un matiz en el traspaso siembra→refresco: como la siembra es **no atómica** (con
 presupuesto de 5 llamadas/hora pagina durante días), una tarifa de la página 1

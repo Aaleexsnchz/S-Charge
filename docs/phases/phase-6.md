@@ -42,7 +42,7 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
 | 1 | Confirm the server matches the measurement | Not started | host work |
-| 2 | Remove the automatic watermark jump | Not started | — |
+| 2 | Remove the automatic watermark jump | Done | #37 |
 | 3 | Advisory lock on the REVE tick | Not started | — |
 | 4 | Backfill the prices | Not started | host work |
 | 5 | PVPC current again | Not started | host work |
@@ -69,11 +69,12 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 
 **Acceptance:** no unattended tick can discard a watermark, at any age, and `2026-07-08 19:30:03` is recorded permanently regardless.
 
-- [ ] Record the pre-reactivation cursor verbatim in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md) — the number the thesis quotes
-- [ ] **Remove the automatic jump.** A 504 records the error and leaves the watermark, whatever its age. A silent write-off is what turned a two-hour blip into a 45-day gap, and the goal of this phase is to keep the data rather than to keep the cursor moving
-- [ ] Decide what `REVE_REFRESH_LOOKBACK_HOURS` still means once nothing jumps to it, and remove it if the answer is nothing
-- [ ] `--date-from` on `refresh_reve.py`, so [Slice 4](#slice-4--backfill-the-prices) can aim a probe without raw SQL against `reve_etl_cursor`
-- [ ] A stale watermark now costs one wasted call per tick until an operator acts, so the error has to be **visible**: confirm `last_error` is surfaced by `--status` and that the failure reaches the container log stream
+- [x] Recorded the pre-reactivation cursor in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md), with the jump written up there as a *camino no tomado*
+- [x] **Removed the automatic jump.** A 504 records the error and leaves the watermark, whatever its age. `skip_refresh_window` is gone with it
+- [x] `REVE_REFRESH_LOOKBACK_HOURS` removed — nothing jumps to it any more, so it meant nothing
+- [x] `--date-from` on `refresh_reve.py`, so [Slice 4](#slice-4--backfill-the-prices) aims a probe without editing `reve_etl_cursor`
+- [x] `--status` now prints `last_error`, and the 504 goes to stderr. A stale watermark costs one call per tick until an operator acts, so the stall has to be visible
+- [x] The two jump tests replaced by one parametrised over recent / stale / very-stale ages, all asserting the watermark does **not** move
 
 ## Slice 3 — Advisory lock on the REVE tick
 
