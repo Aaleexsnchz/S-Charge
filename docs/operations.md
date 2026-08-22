@@ -44,15 +44,30 @@ Environment variables are read **at container creation**: after editing a server
 
 ### Reaching the production database
 
-Postgres has no published port, and that is the only thing keeping it off the internet — **not** the firewall. `ufw` does not filter Docker-published ports: Docker inserts its DNAT rules ahead of ufw's chain, so adding a `ports:` entry exposes the database publicly while `ufw status` still shows a correct-looking policy. Never add one to inspect production.
+**Never publish Postgres on `0.0.0.0`.** `ufw` does not filter Docker-published ports: Docker inserts its DNAT rules ahead of ufw's chain, so a plain `ports: ["5432:5432"]` exposes the database to the internet while `ufw status` still shows a correct-looking policy.
 
-Tunnel over SSH instead — it publishes nothing and the port exists only on your machine, for the life of the connection:
+`db` is therefore bound to **loopback only** — `127.0.0.1:5432:5432`. That rule matches a destination no packet from outside can carry, so the database is reachable from the host and from nothing else. It grants a local shell nothing it did not already have through `docker compose exec`.
+
+### From a GUI client
+
+Tunnel over SSH; the port exists only on your machine, for the life of the connection.
 
 ```bash
-ssh -L 5432:localhost:5432 deploy@s-charge.app
+ssh -L 55432:localhost:5432 deploy@s-charge.app
 ```
 
-Leave that session open and point any client (DBeaver, `psql`) at `localhost:5432` on your laptop. Credentials are the server-side `.env`. If the dev stack is already using 5432 locally, map a different local port instead — `-L 55432:localhost:5432` — and connect to `localhost:55432`.
+Leave that session open and point DBeaver (or `psql`) at `localhost:55432`. Credentials are the server-side `.env`. Port 55432 rather than 5432 because the dev stack already holds 5432 locally.
+
+### Ad-hoc SQL on the host
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T db \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+SELECT count(*) FROM charging_points;
+SQL
+```
+
+**The single quotes are load-bearing.** `$POSTGRES_USER` and `$POSTGRES_DB` exist in the container, not in the host shell — double-quote them and they expand to nothing, psql falls back to the OS user, and the connection fails with `role "root" does not exist`. The same trap is why [backup_db.sh](../scripts/backup_db.sh) needs its credentials supplied from the crontab entry.
 
 ### Image stages
 
