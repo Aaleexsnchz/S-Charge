@@ -48,6 +48,12 @@ Environment variables are read **at container creation**: after editing a server
 
 `db` is therefore bound to **loopback only** — `127.0.0.1:5432:5432`. That rule matches a destination no packet from outside can carry, so the database is reachable from the host and from nothing else. It grants a local shell nothing it did not already have through `docker compose exec`.
 
+### The dev database
+
+`docker-compose.yml` binds it to `127.0.0.1:5432` too, for the same reason: a `0.0.0.0` bind accepts connections from anyone on the same wifi. Connect DBeaver straight to `localhost:5432` — no tunnel, credentials from the root `.env`.
+
+**On WSL2, test this after changing it.** Windows reaches WSL services through a localhost relay, and whether it forwards to a service bound inside the distro to `127.0.0.1` rather than `0.0.0.0` depends on the WSL version and whether mirrored networking is on. If a Windows-side client stops connecting, that is why — run the client inside WSL, enable mirrored networking, or put the bind back.
+
 ### From a GUI client
 
 Tunnel over SSH; the port exists only on your machine, for the life of the connection.
