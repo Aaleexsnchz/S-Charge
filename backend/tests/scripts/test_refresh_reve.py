@@ -6,7 +6,7 @@ from app.etl.cursor import read_cursor
 from app.integrations.reve import ReveClient
 from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
-from scripts.refresh_reve import LOOKBACK, _run_tick
+from scripts.refresh_reve import _run_tick
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,28 +33,23 @@ def _tariff_row() -> dict[str, Any]:
     return {"tariffs": None}
 
 
-async def test_stale_watermark_504_jumps_to_recent(
-    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+@pytest.mark.parametrize(
+    "age",
+    [timedelta(minutes=30), timedelta(hours=100), timedelta(days=45)],
+    ids=["recent", "stale", "very-stale"],
+)
+async def test_504_never_moves_the_watermark(
+    reve_client: ReveClient,
+    db_session: AsyncSession,
+    httpx_mock: HTTPXMock,
+    age: timedelta,
 ) -> None:
-    watermark = datetime.now(UTC) - timedelta(hours=100)
-    await _seed_tariff_cursor(db_session, watermark)
-    httpx_mock.add_response(status_code=504)
+    """Whatever its age, a 504 leaves the position recoverable.
 
-    async with reve_client as client:
-        exit_code = await _run_tick(db_session, client, budget=5)
-
-    assert exit_code == 0
-    cursor = await read_cursor(db_session, "/connectors/tariffs")
-    expected = datetime.now(UTC) - LOOKBACK
-    assert cursor.refresh_watermark is not None
-    assert abs((cursor.refresh_watermark - expected).total_seconds()) < 120
-    assert cursor.last_error is not None
-
-
-async def test_recent_watermark_504_is_left_for_retry(
-    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
-) -> None:
-    watermark = datetime.now(UTC) - timedelta(minutes=30)
+    The endpoint has no ``date_to``, so a watermark advanced past a window that
+    was never served cannot be aimed back at it.
+    """
+    watermark = datetime.now(UTC) - age
     await _seed_tariff_cursor(db_session, watermark)
     httpx_mock.add_response(status_code=504)
 
@@ -65,6 +60,22 @@ async def test_recent_watermark_504_is_left_for_retry(
     cursor = await read_cursor(db_session, "/connectors/tariffs")
     assert cursor.refresh_watermark == watermark
     assert cursor.last_error is not None
+
+
+async def test_date_from_override_aims_the_window(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """A probe names its own window without writing the cursor to get one."""
+    watermark = datetime.now(UTC) - timedelta(days=45)
+    await _seed_tariff_cursor(db_session, watermark)
+    override = datetime(2026, 7, 8, 19, 30, 3, tzinfo=UTC)
+    httpx_mock.add_response(json=[])
+
+    async with reve_client as client:
+        await _run_tick(db_session, client, budget=1, date_from_override=override)
+
+    sent = httpx_mock.get_requests()[0].url
+    assert sent.params["date_from"] == override.isoformat()
 
 
 async def test_drain_advances_watermark_to_now(

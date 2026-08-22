@@ -15,24 +15,30 @@ moment the cycle started, so the next cycle picks up everything since.
 
 What matters is how much has changed *between ``date_from`` and now*: a recent
 ``date_from`` is a small, cheap result; a watermark that has fallen days behind
-makes REVE scan/return too much and the gateway times out (504). Because there is
-no ``date_to``, an old range can't be sliced into chunks — so a 504 from a stale
-watermark is handled by **jumping the watermark to ``now`` minus
-``REVE_REFRESH_LOOKBACK_HOURS``** (a span we know returns 200) and carrying on.
-The skipped stretch is unrecoverable through this endpoint, but it's only ever a
-period where little or nothing changed. A 504 while the watermark is *already*
-recent is treated as a transient REVE blip: left in place to retry next tick.
+makes REVE scan/return too much and the gateway times out (504), and because
+there is no ``date_to`` an old range cannot be sliced into chunks.
+
+**A 504 never moves the watermark.** The tick records the error and leaves the
+position alone, whatever its age, so the window stays recoverable and an
+operator decides what to do about it. An earlier version jumped a stale
+watermark forward to a span known to return 200, which kept the refresh moving
+by writing the skipped stretch off — silently, and unrecoverably. That is how a
+two-hour outage in July 2026 became a 45-day gap. Losing data is worse than
+stalling, and a stall is visible in ``last_error``.
+
+The cost is that a watermark REVE will not serve now burns one call per tick
+until someone intervenes. That is the intended trade, and ``--date-from`` is how
+it gets intervened with.
 
 A ``429`` stops the tick to resume next time. ``ReveClient(max_retries=0)`` here:
-a 504 is not worth an immediate retry under a 5-call/hour budget. Jumps are
-audited (``reve_refresh_jumped_to_recent``).
+a 504 is not worth an immediate retry under a 5-call/hour budget.
 """
 
 import argparse
 import asyncio
 import sys
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from http import HTTPStatus
 
 import httpx
@@ -42,15 +48,12 @@ from app.etl.cursor import (
     read_all_cursors,
     record_error,
     record_refresh_progress,
-    skip_refresh_window,
 )
 from app.etl.reve import import_tariffs
 from app.integrations.reve import ReveClient
-from app.utils.audit import audit
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
-LOOKBACK = timedelta(hours=settings.reve_refresh_lookback_hours)
 
 _SKIP_STATUS = frozenset(
     {
@@ -84,50 +87,39 @@ def _is_server_error(exc: Exception) -> bool:
 
 async def _print_status(db: AsyncSession) -> int:
     cursors = await read_all_cursors(db)
-    print(f"{'endpoint':<22} {'next_page':>9} {'watermark':<28} {'cycle_end'}")
+    print(
+        f"{'endpoint':<22} {'next_page':>9} {'watermark':<28} "
+        f"{'cycle_end':<28} {'last_error'}"
+    )
     for c in cursors:
         wm = c.refresh_watermark.isoformat() if c.refresh_watermark else "-"
         ce = c.refresh_cycle_end.isoformat() if c.refresh_cycle_end else "-"
-        print(f"{c.endpoint:<22} {c.next_page:>9} {wm:<28} {ce}")
+        err = c.last_error or "-"
+        print(f"{c.endpoint:<22} {c.next_page:>9} {wm:<28} {ce:<28} {err}")
     return 0
 
 
-async def _handle_server_error(
-    db: AsyncSession,
-    endpoint: str,
-    window_start: datetime | None,
-    recent: datetime,
-    exc: Exception,
-) -> None:
-    """A 504/timeout: jump a stale watermark to ``recent``; leave a recent one be.
+async def _handle_server_error(db: AsyncSession, endpoint: str, exc: Exception) -> None:
+    """A 504/timeout: record it and leave the watermark exactly where it is.
 
-    A 504 with the watermark already recent is a transient REVE blip — keep the
-    watermark so the next tick retries the same point. A 504 with a stale
-    watermark means the "since then" set is too big to serve; jump to ``recent``
-    (the skipped span is unrecoverable here) and carry on.
+    Advancing past a window REVE would not serve discards that window for good,
+    because the endpoint has no ``date_to`` to come back with. Stalling is
+    recoverable; skipping is not.
     """
-    error = f"{type(exc).__name__}: {exc}"
-    if window_start is not None and window_start >= recent:
-        await record_error(db, endpoint, error)
-        await db.commit()
-        print(
-            f"transient server error on {endpoint} at recent watermark; "
-            f"retry next tick: {exc}",
-            file=sys.stderr,
-        )
-        return
-    await skip_refresh_window(db, endpoint, new_watermark=recent, error=error)
+    await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")
     await db.commit()
-    audit(
-        "reve_refresh_jumped_to_recent",
-        endpoint=endpoint,
-        skipped_from=window_start.isoformat() if window_start else None,
-        skipped_to=recent.isoformat(),
+    print(
+        f"server error on {endpoint}; watermark left in place, retry next tick: {exc}",
+        file=sys.stderr,
     )
-    print(f"watermark too old on {endpoint}; jumped to {recent.isoformat()}")
 
 
-async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
+async def _run_tick(
+    db: AsyncSession,
+    client: ReveClient,
+    budget: int,
+    date_from_override: datetime | None = None,
+) -> int:
     cursors = {c.endpoint: c for c in await read_all_cursors(db)}
     if not all(c.completed_at is not None for c in cursors.values()):
         print("initial seed not complete; refresh is a no-op")
@@ -147,7 +139,9 @@ async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
         else:
             cycle_end = cursor.refresh_cycle_end
             start_page = cursor.next_page
-        window_start = cursor.refresh_watermark or cursor.completed_at
+        window_start = date_from_override or (
+            cursor.refresh_watermark or cursor.completed_at
+        )
 
         try:
             rows, last_page, exhausted = await import_fn(
@@ -165,9 +159,7 @@ async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
                 return 0
             await db.rollback()
             if _is_server_error(exc):
-                await _handle_server_error(
-                    db, endpoint, window_start, now - LOOKBACK, exc
-                )
+                await _handle_server_error(db, endpoint, exc)
                 return 0
             await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")
             await db.commit()
@@ -203,6 +195,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Print the refresh cursor state and exit without making any REVE call.",
     )
     parser.add_argument(
+        "--date-from",
+        type=datetime.fromisoformat,
+        default=None,
+        help=(
+            "Override the stored watermark for this run only (ISO 8601). "
+            "Aims a probe without editing reve_etl_cursor by hand."
+        ),
+    )
+    parser.add_argument(
         "--budget",
         type=int,
         default=DEFAULT_BUDGET_PER_RUN,
@@ -220,7 +221,9 @@ async def main(argv: list[str] | None = None) -> int:
         if args.status:
             return await _print_status(db)
         async with ReveClient(max_retries=0) as client:
-            return await _run_tick(db, client, budget=args.budget)
+            return await _run_tick(
+                db, client, budget=args.budget, date_from_override=args.date_from
+            )
 
 
 if __name__ == "__main__":
