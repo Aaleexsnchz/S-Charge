@@ -59,10 +59,12 @@ Environment variables are read **at container creation**: after editing a server
 Tunnel over SSH; the port exists only on your machine, for the life of the connection.
 
 ```bash
-ssh -L 55432:localhost:5432 deploy@s-charge.app
+ssh -L 55432:localhost:5432 s-charge
 ```
 
-Leave that session open and point DBeaver (or `psql`) at `localhost:55432`. Credentials are the server-side `.env`. Port 55432 rather than 5432 because the dev stack already holds 5432 locally.
+Leave that session open and point DBeaver (or `psql`) at `localhost:55432`. Credentials are the server-side `.env` — rotated at first deploy, so not the dev ones. Port 55432 rather than 5432 because the dev stack holds 5432 locally.
+
+**Use the `s-charge` alias, not `deploy@s-charge.app`.** The `Host s-charge` block in `~/.ssh/config` is what supplies the user and `IdentityFile`; spelling the hostname out matches no block, so ssh offers its default keys and the server answers `Permission denied (publickey)`.
 
 ### Ad-hoc SQL on the host
 
