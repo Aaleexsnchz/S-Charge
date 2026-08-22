@@ -107,7 +107,7 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 3 | Simulation + algorithm | Core | Done | [phase-3](phases/phase-3.md) |
 | 4 | Frontend redesign + dashboard-first IA | Core | Done | [phase-4](phases/phase-4.md) |
 | 5 | Deployment + CI/CD + releases | Core | Done | [phase-5](phases/phase-5.md) |
-| 6 | ETL reactivation + backfill | Core | Not started | planned at phase start |
+| 6 | ETL reactivation + backfill | Core | Not started | [phase-6](phases/phase-6.md) |
 | 7 | Private charging points + owner pricing | Core | Not started | planned at phase start |
 | 8 | Smart charging optimiser | Core | Not started | planned at phase start |
 | 9 | Bookings + session recording | Core | Not started | planned at phase start |
