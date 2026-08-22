@@ -56,6 +56,8 @@ How to write those docs — current reality only, the two exceptions, phase plan
 
 The pre-push hook runs exactly what CI runs, and CI is the merge gate; `just ci` is the same battery on demand, before you get there. Committing lints, formats and secret-scans the staged files — **never `--no-verify`**.
 
+The whole battery is affordable in a hook because the jobs run in parallel: **~8 s of wall time against ~29 s of CPU**, so the cost is the slowest job rather than the sum. That measurement is why no check had to be dropped to make the gate fast enough to keep.
+
 Open the PR early. `main` is protected: pull request required, CI checks required, no direct commits, no force-pushes. It is what production runs, so it must stay deployable at every commit.
 
 Merge once CI is green. The PR title becomes the release note ([infra-0002](docs/decisions/infra-0002-manual-release-tagging.md)), so write it for a reader who was not there.
