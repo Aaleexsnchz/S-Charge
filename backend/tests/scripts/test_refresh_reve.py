@@ -2,7 +2,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from app.database import engine
 from app.etl.cursor import read_cursor
 from app.etl.lock import reve_etl_lock
 from app.integrations.reve import ReveClient
@@ -10,7 +9,7 @@ from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
 from scripts.refresh_reve import _run_tick, main
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 BASE_URL = "https://reve.test/api/v1"
 API_KEY = "secret-key"
@@ -147,9 +146,18 @@ async def test_unexpected_error_surfaces_exit_1(
 
 
 async def test_a_second_runner_exits_without_writing(
-    db_session: AsyncSession, httpx_mock: HTTPXMock
+    db_session: AsyncSession,
+    httpx_mock: HTTPXMock,
+    engine: AsyncEngine,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The lock is what makes "stop the scheduler first" unnecessary."""
+    """The lock is what makes "stop the scheduler first" unnecessary.
+
+    Patching the module's engine keeps the injection out of ``main``'s
+    signature; with the lock already held it returns before opening a session,
+    so no application database is touched.
+    """
+    monkeypatch.setattr("scripts.refresh_reve.engine", engine)
     watermark = datetime.now(UTC) - timedelta(days=45)
     await _seed_tariff_cursor(db_session, watermark)
 
