@@ -66,8 +66,6 @@ Generic advice stops being useful here. These three would break in non-obvious w
 
 **The scheduler cannot be replicated.** `supercronic` runs inside a single container. Run two, and both fire `refresh_reve` on the same schedule against an API capped at **5 requests per hour** — the budget is exhausted instantly and the ETL enters a permanent rate-limited loop. Any move to multiple hosts requires a single explicitly-unreplicated scheduler, leader election, or a job queue with a distributed lock.
 
-**The ETL cursor row can race.** `reve_etl_cursor` holds one row per endpoint, read-modify-written on every tick. Two concurrent runs corrupt the refresh watermark — the exact field whose loss produced the July 2026 tariff gap. This is reachable *today*, without any scaling: running `refresh_reve` by hand while the hourly cron ticks is two concurrent writers. A Postgres advisory lock taken at the top of the tick fixes it. *Scheduled: [plan.md](plan.md) Phase 13.*
-
 **Charging-point availability is not modelled** ([be-0002](decisions/be-0002-availability-not-modelled.md)). Points are shown as available with a disclaimer. A real product needs live status — a data-access problem, not an engineering one, and the schema already has the column waiting for a source.
 
 Four routes exist today, none of them taken. The first two are **access rights**, not commercial negotiations, which is what makes this tractable:

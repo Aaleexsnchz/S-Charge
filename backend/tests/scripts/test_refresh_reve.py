@@ -2,11 +2,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from app.database import engine
 from app.etl.cursor import read_cursor
+from app.etl.lock import reve_etl_lock
 from app.integrations.reve import ReveClient
 from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
-from scripts.refresh_reve import _run_tick
+from scripts.refresh_reve import _run_tick, main
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,3 +144,20 @@ async def test_unexpected_error_surfaces_exit_1(
     cursor = await read_cursor(db_session, "/connectors/tariffs")
     assert cursor.refresh_watermark == watermark
     assert cursor.last_error is not None
+
+
+async def test_a_second_runner_exits_without_writing(
+    db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """The lock is what makes "stop the scheduler first" unnecessary."""
+    watermark = datetime.now(UTC) - timedelta(days=45)
+    await _seed_tariff_cursor(db_session, watermark)
+
+    async with reve_etl_lock(engine) as held:
+        assert held is True
+        exit_code = await main([])
+
+    assert exit_code == 0
+    assert httpx_mock.get_requests() == []
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    assert cursor.refresh_watermark == watermark
