@@ -13,12 +13,15 @@ The plan stays **live** for the phase's duration: slice statuses move, open ques
 | 3 — Simulation + algorithm | [phase-3.md](phase-3.md) |
 | 4 — Frontend redesign + dashboard-first IA | [phase-4.md](phase-4.md) |
 | 5 — Deployment + CI/CD + releases | [phase-5.md](phase-5.md) |
+| 6 — ETL reactivation + backfill | [phase-6.md](phase-6.md) |
 
-Phases 6–14 are described in [plan.md](../plan.md); their plans get written when they start.
+Phases 7–14 are described in [plan.md](../plan.md); their plans get written when they start.
+
+**[open-items.md](open-items.md) carries what is still open from phases already left behind** — a later phase can start while detail from an earlier one is unfinished, and that is where it stays visible.
 
 ## Structure
 
-Phases 1–4 are closed and kept short — a slice table, what each slice contained, and anything still pending. A plan for a phase about to start carries more:
+**Start from [TEMPLATE.md](TEMPLATE.md)** — copy it to `phase-N.md` and fill it in. It carries the sections below as a skeleton, and the closing checklist at the end.
 
 - **Intro** — what this phase builds, the document that owns the model or rationale behind it, and what the phase's goal is in one paragraph.
 - **Slices table** — one branch and one PR each, in order, with what blocks what. Sized so no PR becomes unreviewable.
@@ -29,3 +32,7 @@ Phases 1–4 are closed and kept short — a slice table, what each slice contai
 - **Risks** — what could derail the phase, and the mitigation.
 
 Not every phase needs every section. A phase with no real risks should not invent any.
+
+## Closing a phase
+
+A closed plan is **compacted, not deleted**: migrate what outlives the phase to the document that owns it, keep the slices table, shrink each closed slice to a short section saying where its knowledge went, and leave the open slices in full at the end. The full checklist is in [TEMPLATE.md](TEMPLATE.md). [phase-5.md](phase-5.md) is the worked example — closed in the plan, with four slices still open.
