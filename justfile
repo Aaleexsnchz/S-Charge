@@ -71,6 +71,10 @@ typecheck:
 # Everything CI runs, in parallel — the pre-push hook, forced to run every job
 ci:
     cd backend && uv run lefthook run pre-push --force
+# REVE ETL cursor state: watermarks, failure streaks. Makes no REVE call.
+etl-status:
+    cd backend && uv run python -m scripts.refresh_reve --status
+
 
 # Export the OpenAPI schema, then regenerate frontend types from it
 gen-api:

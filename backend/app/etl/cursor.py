@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.etl import ReveEtlCursor
@@ -60,7 +60,12 @@ async def record_refresh_progress(
     (a short page), the watermark advances to that bound and paging resets.
     """
     now = attempted_at or datetime.now(UTC)
-    values: dict[str, object] = {"last_attempted_at": now, "last_error": None}
+    values: dict[str, object] = {
+        "last_attempted_at": now,
+        "last_error": None,
+        "failing_since": None,
+        "consecutive_failures": 0,
+    }
     if exhausted:
         values["refresh_watermark"] = cycle_end
         values["refresh_cycle_end"] = None
@@ -80,9 +85,17 @@ async def record_error(
     *,
     attempted_at: datetime | None = None,
 ) -> None:
+    """Record a failed attempt, opening a failure streak if none is open."""
     now = attempted_at or datetime.now(UTC)
     await db.execute(
         update(ReveEtlCursor)
         .where(ReveEtlCursor.endpoint == endpoint)
-        .values(last_attempted_at=now, last_error=error)
+        .values(
+            last_attempted_at=now,
+            last_error=error,
+            # coalesce, not now: the streak keeps the instant it began, so the
+            # age of the stall is readable rather than resetting every tick.
+            failing_since=func.coalesce(ReveEtlCursor.failing_since, now),
+            consecutive_failures=ReveEtlCursor.consecutive_failures + 1,
+        )
     )
