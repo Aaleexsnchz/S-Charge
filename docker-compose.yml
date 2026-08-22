@@ -13,7 +13,10 @@ services:
     env_file:
       - ./.env
     ports:
-      - "5432:5432"
+      # Loopback only: on shared wifi a 0.0.0.0 bind accepts connections from
+      # anyone on the network. The backend runs on the host, so it does not
+      # need more than this.
+      - "127.0.0.1:5432:5432"
     volumes:
       # 18+ keeps data in a major-version subdirectory and declares
       # /var/lib/postgresql as the volume; the old path aborts the entrypoint.
