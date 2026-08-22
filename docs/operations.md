@@ -59,7 +59,7 @@ Leave that session open and point any client (DBeaver, `psql`) at `localhost:543
 Both Dockerfiles are multi-stage, and every stage is a production stage — the dev stages were removed when development moved to the host:
 
 - **Backend `prod`** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB.
-- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. Gated behind its profile, as above, and not running yet. CI still builds it, via `docker build --target scheduler` rather than through Compose.
+- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. Gated behind its profile, as above, and not running yet. CI still builds it, via `docker build --target scheduler` rather than through Compose. ~356 MB.
 - **Frontend `prod`** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for client-side routing. ~80 MB. Static assets only; Caddy does the API routing.
 
 CI builds all three, so a broken Dockerfile fails there rather than on the server at deploy time.

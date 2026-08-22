@@ -89,6 +89,8 @@ None of this exists, and the erasure path is not merely a missing endpoint — d
 
 **The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — see [thesis/memoria/10_Marco_regulador.md](thesis/memoria/10_Marco_regulador.md).
 
+**The position improved materially when the read endpoints were closed.** Every `/api/*` route except `/api/health` and the auth surface now requires a session, so the catalogue reaches authenticated users of this application rather than the public. Serving a mirrored dataset to one's own users is a far easier thing to defend than publishing it, and it narrows the question the thesis has to answer. It does not settle it.
+
 There is a documented way out if this ever blocks anything: the DGT's National Access Point publishes the same catalogue under **CC-BY** with no key, so migrating the seed would turn an open question into an attribution line. It costs the price data (see above), so it is a trade, not a free fix.
 
 **No terms of service, and no cookie/consent notice.** The session cookie is strictly necessary so it needs no consent banner under EU rules, but that conclusion should be documented rather than assumed.
