@@ -86,17 +86,40 @@ def _is_server_error(exc: Exception) -> bool:
     )
 
 
+def _ago(when: datetime | None, now: datetime) -> str:
+    if when is None:
+        return "—"
+    days = (now - when).days
+    stamp = when.strftime("%Y-%m-%d %H:%M:%SZ")
+    if days >= 1:
+        return f"{stamp}   ({days} day{'s' if days != 1 else ''} ago)"
+    hours = int((now - when).total_seconds() // 3600)
+    return f"{stamp}   ({hours}h ago)" if hours else f"{stamp}   (just now)"
+
+
+def _one_line(error: str | None) -> str:
+    """REVE's 504 body spans two lines and a URL; a table cannot hold it."""
+    if not error:
+        return "—"
+    first = error.strip().splitlines()[0]
+    return first if len(first) <= 110 else f"{first[:107]}..."
+
+
 async def _print_status(db: AsyncSession) -> int:
-    cursors = await read_all_cursors(db)
-    print(
-        f"{'endpoint':<22} {'next_page':>9} {'watermark':<28} "
-        f"{'cycle_end':<28} {'last_error'}"
-    )
-    for c in cursors:
-        wm = c.refresh_watermark.isoformat() if c.refresh_watermark else "-"
-        ce = c.refresh_cycle_end.isoformat() if c.refresh_cycle_end else "-"
-        err = c.last_error or "-"
-        print(f"{c.endpoint:<22} {c.next_page:>9} {wm:<28} {ce:<28} {err}")
+    now = datetime.now(UTC)
+    for c in await read_all_cursors(db):
+        streak = _ago(c.failing_since, now)
+        if c.failing_since is not None:
+            plural = "s" if c.consecutive_failures != 1 else ""
+            streak = f"{streak[:-1]}, {c.consecutive_failures} failure{plural})"
+        print(f"\n{c.endpoint}")
+        print(f"  watermark        {_ago(c.refresh_watermark, now)}")
+        print(f"  next page        {c.next_page}")
+        print(f"  cycle end        {_ago(c.refresh_cycle_end, now)}")
+        print(f"  last attempt     {_ago(c.last_attempted_at, now)}")
+        print(f"  failing since    {streak}")
+        print(f"  last error       {_one_line(c.last_error)}")
+    print()
     return 0
 
 

@@ -5,6 +5,7 @@ from app.etl.cursor import (
     read_cursor,
     record_error,
     record_progress,
+    record_refresh_progress,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,3 +81,35 @@ async def test_record_error_sets_error_without_advancing_page(
     assert cursor.last_error == "connection refused"
     assert cursor.last_attempted_at == now
     assert cursor.completed_at is None
+
+
+async def test_the_failure_streak_keeps_the_instant_it_began(
+    db_session: AsyncSession,
+) -> None:
+    """last_attempted_at answers "when did we last try"; this answers "since when"."""
+    first = datetime(2026, 7, 8, 21, 30, tzinfo=UTC)
+    later = datetime(2026, 8, 22, 9, 0, tzinfo=UTC)
+
+    await record_error(db_session, "/cpos", "504", attempted_at=first)
+    await record_error(db_session, "/cpos", "504 again", attempted_at=later)
+
+    cursor = await read_cursor(db_session, "/cpos")
+    assert cursor.failing_since == first
+    assert cursor.last_attempted_at == later
+    assert cursor.consecutive_failures == 2
+
+
+async def test_a_successful_drain_closes_the_streak(db_session: AsyncSession) -> None:
+    await record_error(db_session, "/cpos", "504")
+    await record_refresh_progress(
+        db_session,
+        "/cpos",
+        next_page=1,
+        cycle_end=datetime.now(UTC),
+        exhausted=True,
+    )
+
+    cursor = await read_cursor(db_session, "/cpos")
+    assert cursor.failing_since is None
+    assert cursor.consecutive_failures == 0
+    assert cursor.last_error is None
