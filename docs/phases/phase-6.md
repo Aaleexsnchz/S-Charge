@@ -41,7 +41,7 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
-| 1 | Confirm the server matches the measurement | Not started | host work |
+| 1 | Confirm the server matches the measurement | Done | host work |
 | 2 | Remove the automatic watermark jump | Done | #37 |
 | 3 | Advisory lock on the REVE tick | Not started | — |
 | 4 | Backfill the prices | Not started | host work |
@@ -61,9 +61,9 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 
 **Acceptance:** the production cursor and row counts either match the table above, or the difference is written down.
 
-- [ ] On the host: the same cursor and count queries, compared against the figures above
-- [ ] Confirm `scheduler` is still absent from `docker compose ps`
-- [ ] Any divergence recorded here — it would mean the restore or the deploy touched data, which nothing in [Phase 5](phase-5.md) should have
+- [x] The cursor and count queries run on the host, **2026-08-22: no divergence.** Every field matches the table above to the microsecond — watermark `2026-07-08 19:30:03.120191+00`, `last_attempted_at 21:30:32.375417+00`, 5111 prices to `2026-08-01 21:00`, 2126 tariffs, 46808 connectors
+- [x] `scheduler` absent. `db` shows an uptime of two weeks against fourteen hours for the app containers, which is the CD deploy recreating what changed and leaving the volume alone
+- [x] No divergence to record. The seed dump, the restore and every deploy since have left the data identical to the laptop's copy — the assumption this slice existed to test
 
 ## Slice 2 — Remove the automatic watermark jump
 

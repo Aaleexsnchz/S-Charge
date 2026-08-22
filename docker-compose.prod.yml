@@ -32,6 +32,12 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    ports:
+      # Loopback only. A 0.0.0.0 publish would be reachable from the internet
+      # regardless of ufw, because Docker's DNAT runs ahead of ufw's chain; a
+      # 127.0.0.1 rule matches a destination no external packet can carry. This
+      # is what lets an SSH tunnel reach the database without exposing it.
+      - "127.0.0.1:5432:5432"
     volumes:
       # 18+ stores data in a major-version subdirectory of /var/lib/postgresql
       # and declares that as the volume. Mounting the old /var/lib/postgresql/data
