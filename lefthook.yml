@@ -44,8 +44,16 @@ pre-push:
 
     - name: pytest
       root: backend/
-      # The suite needs the dev database; a no-op when it is already up.
-      run: docker compose -f ../docker-compose.yml up -d db && uv run pytest
+      # The suite needs the Postgres *server* — conftest creates and drops its
+      # own database from TEST_DATABASE_URL. It must never reach the
+      # application one, so DATABASE_URL is poisoned here: locally both exist
+      # and share credentials, so a test that reaches for app.database.engine
+      # would pass in the hook and fail in CI, where only the test database is
+      # provisioned.
+      run: >-
+        docker compose -f ../docker-compose.yml up -d db &&
+        DATABASE_URL=postgresql+asyncpg://forbidden@127.0.0.1:1/forbidden
+        uv run pytest
 
     - name: biome
       root: frontend/

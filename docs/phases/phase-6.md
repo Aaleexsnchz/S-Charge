@@ -43,7 +43,7 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 | --- | --- | --- | --- |
 | 1 | Confirm the server matches the measurement | Done | host work |
 | 2 | Remove the automatic watermark jump | Done | #37 |
-| 3 | Advisory lock on the REVE tick | Not started | — |
+| 3 | Advisory lock on the REVE tick | Done | #41 |
 | 4 | Backfill the prices | Not started | host work |
 | 5 | PVPC current again | Not started | host work |
 | 6 | Say when a point has no price | Not started | — |
@@ -84,9 +84,10 @@ The cost is honest and worth stating: with the jump gone, a watermark that REVE 
 
 Listed under [Phase 13](../plan.md) in [production-readiness.md](../production-readiness.md); it belongs here, because this phase is what makes it likely rather than theoretical.
 
-- [ ] Postgres advisory lock at the top of `_run_tick`, exiting quietly if another run holds it
-- [ ] A test proving the second runner exits without writing
-- [ ] Remove the item from [production-readiness.md](../production-readiness.md)'s Phase 13 list
+- [x] `reve_etl_lock` taken before the tick, in both `refresh_reve` and `seed_reve` — the seed writes the same cursor, so guarding only the refresh would have left the race open
+- [x] The lock lives on **its own connection**. A session hands its connection back to the pool on commit, so a session-level lock is held by whichever pooled connection took it while later statements run on another. Single-threaded it works by accident; measured that before writing it
+- [x] A test proving the second runner exits 0, makes no HTTP call, and leaves the watermark untouched
+- [x] Removed from [production-readiness.md](../production-readiness.md) and from [Phase 13](../plan.md) — the gap is closed, not rescheduled
 
 ## Slice 4 — Backfill the prices
 

@@ -43,12 +43,13 @@ from http import HTTPStatus
 
 import httpx
 from app.config import settings
-from app.database import SessionLocal
+from app.database import SessionLocal, engine
 from app.etl.cursor import (
     read_all_cursors,
     record_error,
     record_refresh_progress,
 )
+from app.etl.lock import reve_etl_lock
 from app.etl.reve import import_tariffs
 from app.integrations.reve import ReveClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -220,10 +221,14 @@ async def main(argv: list[str] | None = None) -> int:
     async with SessionLocal() as db:
         if args.status:
             return await _print_status(db)
-        async with ReveClient(max_retries=0) as client:
-            return await _run_tick(
-                db, client, budget=args.budget, date_from_override=args.date_from
-            )
+        async with reve_etl_lock(engine) as acquired:
+            if not acquired:
+                print("another REVE run holds the lock; nothing to do")
+                return 0
+            async with ReveClient(max_retries=0) as client:
+                return await _run_tick(
+                    db, client, budget=args.budget, date_from_override=args.date_from
+                )
 
 
 if __name__ == "__main__":

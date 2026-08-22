@@ -5,8 +5,9 @@ from collections.abc import Awaitable, Callable
 
 import httpx
 from app.config import settings
-from app.database import SessionLocal
+from app.database import SessionLocal, engine
 from app.etl.cursor import read_all_cursors, read_cursor, record_error, record_progress
+from app.etl.lock import reve_etl_lock
 from app.etl.reve import (
     import_cpos,
     import_locations,
@@ -113,8 +114,12 @@ async def main(argv: list[str] | None = None) -> int:
     async with SessionLocal() as db:
         if args.status:
             return await _print_status(db)
-        async with ReveClient() as client:
-            return await _run_tick(db, client, budget=args.budget)
+        async with reve_etl_lock(engine) as acquired:
+            if not acquired:
+                print("another REVE run holds the lock; nothing to do")
+                return 0
+            async with ReveClient() as client:
+                return await _run_tick(db, client, budget=args.budget)
 
 
 if __name__ == "__main__":
