@@ -1,3 +1,9 @@
+"""Client for the REVE external API v1.
+
+Vendored spec: docs/reve-api-spec.json. Two constraints from it shape everything
+here: 5 requests per hour per API key, and `limit` capped at 100.
+"""
+
 import asyncio
 from collections.abc import AsyncIterator
 from http import HTTPStatus
