@@ -103,7 +103,7 @@ docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 
 `APP_VERSION` is a **build argument**, not runtime configuration: it is baked into both images, so a deploy that forgets to export it reports `dev` and only a rebuild fixes it. CD exports it for you; only a by-hand deploy needs the line above. Before the first tag exists, `git describe --tags --always` yields a short commit sha, and that is what `/api/health` will report.
 
-**`up -d` deliberately does not start the scheduler.** It sits behind a Compose profile, so the ETLs stay off until they are turned back on with `--profile scheduler up -d`; `docker compose -f docker-compose.prod.yml ps` showing no `scheduler` container is the expected result, not a failed start. Until then the price curve ends where the seed dump ended and `/api/prices/today` serves an empty state.
+**`up -d` starts the scheduler along with everything else.** The ETLs run from the first deploy: the PVPC fetch keeps `/api/prices/today` populated, and the REVE refresh keeps tariffs current. The service sat behind a Compose profile until Phase 6, which is why older notes describe an extra `--profile scheduler` step — that profile is gone.
 
 Verify: `https://s-charge.app` loads the app on a phone, the PWA installs, and `https://s-charge.app/api/health` returns ok **with the version you just deployed**.
 

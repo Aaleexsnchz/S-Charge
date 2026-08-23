@@ -64,11 +64,13 @@ services:
       db:
         condition: service_healthy
 
-  # Off until Phase 7 turns the ETLs back on. A profile rather than a deploy-time
-  # flag: `up -d` skips it, so cd.yml cannot start it by forgetting something.
-  # Enable with `docker compose -f docker-compose.prod.yml --profile scheduler up -d`.
+  # An ordinary service, deliberately. It sat behind a Compose profile while the
+  # REVE watermark was parked, so a deploy could not start an unattended tick by
+  # accident. Phase 6 turned the ETLs on for good, and the profile then inverted
+  # from a guard into a hazard: `up -d` skips a profiled service rather than
+  # recreating it, so every deploy left the scheduler running the previous
+  # image, and `down` left it running at all.
   scheduler:
-    profiles: ["scheduler"]
     <<: *logging
     build:
       context: ./backend
