@@ -379,6 +379,8 @@ export interface components {
     }
     /** ConnectorRead */
     ConnectorRead: {
+      /** Current Price Per Kwh */
+      current_price_per_kwh: number | null
       /** Format */
       format: string
       /**
@@ -394,6 +396,7 @@ export interface components {
       max_voltage: number
       /** Power Type */
       power_type: string
+      pricing_kind: components['schemas']['PricingKind']
       /** Standard */
       standard: string
       tariff: components['schemas']['TariffRead'] | null
@@ -512,6 +515,15 @@ export interface components {
       /** Price Per Kwh */
       price_per_kwh: number
     }
+    /**
+     * PricingKind
+     * @description How a connector charges, right now, by the bands that apply to it.
+     *
+     *     ``UNKNOWN`` covers no tariff, no band matching the present moment, and a
+     *     price the source published outside any plausible range.
+     * @enum {string}
+     */
+    PricingKind: 'energy' | 'time' | 'flat' | 'free' | 'unknown'
     /** SimulationRequest */
     SimulationRequest: {
       /**
@@ -574,16 +586,10 @@ export interface components {
        * Format: uuid
        */
       id: string
-      /** Price Component Type */
-      price_component_type: string | null
-      /** Price Per Kwh */
-      price_per_kwh: number | null
       /** Valid From */
       valid_from: string | null
       /** Valid To */
       valid_to: string | null
-      /** Vat Percentage */
-      vat_percentage: number | null
     }
     /** UserCreate */
     UserCreate: {

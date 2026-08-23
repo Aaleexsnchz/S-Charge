@@ -6,6 +6,7 @@ export type MapPointProperties = {
   standards: string[]
   max_power_w: number | null
   min_price_per_kwh: number | null
+  has_free: boolean
 }
 
 export type MapFeature = {

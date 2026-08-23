@@ -1,11 +1,12 @@
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
+from zoneinfo import available_timezones
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +18,7 @@ from app.models.charging_point import (
     Evse,
 )
 from app.models.cpo import Cpo
-from app.models.tariff import Tariff
+from app.models.tariff import Tariff, TariffElement
 from app.utils.audit import audit
 
 logger = logging.getLogger(__name__)
@@ -37,15 +38,54 @@ def _decimal_or_none(value: str | float | None) -> Decimal | None:
     return Decimal(str(value))
 
 
-MAX_PLAUSIBLE_TARIFF_EUR_PER_KWH = Decimal("2")
+def _known_time_zone(value: str | None) -> str:
+    """Fall back to Madrid for a zone Postgres would not recognise.
 
-
-def _plausible_price(value: Decimal | None) -> Decimal | None:
-    if value is None:
-        return None
-    if value < 0 or value > MAX_PLAUSIBLE_TARIFF_EUR_PER_KWH:
-        return None
+    The repricing statement resolves every connector in one `AT TIME ZONE`, so a
+    single unknown zone from one REVE page would fail the whole recompute rather
+    than mispricing one point. ``raw_data`` keeps what was published.
+    """
+    if not value:
+        return "Europe/Madrid"
+    if value not in available_timezones():
+        logger.warning("reve_unknown_time_zone value=%s", value)
+        return "Europe/Madrid"
     return value
+
+
+def _bound(value: str | float | None) -> Decimal | None:
+    """A restriction bound, with REVE's ``0`` placeholder read as "not set".
+
+    A band capped at ``max_power = 0`` would match no connector at all, and one
+    gated behind ``min_duration = 0`` is not gated. REVE emits zeros for both
+    rather than omitting the field; ``raw_data`` keeps the literal source.
+    """
+    parsed = _decimal_or_none(value)
+    return None if parsed == 0 else parsed
+
+
+def _int_bound(value: float | None) -> int | None:
+    """OCPI types these as numbers, so 1800.0 is legal and must not reach an int
+    column as a float."""
+    return int(value) if value else None
+
+
+def _parse_time(value: str | None) -> time | None:
+    if not value:
+        return None
+    try:
+        return time.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _parse_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _ensure_list(value: Any) -> list[dict[str, Any]]:
@@ -56,17 +96,47 @@ def _ensure_list(value: Any) -> list[dict[str, Any]]:
     return [value]
 
 
-def _energy_price_component(elements: Any) -> dict[str, Any]:
-    """Return the ENERGY price component from an OCPI tariff's ``elements``.
+def _element_rows(tariff_pk: uuid.UUID, elements: Any) -> list[dict[str, Any]]:
+    """Flatten an OCPI ``elements`` array to one row per price component.
 
     REVE follows OCPI, where ``elements`` and ``price_components`` are arrays;
     accept the single-object shape too so older fixtures keep working.
     """
-    for element in _ensure_list(elements):
+    rows: list[dict[str, Any]] = []
+    for index, element in enumerate(_ensure_list(elements)):
+        restrictions = element.get("restrictions") or {}
+        raw_days = restrictions.get("day_of_week")
+        days = raw_days if isinstance(raw_days, list) else _ensure_list(raw_days)
         for component in _ensure_list(element.get("price_components")):
-            if component.get("type") == "ENERGY":
-                return component
-    return {}
+            component_type = component.get("type")
+            if not component_type:
+                continue
+            rows.append(
+                {
+                    "id": uuid.uuid4(),
+                    "tariff_id": tariff_pk,
+                    "element_index": index,
+                    "component_type": component_type,
+                    "price": _decimal_or_none(component.get("price")),
+                    "vat": _decimal_or_none(component.get("vat")),
+                    "step_size": _int_bound(component.get("step_size")),
+                    "start_time": _parse_time(restrictions.get("start_time")),
+                    "end_time": _parse_time(restrictions.get("end_time")),
+                    "start_date": _parse_date(restrictions.get("start_date")),
+                    "end_date": _parse_date(restrictions.get("end_date")),
+                    "days_of_week": [str(d).upper() for d in days] if days else None,
+                    "min_kwh": _bound(restrictions.get("min_kwh")),
+                    "max_kwh": _bound(restrictions.get("max_kwh")),
+                    "min_current": _bound(restrictions.get("min_current")),
+                    "max_current": _bound(restrictions.get("max_current")),
+                    "min_power_kw": _bound(restrictions.get("min_power")),
+                    "max_power_kw": _bound(restrictions.get("max_power")),
+                    "min_duration_s": _int_bound(restrictions.get("min_duration")),
+                    "max_duration_s": _int_bound(restrictions.get("max_duration")),
+                    "reservation": restrictions.get("reservation"),
+                }
+            )
+    return rows
 
 
 def _first_tariff(raw: dict[str, Any]) -> dict[str, Any] | None:
@@ -258,7 +328,7 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
         "longitude": Decimal(coords["longitude"]),
         "parking_type": raw.get("parking_type"),
         "facilities": raw.get("facilities"),
-        "time_zone": raw.get("time_zone") or "Europe/Madrid",
+        "time_zone": _known_time_zone(raw.get("time_zone")),
         "opening_24_7": opening_times.get("twentyfourseven", False),
         "opening_hours": opening_times.get("regular_hours"),
         "charging_when_closed": raw.get("charging_when_closed"),
@@ -286,6 +356,7 @@ async def _upsert_connector_tariff(
     db: AsyncSession,
     raw: dict[str, Any],
     refreshed_at: datetime,
+    rewritten_tariffs: set[str],
 ) -> None:
     raw_tariff = _first_tariff(raw)
     if raw_tariff is None:
@@ -306,28 +377,12 @@ async def _upsert_connector_tariff(
         )
         return
 
-    price_components = _energy_price_component(raw_tariff.get("elements"))
-    is_energy = bool(price_components)
-
-    raw_price = _decimal_or_none(price_components.get("price")) if is_energy else None
-    price_per_kwh = _plausible_price(raw_price)
-    if raw_price is not None and price_per_kwh is None:
-        logger.warning(
-            "reve_tariff_implausible_price source_id=%s price=%s",
-            raw_tariff["id"],
-            raw_price,
-        )
-
     tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
         "source_id": raw_tariff["id"],
         "currency": raw_tariff["currency"],
         "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
         "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
-        "price_per_kwh": price_per_kwh,
-        "price_component_type": price_components.get("type"),
-        "vat_percentage": _decimal_or_none(price_components.get("vat")),
-        "step_size": price_components.get("step_size"),
         "raw_data": raw_tariff,
         "source_last_updated_at": _parse_dt(raw_tariff["last_tariff_updated"]),
         "last_refreshed_at": refreshed_at,
@@ -340,6 +395,21 @@ async def _upsert_connector_tariff(
         },
     ).returning(Tariff.id)
     tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
+
+    # One tariff is shared across many connectors, so a page of 100 rows would
+    # otherwise delete and re-insert the same bands 100 times.
+    if raw_tariff["id"] not in rewritten_tariffs:
+        rewritten_tariffs.add(raw_tariff["id"])
+        await db.execute(
+            delete(TariffElement).where(TariffElement.tariff_id == tariff_pk)
+        )
+        element_rows = _element_rows(tariff_pk, raw_tariff.get("elements"))
+        if element_rows:
+            await db.execute(insert(TariffElement), element_rows)
+        else:
+            logger.warning(
+                "reve_tariff_without_elements source_id=%s", raw_tariff["id"]
+            )
 
     await db.execute(
         update(Connector)
@@ -421,12 +491,13 @@ async def import_tariffs(
 ) -> tuple[int, int, bool]:
     refreshed_at = datetime.now(UTC)
     changed = 0
+    rewritten_tariffs: set[str] = set()
 
     async def _process(raw: dict[str, Any]) -> None:
         nonlocal changed
         if _tariff_changed_in_window(raw, date_from, date_to):
             changed += 1
-        await _upsert_connector_tariff(db, raw, refreshed_at)
+        await _upsert_connector_tariff(db, raw, refreshed_at, rewritten_tariffs)
 
     rows, last_page, exhausted = await _paginate_with_budget(
         client,

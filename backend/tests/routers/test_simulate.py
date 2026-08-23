@@ -7,8 +7,8 @@ from app.models.charging_point import (
     ChargingPointSource,
     Connector,
     Evse,
+    PricingKind,
 )
-from app.models.tariff import Tariff
 from app.models.vehicle import Vehicle
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,16 +45,6 @@ async def _seed_chain(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
     )
     db.add(evse)
     await db.flush()
-    tariff = Tariff(
-        source_id=str(uuid.uuid4()),
-        currency="EUR",
-        price_per_kwh=Decimal("0.50"),
-        raw_data={},
-        source_last_updated_at=SEED_DT,
-        last_refreshed_at=SEED_DT,
-    )
-    db.add(tariff)
-    await db.flush()
     connector = Connector(
         evse_id=evse.id,
         source_id=str(uuid.uuid4()),
@@ -64,7 +54,8 @@ async def _seed_chain(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
         max_electric_power=50000,
         max_voltage=400,
         max_amperage=125,
-        tariff_id=tariff.id,
+        pricing_kind=PricingKind.ENERGY,
+        current_price_per_kwh=Decimal("0.50"),
         source_last_updated_at=SEED_DT,
     )
     db.add(connector)

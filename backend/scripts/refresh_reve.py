@@ -52,6 +52,7 @@ from app.etl.cursor import (
 from app.etl.lock import reve_etl_lock
 from app.etl.reve import import_tariffs
 from app.integrations.reve import ReveClient
+from app.services.tariff_pricing import recompute_connector_prices
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
@@ -249,9 +250,15 @@ async def main(argv: list[str] | None = None) -> int:
                 print("another REVE run holds the lock; nothing to do")
                 return 0
             async with ReveClient(max_retries=0) as client:
-                return await _run_tick(
+                exit_code = await _run_tick(
                     db, client, budget=args.budget, date_from_override=args.date_from
                 )
+            # Runs whatever the tick did: the band that applies rotates on the
+            # hour, so the stored price goes stale without any REVE call.
+            changed = await recompute_connector_prices(db)
+            await db.commit()
+            print(f"repriced connectors: {changed}")
+            return exit_code
 
 
 if __name__ == "__main__":

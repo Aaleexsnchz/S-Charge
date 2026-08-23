@@ -38,6 +38,7 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 | --- | --- | --- |
 | [be-0001](be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it | 2 |
 | [be-0002](be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so | 3 |
+| [be-0003](be-0003-price-on-the-connector.md) | Store the tariff's price bands, and resolve the price on the connector | 6 |
 
 ## Frontend
 
@@ -61,7 +62,7 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 
 Decided in principle, but cheaper to write when the work forces the detail. Don't let these ship without a record:
 
-- **`be-0003` — booking overlap as a database constraint.** PostgreSQL 18's temporal `PRIMARY KEY … WITHOUT OVERLAPS` moves conflict detection out of application code and removes a check-then-insert race; verified working on 18.4. Write it when Phase 9 designs the bookings schema.
+- **`be-0004` — booking overlap as a database constraint.** PostgreSQL 18's temporal `PRIMARY KEY … WITHOUT OVERLAPS` moves conflict detection out of application code and removes a check-then-insert race; verified working on 18.4. Write it when Phase 9 designs the bookings schema. (Earmarked as `be-0003` until the price-band record took that number.)
 - **`infra-0004` — native development environment.** Only Postgres is containerised, so one toolchain gates commits, CI and the app. Rationale currently lives in [operations.md](../operations.md) and the migration chapter; promote it if it starts being re-litigated. (Earmarked as `infra-0003` until that number was taken by the deploy trigger record; numbers are never reused, so it moves rather than the written one.)
 - **A wallet/ledger record** when Phase 10 chooses between signed single-entry rows and paired double-entry movements — expensive to reverse once money-shaped data exists.
 

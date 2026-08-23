@@ -1,4 +1,6 @@
 # Runs under supercronic in the `scheduler` service (TZ=Europe/Madrid via
 # compose); job stdout/stderr land in the container log stream.
-30 * * * * python -m scripts.refresh_reve
+# On the hour, not past it: the tick also reprices every connector, and the
+# bands REVE publishes change at :00 (00:00-06:59 / 07:00-22:59).
+0 * * * * python -m scripts.refresh_reve
 0 9 * * * python -m scripts.fetch_pvpc

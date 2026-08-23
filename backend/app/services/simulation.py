@@ -5,9 +5,8 @@ from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.models.charging_point import Connector
+from app.models.charging_point import Connector, PricingKind
 from app.models.vehicle import Vehicle
 from app.schemas.simulation import ChargeType, SimulationRequest, SimulationResult
 from app.services.pricing import estimate_price
@@ -93,11 +92,7 @@ async def _load_vehicle(db: AsyncSession, vehicle_id: uuid.UUID) -> Vehicle:
 
 
 async def _load_connector(db: AsyncSession, connector_id: uuid.UUID) -> Connector:
-    stmt = (
-        select(Connector)
-        .where(Connector.id == connector_id)
-        .options(selectinload(Connector.tariff))
-    )
+    stmt = select(Connector).where(Connector.id == connector_id)
     connector = (await db.execute(stmt)).scalar_one_or_none()
     if connector is None:
         raise ConnectorNotFound
@@ -137,10 +132,17 @@ async def run_simulation(
         soc_to=Decimal(str(request.soc_to)),
     )
 
+    # A free connector has no price to store, but zero is a price the source
+    # stated: without this it reads as "no tariff" and gets PVPC + margin.
+    tariff_price = (
+        Decimal(0)
+        if connector.pricing_kind is PricingKind.FREE
+        else connector.current_price_per_kwh
+    )
     estimate = await estimate_price(
         db,
         power_type=connector.power_type,
-        tariff_price=connector.tariff.price_per_kwh if connector.tariff else None,
+        tariff_price=tariff_price,
         hour=at or datetime.now(UTC),
     )
     cost_eur = (

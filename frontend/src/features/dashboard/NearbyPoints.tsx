@@ -18,7 +18,7 @@ function pointName(point: Point): string {
 
 function minPriceLabel(point: Point): string | null {
   const prices = point.evses
-    .flatMap((evse) => evse.connectors.map((connector) => connector.tariff?.price_per_kwh))
+    .flatMap((evse) => evse.connectors.map((connector) => connector.current_price_per_kwh))
     .filter((price): price is number => price != null)
   return prices.length > 0 ? priceLabel(Math.min(...prices)) : null
 }

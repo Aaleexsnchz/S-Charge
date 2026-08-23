@@ -14,11 +14,12 @@ export function filterFeatures(
     if (filters.standard && !props.standards.includes(filters.standard)) {
       return false
     }
-    if (
-      filters.maxPrice !== null &&
-      (props.min_price_per_kwh === null || props.min_price_per_kwh > filters.maxPrice)
-    ) {
-      return false
+    // A free point carries no price, so comparing against maxPrice alone would
+    // hide exactly the points a price filter is looking for.
+    if (filters.maxPrice !== null && !props.has_free) {
+      if (props.min_price_per_kwh === null || props.min_price_per_kwh > filters.maxPrice) {
+        return false
+      }
     }
     return true
   })

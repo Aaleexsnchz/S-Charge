@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.charging_point import PricingKind
+
 AggregateStatus = Literal["available", "occupied", "unknown"]
 
 
@@ -12,9 +14,6 @@ class TariffRead(BaseModel):
 
     id: uuid.UUID
     currency: str
-    price_per_kwh: float | None
-    price_component_type: str | None
-    vat_percentage: float | None
     valid_from: datetime | None
     valid_to: datetime | None
 
@@ -29,6 +28,8 @@ class ConnectorRead(BaseModel):
     max_electric_power: int | None
     max_voltage: int
     max_amperage: int
+    pricing_kind: PricingKind
+    current_price_per_kwh: float | None
     tariff: TariffRead | None
 
 
