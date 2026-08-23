@@ -126,7 +126,7 @@ Live on the host since 2026-08-04. Runbook: [setup/deployment.md](../setup/deplo
 - [ ] Laptop crontab refresh/PVPC lines removed — the scheduler container owns them now
 - [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS), and **`backup_db.sh` pointed at the right compose project**: `COMPOSE_FILE=docker-compose.prod.yml` in the crontab entry is the whole fix, and the production database credentials have to come with it or the dump names a database that is not there. Run it once by hand before trusting the schedule
 - [x] **`v0.1.0` tagged** (2026-08-21)
-- [ ] infra-0001 flipped to `accepted`; B2 lifecycle rule added on `tfm-db-backups`
+- [ ] infra-0001 flipped to `accepted`. **The B2 bucket moved to `S-Charge` on 2026-08-23** with a *keep only the last version* lifecycle rule and a bucket-scoped key for the server; `tfm-db-backups` is superseded
 
 ## Slice 11 — Renovate
 

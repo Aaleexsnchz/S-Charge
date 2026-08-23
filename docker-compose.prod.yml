@@ -116,12 +116,6 @@ services:
       - backend
 
 volumes:
-  # Pinned to the names they had under the old `ev-charging-app-prod` project.
-  # Compose derives a volume's real name from the project, so renaming the
-  # project without these would bring production up on an empty database.
   postgres_data:
-    name: ev-charging-app-prod_postgres_data
   caddy_data:
-    name: ev-charging-app-prod_caddy_data
   caddy_config:
-    name: ev-charging-app-prod_caddy_config
