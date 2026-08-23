@@ -186,7 +186,7 @@ Adopted the `s-charge` dark design system (theme tokens, mono-numeric typography
 
 Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](decisions/infra-0001-deployment.md).
 
-**Running `v0.1.0`.** Getting the ETLs onto the server was originally a criterion here; it is [Phase 6](#phase-6--etl-reactivation--backfill--not-started)'s, because the stack ships with `scheduler` deliberately stopped and turning it on is a decision about a frozen watermark rather than a step of a deploy.
+**Running `v0.1.0`.** Getting the ETLs onto the server was originally a criterion here; it is [Phase 6](#phase-6--etl-reactivation--price-model--in-progress)'s, because the stack ships with `scheduler` deliberately stopped and turning it on is a decision about a frozen watermark rather than a step of a deploy.
 
 **Done means done for the thesis, not exhausted.** The application is deployed, reachable and released, and the pipeline that keeps it that way is proven — which is everything this phase owes the thesis. [phases/phase-5.md](phases/phase-5.md) still carries open slices that are genuine improvements rather than blockers: the security gate and backup cutover, external services on the prod origin, Renovate, and verifying the auth hardening on the host. They belong to this phase and can land whenever there is room; nothing downstream waits on them. The security-gate box below stays unticked because it is not done, not because it is scheduled.
 
@@ -197,21 +197,23 @@ Deployment comes before the remaining feature work so there is a secure, phone-a
 - [x] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
 - [x] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
-### Phase 6 — ETL reactivation + backfill — not started
+### Phase 6 — ETL reactivation + price model — in progress
 
-Turn the refresh jobs back on, recover what is still recoverable, and fix what made them fragile. Both have been off since the laptop's crons stopped in early July 2026, and [Phase 5](phases/phase-5.md) deploys with the `scheduler` service **deliberately not started** — freezing the state so it can be inspected before anything overwrites it, rather than because the deploy failed.
+Turn the refresh jobs back on, bring the prices current, and store what REVE actually publishes rather than a flattened approximation of it. Both ETLs have been off since the laptop's crons stopped in early July 2026, and [Phase 5](phases/phase-5.md) deploys with the `scheduler` service **deliberately not started** — freezing the state so it can be inspected before anything overwrites it, rather than because the deploy failed.
 
-Small and deliberately scheduled before the feature work: the ETLs are backend-only, and the frozen watermark is worth more than fresh data until it has been measured.
+Deliberately scheduled before the feature work: the ETLs are backend-only, and the frozen watermark is worth more than fresh data until it has been measured. The measurement then turned the phase into two halves — reactivating the jobs, and fixing a price model that measurement showed could not be right.
 
 **Done when:**
 
-- [ ] **The REVE watermark is read before the scheduler ever ticks.** It is parked at `2026-07-08 19:30`; the first unattended run jumps it to `now − REVE_REFRESH_LOOKBACK_HOURS` and the pre-jump value is gone. Record it first — [Phase 5](phases/phase-5.md) Slice 12 holds the probing method and the measured ceiling, and moves here
-- [ ] **The recoverable span is measured, not assumed**, and the gap that is written off is recorded as a number in [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md). The prior measurement says a ~24-day hole is lost almost in full; this phase turns "almost" into a figure
-- [ ] **The 504 ceiling is re-probed** and `REVE_REFRESH_LOOKBACK_HOURS` moved if it has shifted. The failure is a REVE-side performance regression that has self-healed once before, so the answer is empirical each time
-- [ ] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but note the curve stops at `2026-08-01 21:00 UTC` in the seed, meaning the prices views show an empty "today" until the ETLs are turned back on
-- [ ] **The cursor race is fixed rather than worked around.** `reve_etl_cursor` is read-modify-written every tick, and two concurrent runs corrupt the watermark — the field whose loss caused the gap this phase exists to measure. Running a refresh by hand while the cron ticks is enough to trigger it, so "stop the scheduler first" is a discipline, not a fix. Currently listed under [Phase 13](#phase-13--polish-security--hardening--not-started); decide when planning this phase whether it belongs here instead, since this is when the ETLs are open on the bench
+- [x] **The frozen state is recorded before anything ticks.** Cursor and counts captured 2026-08-22, production identical to the local snapshot to the microsecond
+- [x] **A stalled ETL is visible and never destructive.** A 504 records the error and leaves the watermark where it is at any age; `failing_since` and `consecutive_failures` answer *how long has this been broken*. The automatic jump to `now − lookback` is gone, and with it the mechanism that would have turned the July stall into a permanent loss
+- [x] **The cursor race is fixed rather than worked around.** A Postgres advisory lock on its own connection guards both the seed and the refresh; a second runner exits without making a REVE call or writing anything. Moved here from Phase 13, since this is when the ETLs were open on the bench
+- [x] **The price REVE publishes is stored as published.** Tariffs carry bands, not a number: the same tariff prices differently by hour and by connector power, and 7,175 connectors sit on one that publishes more than one energy price. The bands live in `tariff_elements`, the resolved price on the connector, and a connector the source never priced stops being served the same as one the source priced at zero ([be-0003](decisions/be-0003-price-on-the-connector.md))
+- [ ] **The drain completes and the recoverable span is a measured number**, recorded in [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) against the 78 pages / 16 h / 7,760 rows estimate
+- [ ] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but the curve stops at `2026-08-01 21:00 UTC` in the seed, so the prices views show an empty "today" until the ETLs are back on
+- [ ] **The app answers with the price that actually applies.** The map filter, the point detail and the simulator read the bands; free chargers say *gratis* and time-priced ones say how they are priced
 - [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](decisions/infra-0001-deployment.md) — re-read that before reopening it
-- [ ] **Both jobs observed running unattended** on the server, with the first ticks confirmed in the logs and `electricity_prices` reaching today
+- [ ] **Both jobs observed running unattended** on the server, on a cadence that was chosen rather than inherited, with `last_error` empty and `electricity_prices` reaching today
 
 ### Phase 7 — Private charging points + owner pricing — not started
 

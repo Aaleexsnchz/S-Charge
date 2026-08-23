@@ -46,6 +46,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 | [auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation |
 | [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it |
 | [be-0002](decisions/be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so |
+| [be-0003](decisions/be-0003-price-on-the-connector.md) | Store the tariff's price bands, and resolve the price on the connector |
 | [fe-0001](decisions/fe-0001-mui.md) | MUI as the frontend component library |
 | [fe-0002](decisions/fe-0002-pwa.md) | Ship the frontend as an installable PWA |
 | [fe-0003](decisions/fe-0003-maplibre-openfreemap.md) | MapLibre GL JS + OpenFreeMap vector tiles |
