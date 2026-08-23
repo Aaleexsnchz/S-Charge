@@ -148,9 +148,13 @@ That cursor is misleading about the seed, and the seed was fine: `charging_point
 - [ ] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id`, unique together; `first_seen_at`, `last_seen_at`, `tariff_raw` (the payload we could not attach, so the price is not lost with it), `resolved_at` nullable
 - [ ] `_upsert_connector_tariff` upserts here instead of only warning; keep the warning, since a sudden jump is worth seeing in the logs
 - [ ] Counted in the `reve_etl_tariffs` audit line and printed by `--status` — *how stale is the catalogue* is a question nothing currently answers
-- [ ] **The repair pass**: `/locations` with `date_from`, budget-shared, cursor reset first, run once the tariff drain has completed
+- [ ] **`backend/scripts/backfill_locations.py`** — the repair pass, as its own script rather than a fourth entry in `REFRESH_PRIORITY`. A standing refresh of `/locations` would compete with the tariff tick on every run forever; this is a repair that ends when the backlog does.
+  - **Takes `reve_etl_lock`**, the same lock as `seed_reve` and `refresh_reve`. That is what makes "shares the budget" enforceable rather than a note in a doc — the two cannot spend the same hour's 5 calls at once
+  - **Resets the `/locations` cursor** (`next_page` → 1, `refresh_cycle_end` → null) before its first cycle, or it resumes a cancelled June cycle at page 5 and skips pages 1–4 of a new result set
+  - `date_from` defaults to `/locations.completed_at`, overridable with `--date-from`; `--budget` and `--status` as the other two scripts have them, so the operator reads one interface across all three
+  - Paginates through `_paginate_with_budget` and resumes across ticks, exactly like the tariff drain — the backlog is thousands of rows and will not clear in one run
 - [ ] On repair, the stored `tariff_raw` prices the new connectors immediately rather than leaving them unpriced until their next tariff cycle
-- [ ] `resolved_at` stamped when the connector appears, so the backlog draining to ~0 is the proof the pass worked
+- [ ] `resolved_at` stamped when the connector appears, so the backlog draining to ~0 is the proof the pass worked — and the number it stops at is what [Slice 7](#slice-7--cadence-and-observation) argues the standing catalogue cadence from
 
 **Deliberately not in this slice:** a standing catalogue cadence. The backlog has to exist, and one repair pass has to be measured, before a cadence can be argued rather than guessed — that is [Slice 7](#slice-7--cadence-and-observation), with a real call-usage figure in hand.
 
