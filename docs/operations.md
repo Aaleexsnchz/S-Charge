@@ -93,6 +93,22 @@ CI builds all three, so a broken Dockerfile fails there rather than on the serve
 
 > If a frontend package runs an install/build script (native deps like `sharp`), pnpm 11 blocks it by default. Approve it in [frontend/pnpm-workspace.yaml](../frontend/pnpm-workspace.yaml) under `allowBuilds` — otherwise the prod image build fails with `ERR_PNPM_IGNORED_BUILDS`.
 
+## The REVE refresh
+
+`refresh_reve` drains `/connectors/tariffs` on the hour under a 5 req/hour cap, and reports itself:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T backend python -m scripts.refresh_reve --status
+```
+
+That makes no REVE call, so it is free to run as often as you like. A healthy drain shows `next page` climbing by 5 an hour, `cycle end` **frozen** (it is the cycle's upper bound and must not move mid-flight), `watermark` unchanged until the cycle drains, and `failing since` empty. The first line is the catalogue backlog — connectors REVE serves tariffs for that the mirror does not hold; see [be-0003](decisions/be-0003-price-on-the-connector.md) and the [prices chapter](thesis/precios-y-actualizacion.md).
+
+**`--restart-cycle` rewinds an in-flight cycle to page 1 without moving its window.** It exists because pages already drained are otherwise unreachable: the endpoint has no `date_to`, and a completed cycle advances the watermark past them permanently. Use it when a fix ships mid-drain and the pages that passed before it need re-reading — rewinding costs one page of budget per page re-read, and each recovers roughly 26 connectors that would otherwise wait ~243 days for their next repricing.
+
+**Deploy first, rewind second.** Rewinding before the fix is live re-reads those pages with the old code and discards them again.
+
+**Never run either ETL against production from a laptop.** The 5 req/hour cap is per API key, so a local run steals from the scheduler's budget and the two will fight over the same cursor — the advisory lock keeps them from corrupting it, but one of them simply loses its tick.
+
 ## Major Postgres upgrades
 
 Dev, CI and production all run **18**. The dev volume was cut over in Phase 5 by the procedure below; keep it here because the next major will need it again.

@@ -222,6 +222,31 @@ por casualidad llevara la primera franja. La frescura del espejo, por tanto, no
 solo degrada la exactitud del precio; en parte del catálogo determina si hay
 precio.
 
+**El catálogo congelado no se queda quieto, y el propio refresco lo mide.** El
+refresco solo pide `/connectors/tariffs`, así que *se encuentra* con estaciones
+construidas después de la siembra sin poder guardarlas: la tarifa nombra un EVSE
+que no existe en el espejo. **Una cuarta parte de cada página drenada es una fila
+así** —30, 23 y 21 de cada 100 en las primeras páginas—, unos 1.900 conectores en
+el drenaje completo, es decir un ~4 % de crecimiento del catálogo en dos meses y
+medio. La cifra está inflada por la propia ventana, porque un conector añadido la
+semana pasada siempre parece «recién cambiado» a un filtro `date_from`, y por eso
+aflora aquí y en ningún otro sitio.
+
+**Guardar esas filas no es contabilidad, es la única forma de que lleguen con
+precio.** Una tarifa reaparece en el feed únicamente cuando su precio vuelve a
+cambiar, y eso son **~243 días de media** (7.760 de 41.963 conectores tarificados
+se movieron en una ventana de 45 días; 45 es la *ventana*, no la recurrencia). Una
+reparación que importara la estación sin su precio la dejaría en blanco casi un
+año. De ahí `reve_unmirrored_connectors`: los identificadores **y el payload de la
+tarifa**, borrados en cuanto se siembran, de modo que el tamaño de la tabla
+responde a *cuánto del catálogo nos falta* y vacía significa que no falta nada.
+
+**Un log no es un registro.** Esas filas se venían anotando con un `warning` y
+descartando. Recrear el contenedor del planificador durante un despliegue
+ordinario destruyó las 262 líneas acumuladas: no hizo falta ni una rotación de
+logs. La medición existe cuando está en una tabla, no cuando está en la salida
+estándar de un proceso.
+
 **4. Estimación de respaldo.** Para un conector sin tarifa, el precio se estima
 como `PVPC(hora) + margen[tipo]` (AC +0.22 / DC +0.32 €/kWh) y se etiqueta como
 *estimado*. Dos constantes calibradas con el mercado real cubren también los

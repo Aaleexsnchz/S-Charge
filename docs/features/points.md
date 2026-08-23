@@ -8,6 +8,7 @@ The Spanish charging network, mirrored from REVE into our own database and serve
 
 - **Backend** — `GET /api/points` (filters: `bbox`, `connector_standard`, `max_price_per_kwh`), `GET /api/points/{id}`, `GET /api/points/map` (slim GeoJSON for the map). Seeded and refreshed by `backend/scripts/seed_reve.py` and `refresh_reve.py` under REVE's 5 req/hr cap.
 - **Frontend** — `features/points`: `/points/:id` renders operator, address, connectors with power, price and status, plus the simulation dialog and a Google Maps deep link.
+- **The catalogue drifts, and the drift is measured.** `/cpos` and `/locations` are frozen at the June 2026 seed; only tariffs are refreshed, because refreshing the catalogue would starve the tariff budget. About a quarter of every drained tariff page is a connector the mirror does not hold — ~1,900 over one drain, ~4 % growth in two and a half months. `reve_unmirrored_connectors` banks those with their tariff payload so a later repair pass can import them *priced*; its row count is the standing answer to how much of the catalogue is missing.
 - **Availability is not modelled.** `Evse.status` exists and `aggregate_status` rolls it up, but no source feeds it — see [plan.md](../plan.md) → Data strategy.
 
 ## Related
