@@ -9,7 +9,7 @@ from fastapi_users.authentication import (
 from app.config import settings
 
 ALGORITHM = "HS256"
-TOKEN_AUDIENCE = ["tfm:session"]
+TOKEN_AUDIENCE = ["s-charge:session"]
 COOKIE_NAME = "session"
 OAUTH_LOGIN_REDIRECT_URL = "/profile"
 

@@ -12,7 +12,7 @@ Docker has two jobs here, and they are separate:
 ## Reaching the production host
 
 ```bash
-ssh s-charge          # ~/.ssh/config alias -> deploy@s-charge.app, key id_ed25519_tfm
+ssh s-charge          # ~/.ssh/config alias -> deploy@s-charge.app, key id_ed25519_s-charge
 cd /opt/s-charge      # the checkout cd.yml deploys into
 ```
 
@@ -22,13 +22,15 @@ The key is passphrase-protected, so a non-interactive `ssh -o BatchMode=yes` fai
 
 | Key | Authenticates | Passphrase |
 | --- | --- | --- |
-| `~/.ssh/id_ed25519_tfm` | you → the host, interactively | yes |
-| `~/.ssh/tfm_deploy` (secret `DEPLOY_SSH_KEY`) | GitHub Actions → the host | no — CI cannot type one |
+| `~/.ssh/id_ed25519_s-charge` | you → the host, interactively | yes |
+| `~/.ssh/s-charge_deploy` (secret `DEPLOY_SSH_KEY`) | GitHub Actions → the host | no — CI cannot type one |
 | repository deploy key, on the host | the host → GitHub, to `git fetch` | no |
 
 ## Production stack
 
-[docker-compose.prod.yml](../docker-compose.prod.yml) is **standalone** (own project name `ev-charging-app-prod`, not an override): Caddy terminates TLS on 80/443 ([Caddyfile](../Caddyfile), `SITE_ADDRESS` from the root `.env`) and proxies `/api/*` to the backend and everything else to nginx; Postgres has **no published port**.
+[docker-compose.prod.yml](../docker-compose.prod.yml) is **standalone** (own project name `s-charge-prod`, not an override): Caddy terminates TLS on 80/443 ([Caddyfile](../Caddyfile), `SITE_ADDRESS` from the root `.env`) and proxies `/api/*` to the backend and everything else to nginx; Postgres has **no published port**.
+
+**Every volume pins its own `name:`, and the names do not match the project.** Compose otherwise derives a volume's real name from the project, so the database would follow any rename of `name:` — and following it means *not* following it: Postgres comes up on a brand-new empty volume while the real one sits orphaned. The volumes are therefore frozen at the names they were created with (`ev-charging-app-prod_postgres_data`, and `ev-charging-app_ev_charging_app_postgres_data` in dev), which is ugly and is the point: the project can be renamed freely, the data cannot be renamed at all. Never edit those `name:` keys.
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build        # deploy / redeploy

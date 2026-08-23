@@ -30,7 +30,7 @@ The dual-token pattern (in-memory access + cookie refresh + periodic `/auth/refr
 
 ## Implementation
 
-Slice 1. fastapi-users' `CookieTransport` configured with our security flags, composed with a single `JWTStrategy` (HS256, 14-day lifetime, audience `tfm:session`) into one `AuthenticationBackend`. Logout is `CookieTransport.get_logout_response()` (library-provided), which clears the cookie with `Max-Age=0`. No custom endpoints.
+Slice 1. fastapi-users' `CookieTransport` configured with our security flags, composed with a single `JWTStrategy` (HS256, 14-day lifetime, audience `s-charge:session`) into one `AuthenticationBackend`. Logout is `CookieTransport.get_logout_response()` (library-provided), which clears the cookie with `Max-Age=0`. No custom endpoints.
 
 ## Consequences
 

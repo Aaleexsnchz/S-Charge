@@ -1,4 +1,4 @@
-name: ev-charging-app
+name: s-charge
 
 # Dev stack: backing services only. The backend and frontend run natively on the
 # host (`just api` / `just web`) so the toolchain that gates commits and CI is the
@@ -8,7 +8,7 @@ name: ev-charging-app
 services:
   db:
     image: postgres:18-alpine
-    container_name: ev-charging-app-db
+    container_name: s-charge-db
     restart: unless-stopped
     env_file:
       - ./.env
@@ -28,4 +28,9 @@ services:
       retries: 10
 
 volumes:
+  # Pinned to the name it had under the old `ev-charging-app` project. Compose
+  # derives a volume's real name from the project, so renaming the project
+  # would silently point Postgres at an empty volume and orphan the REVE seed
+  # that costs ~12 days to rebuild under the rate cap.
   ev_charging_app_postgres_data:
+    name: ev-charging-app_ev_charging_app_postgres_data
