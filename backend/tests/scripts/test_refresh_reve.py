@@ -7,7 +7,7 @@ from app.etl.lock import reve_etl_lock
 from app.integrations.reve import ReveClient
 from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
-from scripts.refresh_reve import _restart_cycle, _run_tick, main
+from scripts.refresh_reve import _run_tick, main
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -18,6 +18,28 @@ API_KEY = "secret-key"
 @pytest.fixture
 def reve_client() -> ReveClient:
     return ReveClient(api_key=API_KEY, base_url=BASE_URL, max_retries=0)
+
+
+@pytest.fixture
+def main_uses_test_session(
+    db_session: AsyncSession, engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Let ``main`` run against the test transaction.
+
+    It opens its own ``SessionLocal``, so without this a test can only reach the
+    branches that return before a session exists. The stand-in yields the test
+    session and declines to close it, since the fixture owns its lifecycle.
+    """
+
+    class _Handle:
+        async def __aenter__(self) -> AsyncSession:
+            return db_session
+
+        async def __aexit__(self, *exc: object) -> None:
+            return None
+
+    monkeypatch.setattr("scripts.refresh_reve.SessionLocal", lambda: _Handle())
+    monkeypatch.setattr("scripts.refresh_reve.engine", engine)
 
 
 async def _seed_tariff_cursor(db: AsyncSession, watermark: datetime) -> None:
@@ -172,7 +194,7 @@ async def test_a_second_runner_exits_without_writing(
 
 
 async def test_restart_cycle_rewinds_to_page_one_without_moving_the_window(
-    db_session: AsyncSession,
+    db_session: AsyncSession, main_uses_test_session: None
 ) -> None:
     """Pages already drained are unreachable any other way: the endpoint has no
     `date_to`, and a completed cycle moves the watermark past them for good."""
@@ -185,7 +207,7 @@ async def test_restart_cycle_rewinds_to_page_one_without_moving_the_window(
         .values(next_page=19, refresh_cycle_end=cycle_end)
     )
 
-    assert await _restart_cycle(db_session) == 0
+    assert await main(["--restart-cycle"]) == 0
 
     cursor = await read_cursor(db_session, "/connectors/tariffs")
     assert cursor.next_page == 1
@@ -195,8 +217,8 @@ async def test_restart_cycle_rewinds_to_page_one_without_moving_the_window(
 
 
 async def test_restart_cycle_refuses_when_no_cycle_is_in_flight(
-    db_session: AsyncSession,
+    db_session: AsyncSession, main_uses_test_session: None
 ) -> None:
     await _seed_tariff_cursor(db_session, datetime(2026, 7, 8, 19, 30, tzinfo=UTC))
 
-    assert await _restart_cycle(db_session) == 1
+    assert await main(["--restart-cycle"]) == 1
