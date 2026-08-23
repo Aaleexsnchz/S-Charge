@@ -20,7 +20,7 @@ services:
     volumes:
       # 18+ keeps data in a major-version subdirectory and declares
       # /var/lib/postgresql as the volume; the old path aborts the entrypoint.
-      - ev_charging_app_postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -28,9 +28,4 @@ services:
       retries: 10
 
 volumes:
-  # Pinned to the name it had under the old `ev-charging-app` project. Compose
-  # derives a volume's real name from the project, so renaming the project
-  # would silently point Postgres at an empty volume and orphan the REVE seed
-  # that costs ~12 days to rebuild under the rate cap.
-  ev_charging_app_postgres_data:
-    name: ev-charging-app_ev_charging_app_postgres_data
+  postgres_data:

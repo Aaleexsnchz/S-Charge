@@ -3,7 +3,7 @@
 # Weekly automated backup (invoked from cron).
 #
 #   1. Writes a PII-safe seed dump to backups/ (timestamped local history).
-#   2. Uploads it to Backblaze B2 (bucket tfm-db-backups, server-side encrypted
+#   2. Uploads it to Backblaze B2 (bucket S-Charge, server-side encrypted
 #      at rest) via rclone — the offsite copy. No user/oauth data leaves the box.
 #   3. Prunes local and offsite seed dumps beyond the most recent $KEEP.
 #
@@ -16,6 +16,12 @@
 # and — this being cron — would have failed into an empty log nobody reads.
 # Every override below can be set in the environment for an unusual host.
 #
+# **COMPOSE_FILE must be set to docker-compose.prod.yml on the server**, or the
+# dump addresses a dev project that has never run there. Until 2026-08-23 this
+# script had never run on the server at all — rclone was not installed and no
+# cron entry existed — so the offsite copy described above did not exist. Verify
+# a real upload lands rather than trusting that it does.
+#
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:${HOME}/.local/bin"
 
@@ -24,7 +30,7 @@ cd "$(dirname "$0")/.."
 KEEP="${KEEP:-8}"
 RCLONE="${RCLONE:-rclone}"
 export RCLONE_CONFIG="${RCLONE_CONFIG:-${HOME}/.config/rclone/rclone.conf}"
-REMOTE="${REMOTE:-b2:tfm-db-backups}"
+REMOTE="${REMOTE:-b2:S-Charge}"
 
 # Fail loudly and before dumping anything. An unconfigured host must not look
 # like a successful backup.

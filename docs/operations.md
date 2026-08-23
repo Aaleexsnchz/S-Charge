@@ -30,84 +30,45 @@ The key is passphrase-protected, so a non-interactive `ssh -o BatchMode=yes` fai
 
 [docker-compose.prod.yml](../docker-compose.prod.yml) is **standalone** (own project name `s-charge-prod`, not an override): Caddy terminates TLS on 80/443 ([Caddyfile](../Caddyfile), `SITE_ADDRESS` from the root `.env`) and proxies `/api/*` to the backend and everything else to nginx; Postgres has **no published port**.
 
-**Every volume pins its own `name:`, and the names do not match the project.** Compose otherwise derives a volume's real name from the project, so the database would follow any rename of `name:` — and following it means *not* following it: Postgres comes up on a brand-new empty volume while the real one sits orphaned. The volumes are therefore frozen at the names they were created with (`ev-charging-app-prod_postgres_data`, and `ev-charging-app_ev_charging_app_postgres_data` in dev), which is ugly and is the point: the project can be renamed freely, the data cannot be renamed at all. Never edit those `name:` keys.
+**Production's volumes still pin their own `name:`, frozen at what they were created with (`ev-charging-app-prod_*`).** Compose derives a volume's real name from the project name, so renaming the project without a pin points Postgres at a brand-new empty volume while the real one sits orphaned. The pin is what let the project be renamed to `s-charge-prod` without touching the data.
 
-```bash
-docker compose -f docker-compose.prod.yml up -d --build        # deploy / redeploy
-docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
-docker compose -f docker-compose.prod.yml logs -f scheduler    # ETL job output
+It is a migration aid, not a permanent fixture — and the cost of leaving it is a warning on every `up`:
+
+```
+volume "ev-charging-app-prod_postgres_data" already exists but was created
+for project "ev-charging-app-prod" (expected "s-charge-prod")
 ```
 
-**The `scheduler` service is ordinary — `up -d` starts, updates and stops it like any other.** It spent Phase 5 behind a Compose profile so that a deploy could not start an unattended REVE tick while the watermark was parked. Phase 6 turned the ETLs on permanently, and the profile promptly inverted from a guard into a hazard: a profiled service is *skipped* by `up -d` rather than recreated, so **every deploy left the scheduler running the previous image**, and `down` left it running entirely — a tear-down that looks complete while a cron keeps ticking against the database.
+Docker cannot relabel a volume in place, so clearing that means copying the data into a correctly-named one. **Dev has been migrated this way and no longer pins anything**; the procedure is below. Do not instead reach for `external: true`: it silences the warning by making the stack refuse to start anywhere the volume does not already exist — every new host, every CI run, every `just prod-up`.
 
-**Compose warns about the volume names on this host, and the warning is expected.** `volume "ev-charging-app-prod_postgres_data" already exists but was created for project "ev-charging-app-prod"` is the price of pinning the volumes through the project rename: the data carries the old project's label and Docker cannot relabel a volume in place. It is cosmetic, it appears only on hosts that predate the rename, and a fresh environment never sees it. Do not "fix" it with `external: true` — that would make the stack refuse to start anywhere the volume does not already exist, which is every new host and every local `just prod-up`.
+### Renaming a volume
 
-Locally, `just prod-up` runs the same stack with `SITE_ADDRESS=localhost` (self-signed cert warning expected) — the way to smoke-test a deploy before pushing. Every CD deploy rebuilds all images, which is cheap when nothing changed because the layer cache hits.
+Docker cannot relabel a volume in place, so a rename is a copy. Rehearsed on dev, 2026-08-23.
 
-Environment variables are read **at container creation**: after editing a server-side `.env`, use `up -d --force-recreate <service>`, never `restart`, or the container keeps the old values.
-
-### Reaching the production database
-
-**Never publish Postgres on `0.0.0.0`.** `ufw` does not filter Docker-published ports: Docker inserts its DNAT rules ahead of ufw's chain, so a plain `ports: ["5432:5432"]` exposes the database to the internet while `ufw status` still shows a correct-looking policy.
-
-`db` is therefore bound to **loopback only** — `127.0.0.1:5432:5432`. That rule matches a destination no packet from outside can carry, so the database is reachable from the host and from nothing else. It grants a local shell nothing it did not already have through `docker compose exec`.
-
-### The dev database
-
-`docker-compose.yml` binds it to `127.0.0.1:5432` too, for the same reason: a `0.0.0.0` bind accepts connections from anyone on the same wifi. Connect DBeaver straight to `localhost:5432` — no tunnel, credentials from the root `.env`.
-
-**On WSL2, test this after changing it.** Windows reaches WSL services through a localhost relay, and whether it forwards to a service bound inside the distro to `127.0.0.1` rather than `0.0.0.0` depends on the WSL version and whether mirrored networking is on. If a Windows-side client stops connecting, that is why — run the client inside WSL, enable mirrored networking, or put the bind back.
-
-### From a GUI client
-
-Tunnel over SSH; the port exists only on your machine, for the life of the connection.
+**Create the new volume with Compose's own labels, or Compose disowns it.** A volume made by a bare `docker volume create` carries no labels and draws a different warning — *"already exists but was not created by Docker Compose"*. Only two labels matter; the `config-hash` Compose also writes is not needed to satisfy it:
 
 ```bash
-ssh -L 55432:localhost:5432 s-charge
+docker volume create \
+  --label com.docker.compose.project=s-charge-prod \
+  --label com.docker.compose.volume=postgres_data \
+  s-charge-prod_postgres_data
 ```
 
-Leave that session open and point DBeaver (or `psql`) at `localhost:55432`. Credentials are the server-side `.env` — rotated at first deploy, so not the dev ones. Port 55432 rather than 5432 because the dev stack holds 5432 locally.
-
-**Use the `s-charge` alias, not `deploy@s-charge.app`.** The `Host s-charge` block in `~/.ssh/config` is what supplies the user and `IdentityFile`; spelling the hostname out matches no block, so ssh offers its default keys and the server answers `Permission denied (publickey)`.
-
-### Ad-hoc SQL on the host
+Nothing may be writing during the copy, so the stack is down for it. **Verify by content, not by size** — `du -sb` differs by a few KB of directory metadata even on an identical copy, so an empty `diff -r` is the real check:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -T db \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
-SELECT count(*) FROM charging_points;
-SQL
+docker compose -f docker-compose.prod.yml down
+
+docker run --rm -v ev-charging-app-prod_postgres_data:/from:ro \
+  -v s-charge-prod_postgres_data:/to alpine sh -c 'cd /from && cp -a . /to/'
+
+docker run --rm -v ev-charging-app-prod_postgres_data:/from:ro \
+  -v s-charge-prod_postgres_data:/to:ro alpine diff -r /from /to && echo IDENTICAL
 ```
 
-**The single quotes are load-bearing.** `$POSTGRES_USER` and `$POSTGRES_DB` exist in the container, not in the host shell — double-quote them and they expand to nothing, psql falls back to the OS user, and the connection fails with `role "root" does not exist`. The same trap is why [backup_db.sh](../scripts/backup_db.sh) needs its credentials supplied from the crontab entry.
+Then drop the `name:` pin from the compose file so the volume resolves to `<project>_<declared>`, deploy, and confirm the row counts and `alembic_version` before removing the old volume — keep it until the new one has served real work.
 
-### Image stages
-
-Both Dockerfiles are multi-stage, and every stage is a production stage — the dev stages were removed when development moved to the host:
-
-- **Backend `prod`** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB.
-- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. Gated behind its profile, as above, and not running yet. CI still builds it, via `docker build --target scheduler` rather than through Compose. ~356 MB.
-- **Frontend `prod`** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for client-side routing. ~80 MB. Static assets only; Caddy does the API routing.
-
-CI builds all three, so a broken Dockerfile fails there rather than on the server at deploy time.
-
-> If a frontend package runs an install/build script (native deps like `sharp`), pnpm 11 blocks it by default. Approve it in [frontend/pnpm-workspace.yaml](../frontend/pnpm-workspace.yaml) under `allowBuilds` — otherwise the prod image build fails with `ERR_PNPM_IGNORED_BUILDS`.
-
-## The REVE refresh
-
-`refresh_reve` drains `/connectors/tariffs` on the hour under a 5 req/hour cap, and reports itself:
-
-```bash
-docker compose -f docker-compose.prod.yml exec -T backend python -m scripts.refresh_reve --status
-```
-
-That makes no REVE call, so it is free to run as often as you like. A healthy drain shows `next page` climbing by 5 an hour, `cycle end` **frozen** (it is the cycle's upper bound and must not move mid-flight), `watermark` unchanged until the cycle drains, and `failing since` empty. The first line is the catalogue backlog — connectors REVE serves tariffs for that the mirror does not hold; see [be-0003](decisions/be-0003-price-on-the-connector.md) and the [prices chapter](thesis/precios-y-actualizacion.md).
-
-**`--restart-cycle` rewinds an in-flight cycle to page 1 without moving its window.** It exists because pages already drained are otherwise unreachable: the endpoint has no `date_to`, and a completed cycle advances the watermark past them permanently. Use it when a fix ships mid-drain and the pages that passed before it need re-reading — rewinding costs one page of budget per page re-read, and each recovers roughly 26 connectors that would otherwise wait ~243 days for their next repricing.
-
-**Deploy first, rewind second.** Rewinding before the fix is live re-reads those pages with the old code and discards them again.
-
-**Never run either ETL against production from a laptop.** The 5 req/hour cap is per API key, so a local run steals from the scheduler's budget and the two will fight over the same cursor — the advisory lock keeps them from corrupting it, but one of them simply loses its tick.
+**Fill the new volumes before the compose change reaches the host, not after.** If the pin is removed first, the next `up` creates empty volumes and Postgres initialises a fresh cluster on one — CD then runs `alembic upgrade head` against it and the site serves an empty database until the copy lands. Pre-filling means Compose finds the volume already correct and simply attaches, so the only downtime is the copy plus the deploy.
 
 ## Major Postgres upgrades
 
@@ -158,7 +119,11 @@ There is a second kind of dump on the server: **`backups/pre-migrate-*.dump`**, 
 
 ### Offsite + automation
 
-The offsite copy is **Backblaze B2** (bucket `tfm-db-backups`, server-side encryption at rest), uploaded with `rclone`. Only the PII-safe seed dump goes offsite — no `users`/`oauth_account` data ever leaves the machine.
+The offsite copy is **Backblaze B2** (bucket `S-Charge`, server-side encryption at rest), uploaded with `rclone`. Only the PII-safe seed dump goes offsite — no `users`/`oauth_account` data ever leaves the machine.
+
+**The server authenticates with its own bucket-scoped application key**, not the laptop's. It is internet-facing, so a key that reaches one bucket of PII-safe dumps is the blast radius worth accepting; it can also be revoked without disturbing anything else. A scoped key cannot `rclone lsd b2:` — listing all buckets is the permission deliberately withheld — so check it with `rclone lsf b2:S-Charge` instead.
+
+**This ran on the development laptop and, until 2026-08-23, on nothing else.** The server had no `rclone`, no config and no cron entry, so from the day it was provisioned there was no offsite copy of the seed at all — every copy lived on the one host. It went unnoticed because the only place it would have said so is a cron log that is written only when the cron exists. Two lessons worth keeping: **a documented backup is not a backup**, and provisioning a host means moving the scheduled work too, not only the service.
 
 [scripts/backup_db_cron.sh](../scripts/backup_db_cron.sh) runs weekly via cron (Mondays 09:00 Madrid, logged to `~/.db-backup.log`): it writes a timestamped seed dump to `backups/`, `rclone copy`s it to B2, and prunes both local and offsite dumps beyond the most recent 8. Cron uses a minimal `PATH` and does not load the profile, so the script sets both `PATH` and `RCLONE_CONFIG` itself, deriving them from `$HOME` — they were once written out as the development laptop's paths, which resolve to nothing on the server. It checks that `rclone` and its config exist **before** dumping anything, because an unconfigured host must fail visibly rather than log a success.
 
@@ -167,7 +132,7 @@ The offsite copy is **Backblaze B2** (bucket `tfm-db-backups`, server-side encry
 The `rclone` B2 remote is named `b2`; credentials live in `~/.config/rclone/rclone.conf` (chmod `600`, outside the repo). Restore from offsite:
 
 ```bash
-rclone copy b2:tfm-db-backups/<file>.dump /tmp/
+rclone copy b2:S-Charge/<file>.dump /tmp/
 docker compose exec -T db pg_restore -U ev_charging_app -d ev_charging \
   --clean --if-exists --no-owner < /tmp/<file>.dump
 ```
