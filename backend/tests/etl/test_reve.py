@@ -17,6 +17,7 @@ from app.models.charging_point import (
     Evse,
 )
 from app.models.cpo import Cpo
+from app.models.etl import ReveUnmirroredConnector
 from app.models.tariff import Tariff, TariffElement
 from pytest_httpx import HTTPXMock
 from sqlalchemy import func, select
@@ -392,6 +393,89 @@ async def test_zero_restriction_bounds_are_stored_as_absent(
         element.max_duration_s,
     ):
         assert bound is None
+
+
+async def test_a_tariff_for_an_unknown_connector_is_recorded_not_dropped(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """The price arrives once and does not come round again for ~243 days, so a
+    repair pass needs it kept, not logged."""
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=[
+            {
+                "evse_id": "ES*ABC*GHOST",
+                "connector_id": "ghost",
+                "tariffs": [
+                    {
+                        "id": "tariff-ghost",
+                        "currency": "EUR",
+                        "elements": [
+                            {
+                                "price_components": [
+                                    {"type": "ENERGY", "price": 0.42, "step_size": 1}
+                                ]
+                            }
+                        ],
+                        "last_tariff_updated": "2026-04-20T12:00:00Z",
+                    }
+                ],
+                "last_tariff_updated": "2026-04-20T12:00:00Z",
+            }
+        ],
+    )
+
+    async with reve_client as client:
+        await import_tariffs(client, db_session)
+
+    row = (await db_session.execute(select(ReveUnmirroredConnector))).scalar_one()
+    assert row.evse_id == "ES*ABC*GHOST"
+    assert row.connector_id == "ghost"
+    assert row.tariff_raw["id"] == "tariff-ghost"
+    assert row.tariff_raw["elements"][0]["price_components"][0]["price"] == 0.42
+
+
+async def test_seeing_the_same_unknown_connector_twice_keeps_one_row(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """It reappears on every cycle until repaired; the backlog must not inflate."""
+    for price in (0.42, 0.55):
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+            json=[
+                {
+                    "evse_id": "ES*ABC*GHOST",
+                    "connector_id": "ghost",
+                    "tariffs": [
+                        {
+                            "id": "tariff-ghost",
+                            "currency": "EUR",
+                            "elements": [
+                                {
+                                    "price_components": [
+                                        {
+                                            "type": "ENERGY",
+                                            "price": price,
+                                            "step_size": 1,
+                                        }
+                                    ]
+                                }
+                            ],
+                            "last_tariff_updated": "2026-04-20T12:00:00Z",
+                        }
+                    ],
+                    "last_tariff_updated": "2026-04-20T12:00:00Z",
+                }
+            ],
+        )
+
+    async with reve_client as client:
+        await import_tariffs(client, db_session)
+        await import_tariffs(client, db_session)
+
+    row = (await db_session.execute(select(ReveUnmirroredConnector))).scalar_one()
+    # The newest price wins: the repair should import what REVE serves today.
+    assert row.tariff_raw["elements"][0]["price_components"][0]["price"] == 0.55
 
 
 async def test_import_tariffs_skips_unknown_connector(

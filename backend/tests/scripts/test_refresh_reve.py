@@ -20,6 +20,28 @@ def reve_client() -> ReveClient:
     return ReveClient(api_key=API_KEY, base_url=BASE_URL, max_retries=0)
 
 
+@pytest.fixture
+def main_uses_test_session(
+    db_session: AsyncSession, engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Let ``main`` run against the test transaction.
+
+    It opens its own ``SessionLocal``, so without this a test can only reach the
+    branches that return before a session exists. The stand-in yields the test
+    session and declines to close it, since the fixture owns its lifecycle.
+    """
+
+    class _Handle:
+        async def __aenter__(self) -> AsyncSession:
+            return db_session
+
+        async def __aexit__(self, *exc: object) -> None:
+            return None
+
+    monkeypatch.setattr("scripts.refresh_reve.SessionLocal", lambda: _Handle())
+    monkeypatch.setattr("scripts.refresh_reve.engine", engine)
+
+
 async def _seed_tariff_cursor(db: AsyncSession, watermark: datetime) -> None:
     await db.execute(update(ReveEtlCursor).values(completed_at=watermark))
     await db.execute(
@@ -169,3 +191,34 @@ async def test_a_second_runner_exits_without_writing(
     assert httpx_mock.get_requests() == []
     cursor = await read_cursor(db_session, "/connectors/tariffs")
     assert cursor.refresh_watermark == watermark
+
+
+async def test_restart_cycle_rewinds_to_page_one_without_moving_the_window(
+    db_session: AsyncSession, main_uses_test_session: None
+) -> None:
+    """Pages already drained are unreachable any other way: the endpoint has no
+    `date_to`, and a completed cycle moves the watermark past them for good."""
+    watermark = datetime(2026, 7, 8, 19, 30, tzinfo=UTC)
+    cycle_end = datetime(2026, 8, 23, 9, 12, tzinfo=UTC)
+    await _seed_tariff_cursor(db_session, watermark)
+    await db_session.execute(
+        update(ReveEtlCursor)
+        .where(ReveEtlCursor.endpoint == "/connectors/tariffs")
+        .values(next_page=19, refresh_cycle_end=cycle_end)
+    )
+
+    assert await main(["--restart-cycle"]) == 0
+
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    assert cursor.next_page == 1
+    # The window must not shift, or the re-read covers a different result set.
+    assert cursor.refresh_cycle_end == cycle_end
+    assert cursor.refresh_watermark == watermark
+
+
+async def test_restart_cycle_refuses_when_no_cycle_is_in_flight(
+    db_session: AsyncSession, main_uses_test_session: None
+) -> None:
+    await _seed_tariff_cursor(db_session, datetime(2026, 7, 8, 19, 30, tzinfo=UTC))
+
+    assert await main(["--restart-cycle"]) == 1

@@ -18,6 +18,7 @@ from app.models.charging_point import (
     Evse,
 )
 from app.models.cpo import Cpo
+from app.models.etl import ReveUnmirroredConnector
 from app.models.tariff import Tariff, TariffElement
 from app.utils.audit import audit
 
@@ -352,15 +353,44 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
         await _upsert_evse(db, cp_id, raw_evse)
 
 
+async def _record_unmirrored(
+    db: AsyncSession, raw: dict[str, Any], raw_tariff: dict[str, Any]
+) -> None:
+    """Keep a tariff whose connector the catalogue does not hold.
+
+    The price arrives now and will not arrive again for ~243 days on average,
+    so it is stored with the ids rather than dropped — a later repair pass can
+    then import the station *priced* instead of blank.
+    """
+    payload = {
+        "id": uuid.uuid4(),
+        "evse_id": raw["evse_id"],
+        "connector_id": raw["connector_id"],
+        "tariff_raw": raw_tariff,
+        "last_seen_at": datetime.now(UTC),
+    }
+    stmt = insert(ReveUnmirroredConnector).values(**payload)
+    await db.execute(
+        stmt.on_conflict_do_update(
+            index_elements=["evse_id", "connector_id"],
+            set_={
+                "tariff_raw": stmt.excluded.tariff_raw,
+                "last_seen_at": stmt.excluded.last_seen_at,
+            },
+        )
+    )
+
+
 async def _upsert_connector_tariff(
     db: AsyncSession,
     raw: dict[str, Any],
     refreshed_at: datetime,
     rewritten_tariffs: set[str],
-) -> None:
+) -> bool:
+    """Returns False when the connector is not in the catalogue."""
     raw_tariff = _first_tariff(raw)
     if raw_tariff is None:
-        return
+        return True
 
     connector_lookup = (
         select(Connector.id)
@@ -370,12 +400,13 @@ async def _upsert_connector_tariff(
     )
     connector_pk = (await db.execute(connector_lookup)).scalar_one_or_none()
     if connector_pk is None:
+        await _record_unmirrored(db, raw, raw_tariff)
         logger.warning(
             "reve_tariff_connector_not_found evse_id=%s connector_id=%s",
             raw["evse_id"],
             raw["connector_id"],
         )
-        return
+        return False
 
     tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
@@ -416,6 +447,7 @@ async def _upsert_connector_tariff(
         .where(Connector.id == connector_pk)
         .values(tariff_id=tariff_pk)
     )
+    return True
 
 
 async def import_cpos(
@@ -491,13 +523,15 @@ async def import_tariffs(
 ) -> tuple[int, int, bool]:
     refreshed_at = datetime.now(UTC)
     changed = 0
+    unmirrored = 0
     rewritten_tariffs: set[str] = set()
 
     async def _process(raw: dict[str, Any]) -> None:
-        nonlocal changed
+        nonlocal changed, unmirrored
         if _tariff_changed_in_window(raw, date_from, date_to):
             changed += 1
-        await _upsert_connector_tariff(db, raw, refreshed_at, rewritten_tariffs)
+        if not await _upsert_connector_tariff(db, raw, refreshed_at, rewritten_tariffs):
+            unmirrored += 1
 
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
@@ -511,6 +545,7 @@ async def import_tariffs(
         "reve_etl_tariffs",
         rows=rows,
         changed=changed,
+        unmirrored=unmirrored,
         last_page=last_page,
         exhausted=exhausted,
         start_page=start_page,

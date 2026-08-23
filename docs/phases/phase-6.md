@@ -24,7 +24,7 @@ Two live probes against REVE on 2026-08-22 (2 of the 5/hour budget) established 
 
 Results are ordered by **`connector_id` ascending**. Page 1 covered 1.303 % of the id space and page 77 ended at 99.18 %, two independent estimates agreeing on **~7,760 rows ≈ 78 pages ≈ 16 h** at 5 requests/hour. Pages 1 and 77 share zero rows.
 
-**~0.7 % of rows will be skipped, and that is accepted.** Churn is **172 connector-rows/day**. Over a 16-hour drain ~115 new rows enter a set ordered by a stable key, and those sorting before the cursor push roughly 57 rows past it. They are *not* recovered by the next cycle — the watermark advances to cycle start, so a skipped row whose change predates that only returns when its connector next changes, ~45 days out. The alternative is the unfiltered drain: a stable 46,808-row set with no insertion risk, but 469 pages and ~4 days. Three extra days to save 57 stale prices is the wrong trade.
+**~0.7 % of rows will be skipped, and that is accepted.** Churn is **172 connector-rows/day**. Over a 16-hour drain ~115 new rows enter a set ordered by a stable key, and those sorting before the cursor push roughly 57 rows past it. They are *not* recovered by the next cycle — the watermark advances to cycle start, so a skipped row whose change predates that only returns when its connector next changes. **That wait is ~243 days, not the 45 first assumed here**: the 45-day window turned up 7,760 of 41,963 priced connectors, so 18.5 % reprice in 45 days and an average connector waits eight months. The distribution is lumpier still — 698 of the stored tariffs were last touched in March against 25 in July — so for many connectors the honest answer is *maybe never*. The alternative is the unfiltered drain: a stable 46,808-row set with no insertion risk, but 469 pages and ~4 days. Three extra days to save 57 stale prices is the wrong trade.
 
 ### The stored price is a flattened approximation, and sometimes cannot be right
 
@@ -129,12 +129,13 @@ Two shapes, in a 23:7 ratio on page 1:
 
 `/locations` accepts **`date_from`**, with the meaning it has everywhere else in this API: *only Locations updated since this instant*. A station built after the seed qualifies, and so does a station that gained a connector. The whole backlog is therefore repairable by machinery that already exists — `import_locations`, the same cursor, the same budget loop — pointed at `date_from = /locations.completed_at` (2026-06-09).
 
-| Approach | Cost |
-| --- | --- |
-| `/evses/{evse_id}`, one per missing EVSE | ~1,900 calls ≈ **16 days** |
-| `/locations?date_from=2026-06-09` | new *and* changed locations only ≈ **hours** |
+**Per-EVSE repair is not merely expensive, it is impossible for the majority case.** `/evses/{evse_id}` returns `id`, `capabilities`, `connectors`, `coordinates` — and **no reference to its Location**: no `location_id`, no address, no `party_id`. But `evses.charging_point_id` is `NOT NULL`, so a new station's EVSE has nothing to attach to and no way to find its parent. That is 23 of every 30 backlog rows. It would fix only the other 7, the sockets added to stations already held.
 
-Per-EVSE calls also only fix the first shape. The filtered pass fixes both, because an added socket updates its parent Location. Upserts are keyed on `(source, source_id)` and `(evse_id, source_id)`, so the pass is additive and idempotent — it cannot orphan what is already stored.
+The filtered pass fixes both shapes, because an added socket updates its parent Location. Upserts are keyed on `(source, source_id)` and `(evse_id, source_id)`, so it is additive and idempotent — it cannot orphan what is already stored.
+
+**`/cpos` has to run first, in the same script.** `charging_points.party_id` is a foreign key to `cpos.party_id`, and `_upsert_location` inserts what REVE sends with no guard. The CPO list was last refreshed **2026-06-04**, so a station from an operator that joined REVE since then raises a `ForeignKeyViolation` and **fails the whole tick** rather than skipping the row. It is cheap — 142 CPOs is two pages unfiltered, and `/cpos` takes `date_from` — but it is not optional.
+
+**And the size of the `/locations` pass is unknown, so it gets probed before it gets budgeted.** `date_from` returns every Location whose `last_updated` moved, and if that field tracks EVSE status flicker rather than static edits, the "changed" set is most of the 137-page catalogue and the cheap path is not cheap. One call settles it — request a high page (`?date_from=2026-06-09&page=20`) and see whether it comes back full. The spec hints the split exists (`only_dynamic_info` is a separate filter, and `Evse` carries its own `last_static_updated`), but a hint is not a measurement. Probe after the tariff drain, since it spends the same budget.
 
 **Two constraints, both load-bearing:**
 
@@ -145,16 +146,21 @@ That cursor is misleading about the seed, and the seed was fine: `charging_point
 
 ### Tasks
 
-- [ ] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id`, unique together; `first_seen_at`, `last_seen_at`, `tariff_raw` (the payload we could not attach, so the price is not lost with it), `resolved_at` nullable
-- [ ] `_upsert_connector_tariff` upserts here instead of only warning; keep the warning, since a sudden jump is worth seeing in the logs
-- [ ] Counted in the `reve_etl_tariffs` audit line and printed by `--status` — *how stale is the catalogue* is a question nothing currently answers
+- [x] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id` unique together, `tariff_raw`, `first_seen_at`, `last_seen_at`. **Rows are deleted once seeded rather than flagged**, so the table's size is the answer to *how much of the catalogue are we missing* and empty means nothing is. The ids are REVE's internal UUIDs, matching `evses.source_id` — **not** eMI3, which the tariff feed never sends, so the operator cannot be recovered from a backlog row and a `party_id`-filtered repair is not open to us
+- [x] `_upsert_connector_tariff` records here instead of only warning, upserting on `(evse_id, connector_id)` — an unmirrored connector reappears every cycle until repaired, so without the conflict clause the backlog inflates each pass and the count means nothing. The newest payload wins: the repair should import what REVE serves today
+- [x] Counted in the `reve_etl_tariffs` audit line as `unmirrored`, and printed by `--status` — *how stale is the catalogue* is a question nothing currently answers, and the container logs stopped being able to answer it the moment one was recreated
+- [x] **`refresh_reve --restart-cycle`** — rewinds the in-flight cycle to page 1 without moving its window, so a fix that ships mid-drain can re-read the pages that passed before it. Needed because the endpoint has no `date_to` and a completed cycle moves the watermark past those rows for good. **Rewinding once the ledger is live costs ~18 pages and recovers ~470 connectors**; replaying after the drain finishes would cost all 78, since it would re-read what the ledger already caught
+- [ ] **Probe `/locations?date_from=2026-06-09&page=20`** — one call, after the tariff drain, to size the pass before committing budget to it
 - [ ] **`backend/scripts/backfill_locations.py`** — the repair pass, as its own script rather than a fourth entry in `REFRESH_PRIORITY`. A standing refresh of `/locations` would compete with the tariff tick on every run forever; this is a repair that ends when the backlog does.
+  - **`/cpos` first, then `/locations`, in that order** — the party_id foreign key makes the order load-bearing rather than tidy
   - **Takes `reve_etl_lock`**, the same lock as `seed_reve` and `refresh_reve`. That is what makes "shares the budget" enforceable rather than a note in a doc — the two cannot spend the same hour's 5 calls at once
   - **Resets the `/locations` cursor** (`next_page` → 1, `refresh_cycle_end` → null) before its first cycle, or it resumes a cancelled June cycle at page 5 and skips pages 1–4 of a new result set
   - `date_from` defaults to `/locations.completed_at`, overridable with `--date-from`; `--budget` and `--status` as the other two scripts have them, so the operator reads one interface across all three
-  - Paginates through `_paginate_with_budget` and resumes across ticks, exactly like the tariff drain — the backlog is thousands of rows and will not clear in one run
-- [ ] On repair, the stored `tariff_raw` prices the new connectors immediately rather than leaving them unpriced until their next tariff cycle
-- [ ] `resolved_at` stamped when the connector appears, so the backlog draining to ~0 is the proof the pass worked — and the number it stops at is what [Slice 7](#slice-7--cadence-and-observation) argues the standing catalogue cadence from
+  - Paginates through `_paginate_with_budget` and resumes across ticks, exactly like the tariff drain
+- [ ] After each `/locations` page: for every backlog row whose connector now exists, **apply `tariff_raw` and delete the row in the same transaction**. The station arrives priced instead of blank, and the shrinking table is the proof the pass is working.
+  - **The delete belongs here, at the point of consumption, not in a periodic sweep.** A sweep keyed on *"the connector exists now"* races this step: seed the station, and the row qualifies for deletion before its payload has been read. The price it was kept for would be dropped a moment before it was used, leaving the connector blank — the precise failure the ledger exists to prevent.
+  - A row whose connector arrived by some other route is not a special case: the same loop finds it, applies a price that is merely redundant, and clears it.
+- [ ] Whatever the backlog stops at is what [Slice 7](#slice-7--cadence-and-observation) argues the standing catalogue cadence from — and if it does not reach zero, the residue is the case for one unfiltered `/connectors/tariffs` drain (469 pages, ~4 days) to price everything at once
 
 **Deliberately not in this slice:** a standing catalogue cadence. The backlog has to exist, and one repair pass has to be measured, before a cadence can be argued rather than guessed — that is [Slice 7](#slice-7--cadence-and-observation), with a real call-usage figure in hand.
 
