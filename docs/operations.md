@@ -38,7 +38,9 @@ docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 docker compose -f docker-compose.prod.yml logs -f scheduler    # ETL job output
 ```
 
-**The `scheduler` service is behind a Compose profile and does not start with `up -d`.** Bringing the ETLs up is `--profile scheduler up -d`, and it must be repeated on every subsequent `up` that should keep them running. The profile exists so a deploy cannot start the refresh by accident: an unattended tick moves the REVE watermark, and it is currently parked deliberately.
+**The `scheduler` service is ordinary — `up -d` starts, updates and stops it like any other.** It spent Phase 5 behind a Compose profile so that a deploy could not start an unattended REVE tick while the watermark was parked. Phase 6 turned the ETLs on permanently, and the profile promptly inverted from a guard into a hazard: a profiled service is *skipped* by `up -d` rather than recreated, so **every deploy left the scheduler running the previous image**, and `down` left it running entirely — a tear-down that looks complete while a cron keeps ticking against the database.
+
+**Compose warns about the volume names on this host, and the warning is expected.** `volume "ev-charging-app-prod_postgres_data" already exists but was created for project "ev-charging-app-prod"` is the price of pinning the volumes through the project rename: the data carries the old project's label and Docker cannot relabel a volume in place. It is cosmetic, it appears only on hosts that predate the rename, and a fresh environment never sees it. Do not "fix" it with `external: true` — that would make the stack refuse to start anywhere the volume does not already exist, which is every new host and every local `just prod-up`.
 
 Locally, `just prod-up` runs the same stack with `SITE_ADDRESS=localhost` (self-signed cert warning expected) — the way to smoke-test a deploy before pushing. Every CD deploy rebuilds all images, which is cheap when nothing changed because the layer cache hits.
 
