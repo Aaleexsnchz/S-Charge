@@ -70,7 +70,7 @@ export function PointDetailPage() {
   )
 
   const prices = point.evses
-    .flatMap((evse) => evse.connectors.map((connector) => connector.tariff?.price_per_kwh))
+    .flatMap((evse) => evse.connectors.map((connector) => connector.current_price_per_kwh))
     .filter((price): price is number => price != null)
   const minPrice = prices.length > 0 ? Math.min(...prices) : null
 
@@ -202,7 +202,7 @@ export function PointDetailPage() {
                         {` · ${connector.power_type === 'DC' ? 'DC' : 'AC'}`}
                       </Typography>
                       <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                        {priceLabel(connector.tariff?.price_per_kwh) ?? '—'}
+                        {priceLabel(connector.current_price_per_kwh) ?? '—'}
                       </Typography>
                     </Stack>
                   ))}

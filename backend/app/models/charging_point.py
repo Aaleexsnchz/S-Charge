@@ -32,6 +32,20 @@ class ChargingPointSource(enum.StrEnum):
     USER = "user"
 
 
+class PricingKind(enum.StrEnum):
+    """How a connector charges, right now, by the bands that apply to it.
+
+    ``UNKNOWN`` covers no tariff, no band matching the present moment, and a
+    price the source published outside any plausible range.
+    """
+
+    ENERGY = "energy"
+    TIME = "time"
+    FLAT = "flat"
+    FREE = "free"
+    UNKNOWN = "unknown"
+
+
 class ChargingPoint(Base):
     __tablename__ = "charging_points"
     __table_args__ = (
@@ -188,6 +202,20 @@ class Connector(Base):
     max_amperage: Mapped[int] = mapped_column(Integer, nullable=False)
     tariff_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("tariffs.id"), nullable=True
+    )
+    pricing_kind: Mapped[PricingKind] = mapped_column(
+        Enum(
+            PricingKind,
+            name="connector_pricing_kind",
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=False,
+        server_default=PricingKind.UNKNOWN.value,
+    )
+    # Denormalised from the tariff bands for "now"; recomputed on the hourly
+    # tick, since the band that applies changes on the hour.
+    current_price_per_kwh: Mapped[Decimal | None] = mapped_column(
+        Numeric(8, 4), nullable=True
     )
     source_last_updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

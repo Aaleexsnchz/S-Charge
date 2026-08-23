@@ -8,6 +8,7 @@ from app.models.charging_point import (
     ChargingPointSource,
     Connector,
     Evse,
+    PricingKind,
 )
 from app.models.tariff import Tariff
 from httpx import AsyncClient
@@ -44,7 +45,7 @@ def make_evse(**overrides: Any) -> Evse:
     return Evse(**defaults)
 
 
-def make_connector(**overrides: Any) -> Connector:
+def make_connector(price: str | None = None, **overrides: Any) -> Connector:
     defaults: dict[str, Any] = {
         "source_id": str(uuid.uuid4()),
         "standard": "IEC_62196_T2",
@@ -54,15 +55,17 @@ def make_connector(**overrides: Any) -> Connector:
         "max_amperage": 32,
         "source_last_updated_at": NOW,
     }
+    if price is not None:
+        defaults["pricing_kind"] = PricingKind.ENERGY
+        defaults["current_price_per_kwh"] = Decimal(price)
     defaults.update(overrides)
     return Connector(**defaults)
 
 
-def make_tariff(price: str | None, **overrides: Any) -> Tariff:
+def make_tariff(**overrides: Any) -> Tariff:
     defaults: dict[str, Any] = {
         "source_id": str(uuid.uuid4()),
         "currency": "EUR",
-        "price_per_kwh": Decimal(price) if price is not None else None,
         "raw_data": {},
         "source_last_updated_at": NOW,
         "last_refreshed_at": NOW,
@@ -76,7 +79,7 @@ async def test_list_points_returns_nested_shape(
 ) -> None:
     point = make_point()
     evse = make_evse()
-    evse.connectors.append(make_connector(tariff=make_tariff("0.4200")))
+    evse.connectors.append(make_connector("0.4200", tariff=make_tariff()))
     point.evses.append(evse)
     db_session.add(point)
     await db_session.commit()
@@ -93,7 +96,8 @@ async def test_list_points_returns_nested_shape(
     assert item["aggregate_status"] == "unknown"
     connector = item["evses"][0]["connectors"][0]
     assert connector["standard"] == "IEC_62196_T2"
-    assert connector["tariff"]["price_per_kwh"] == 0.42
+    assert connector["current_price_per_kwh"] == 0.42
+    assert connector["pricing_kind"] == "energy"
     assert connector["tariff"]["currency"] == "EUR"
 
 
@@ -169,12 +173,12 @@ async def test_list_points_max_price_filter(
 ) -> None:
     cheap = make_point()
     cheap_evse = make_evse()
-    cheap_evse.connectors.append(make_connector(tariff=make_tariff("0.3000")))
+    cheap_evse.connectors.append(make_connector("0.3000"))
     cheap.evses.append(cheap_evse)
 
     pricey = make_point()
     pricey_evse = make_evse()
-    pricey_evse.connectors.append(make_connector(tariff=make_tariff("0.5500")))
+    pricey_evse.connectors.append(make_connector("0.5500"))
     pricey.evses.append(pricey_evse)
 
     unpriced = make_point()
@@ -194,6 +198,31 @@ async def test_list_points_max_price_filter(
     assert ids == [str(cheap.id)]
 
 
+async def test_max_price_filter_keeps_free_points(
+    auth_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A bare `price <= max` would hide the 1,152 free connectors in the registry."""
+    free = make_point()
+    free_evse = make_evse()
+    free_evse.connectors.append(make_connector(pricing_kind=PricingKind.FREE))
+    free.evses.append(free_evse)
+
+    pricey = make_point()
+    pricey_evse = make_evse()
+    pricey_evse.connectors.append(make_connector("0.5500"))
+    pricey.evses.append(pricey_evse)
+
+    db_session.add_all([free, pricey])
+    await db_session.commit()
+
+    response = await auth_client.get(
+        "/api/points", params={"max_price_per_kwh": "0.40"}
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [str(free.id)]
+
+
 async def test_get_point_returns_nested_shape(
     auth_client: AsyncClient, db_session: AsyncSession
 ) -> None:
@@ -202,7 +231,7 @@ async def test_get_point_returns_nested_shape(
         opening_hours=[{"weekday": 1, "period_begin": "09:00", "period_end": "18:00"}],
     )
     available = make_evse(status="AVAILABLE")
-    available.connectors.append(make_connector(tariff=make_tariff("0.4200")))
+    available.connectors.append(make_connector("0.4200", tariff=make_tariff()))
     busy = make_evse(status="CHARGING")
     busy.connectors.append(make_connector())
     point.evses.extend([available, busy])
@@ -232,15 +261,13 @@ async def test_map_returns_feature_collection(
 ) -> None:
     point = make_point()
     type2_evse = make_evse(status="AVAILABLE")
-    type2_evse.connectors.append(
-        make_connector(tariff=make_tariff("0.4200"), max_electric_power=22000)
-    )
+    type2_evse.connectors.append(make_connector("0.4200", max_electric_power=22000))
     ccs_evse = make_evse(status="AVAILABLE")
     ccs_evse.connectors.append(
         make_connector(
+            "0.3000",
             standard="IEC_62196_T2_COMBO",
             power_type="DC",
-            tariff=make_tariff("0.3000"),
             max_electric_power=150000,
         )
     )
@@ -265,6 +292,7 @@ async def test_map_returns_feature_collection(
     assert rich["properties"]["standards"] == ["IEC_62196_T2", "IEC_62196_T2_COMBO"]
     assert rich["properties"]["max_power_w"] == 150000
     assert rich["properties"]["min_price_per_kwh"] == 0.30
+    assert rich["properties"]["has_free"] is False
 
     empty = features[str(bare.id)]
     assert empty["properties"]["aggregate_status"] == "unknown"

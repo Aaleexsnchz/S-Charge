@@ -5,7 +5,6 @@ from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.charging_point import Connector
 from app.models.vehicle import Vehicle
@@ -93,11 +92,7 @@ async def _load_vehicle(db: AsyncSession, vehicle_id: uuid.UUID) -> Vehicle:
 
 
 async def _load_connector(db: AsyncSession, connector_id: uuid.UUID) -> Connector:
-    stmt = (
-        select(Connector)
-        .where(Connector.id == connector_id)
-        .options(selectinload(Connector.tariff))
-    )
+    stmt = select(Connector).where(Connector.id == connector_id)
     connector = (await db.execute(stmt)).scalar_one_or_none()
     if connector is None:
         raise ConnectorNotFound
@@ -140,7 +135,7 @@ async def run_simulation(
     estimate = await estimate_price(
         db,
         power_type=connector.power_type,
-        tariff_price=connector.tariff.price_per_kwh if connector.tariff else None,
+        tariff_price=connector.current_price_per_kwh,
         hour=at or datetime.now(UTC),
     )
     cost_eur = (

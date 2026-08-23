@@ -17,7 +17,7 @@ from app.models.charging_point import (
     Evse,
 )
 from app.models.cpo import Cpo
-from app.models.tariff import Tariff
+from app.models.tariff import Tariff, TariffElement
 from pytest_httpx import HTTPXMock
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -196,7 +196,7 @@ async def test_import_locations_preserves_null_name(
     assert cp.cpo_name == "Cargas Iberica"
 
 
-async def test_import_tariffs_links_connector_and_extracts_price(
+async def test_import_tariffs_stores_every_band(
     reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
@@ -253,12 +253,145 @@ async def test_import_tariffs_links_connector_and_extracts_price(
     assert exhausted is True
     tariff = (await db_session.execute(select(Tariff))).scalar_one()
     assert tariff.currency == "EUR"
-    assert tariff.price_per_kwh == Decimal("0.4200")
-    assert tariff.vat_percentage == Decimal("21.00")
-    assert tariff.price_component_type == "ENERGY"
+
+    elements = (
+        (
+            await db_session.execute(
+                select(TariffElement).order_by(TariffElement.element_index)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [(e.component_type, e.price) for e in elements] == [
+        ("FLAT", Decimal("0.8265")),
+        ("ENERGY", Decimal("0.4200")),
+    ]
+    assert elements[0].reservation == "RESERVATION_EXPIRES"
+    assert elements[1].reservation is None
+    assert elements[1].vat == Decimal("21.00")
+    assert elements[1].step_size == 1
 
     connector = (await db_session.execute(select(Connector))).scalar_one()
     assert connector.tariff_id == tariff.id
+
+
+def _tariff_payload(*prices: float) -> list[dict[str, Any]]:
+    return [
+        {
+            "evse_id": "evse-1",
+            "connector_id": "conn-1",
+            "tariffs": [
+                {
+                    "id": "tariff-1",
+                    "currency": "EUR",
+                    "elements": [
+                        {
+                            "price_components": [
+                                {"type": "ENERGY", "price": price, "step_size": 1}
+                            ]
+                        }
+                        for price in prices
+                    ],
+                    "last_tariff_updated": "2026-04-20T12:00:00Z",
+                }
+            ],
+            "last_tariff_updated": "2026-04-20T12:00:00Z",
+        }
+    ]
+
+
+async def test_reimporting_a_shorter_tariff_drops_the_old_bands(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=_tariff_payload(0.25, 0.29, 0.47),
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=_tariff_payload(0.31),
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+        await import_tariffs(client, db_session)
+        await import_tariffs(client, db_session)
+
+    prices = (await db_session.execute(select(TariffElement.price))).scalars().all()
+    assert prices == [Decimal("0.3100")]
+
+
+async def test_zero_restriction_bounds_are_stored_as_absent(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """REVE writes 0 for "not set". Stored literally, `max_power = 0` would match
+    no connector at all and `min_duration = 0` would look session-gated."""
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=[
+            {
+                "evse_id": "evse-1",
+                "connector_id": "conn-1",
+                "tariffs": [
+                    {
+                        "id": "tariff-zeros",
+                        "currency": "EUR",
+                        "elements": [
+                            {
+                                "price_components": [
+                                    {"type": "ENERGY", "price": 0.37, "step_size": 1}
+                                ],
+                                "restrictions": {
+                                    "start_time": "08:00",
+                                    "end_time": "20:00",
+                                    "min_power": 0,
+                                    "max_power": 0,
+                                    "min_current": 0,
+                                    "max_current": 0,
+                                    "min_kwh": 0,
+                                    "max_kwh": 0,
+                                    "min_duration": 0,
+                                    "max_duration": 0,
+                                },
+                            }
+                        ],
+                        "last_tariff_updated": "2026-04-20T12:00:00Z",
+                    }
+                ],
+                "last_tariff_updated": "2026-04-20T12:00:00Z",
+            }
+        ],
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+        await import_tariffs(client, db_session)
+
+    element = (await db_session.execute(select(TariffElement))).scalar_one()
+    assert element.price == Decimal("0.3700")
+    assert element.start_time is not None
+    for bound in (
+        element.min_power_kw,
+        element.max_power_kw,
+        element.min_current,
+        element.max_current,
+        element.min_kwh,
+        element.max_kwh,
+        element.min_duration_s,
+        element.max_duration_s,
+    ):
+        assert bound is None
 
 
 async def test_import_tariffs_skips_unknown_connector(
@@ -302,7 +435,7 @@ async def test_import_tariffs_skips_unknown_connector(
     assert connector_count == 0
 
 
-async def test_import_tariffs_nulls_implausible_price(
+async def test_import_tariffs_stores_the_source_price_verbatim(
     reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
@@ -341,7 +474,11 @@ async def test_import_tariffs_nulls_implausible_price(
 
     tariff = (await db_session.execute(select(Tariff))).scalar_one()
     assert tariff.source_id == "tariff-outlier"
-    assert tariff.price_per_kwh is None
+
+    # The mirror stores what REVE published; rejecting an implausible price is
+    # the resolver's job, not the ETL's.
+    element = (await db_session.execute(select(TariffElement))).scalar_one()
+    assert element.price == Decimal("8676.8200")
 
     connector = (await db_session.execute(select(Connector))).scalar_one()
     assert connector.tariff_id == tariff.id

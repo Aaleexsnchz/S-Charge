@@ -3,12 +3,11 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Select, case, distinct, func, select
+from sqlalchemy import Select, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.charging_point import ChargingPoint, Connector, Evse
-from app.models.tariff import Tariff
+from app.models.charging_point import ChargingPoint, Connector, Evse, PricingKind
 
 Bbox = tuple[Decimal, Decimal, Decimal, Decimal]
 """(min_lng, min_lat, max_lng, max_lat) — GeoJSON bbox axis order."""
@@ -47,10 +46,15 @@ async def list_points(
             )
         )
     if max_price_per_kwh is not None:
+        # Free connectors carry no price, so a bare `<= max` would hide the
+        # cheapest points on the map.
         stmt = stmt.where(
             ChargingPoint.evses.any(
                 Evse.connectors.any(
-                    Connector.tariff.has(Tariff.price_per_kwh <= max_price_per_kwh)
+                    or_(
+                        Connector.pricing_kind == PricingKind.FREE,
+                        Connector.current_price_per_kwh <= max_price_per_kwh,
+                    )
                 )
             )
         )
@@ -84,11 +88,11 @@ async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
             .filter(Connector.standard.is_not(None))
             .label("standards"),
             func.max(Connector.max_electric_power).label("max_power_w"),
-            func.min(Tariff.price_per_kwh).label("min_price_per_kwh"),
+            func.min(Connector.current_price_per_kwh).label("min_price_per_kwh"),
+            func.bool_or(Connector.pricing_kind == PricingKind.FREE).label("has_free"),
         )
         .outerjoin(Evse, Evse.charging_point_id == ChargingPoint.id)
         .outerjoin(Connector, Connector.evse_id == Evse.id)
-        .outerjoin(Tariff, Tariff.id == Connector.tariff_id)
         .where(ChargingPoint.archived_at.is_(None))
         .group_by(ChargingPoint.id)
     )
@@ -111,6 +115,7 @@ async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
                     if row.min_price_per_kwh is not None
                     else None
                 ),
+                "has_free": bool(row.has_free),
             },
         }
         for row in rows

@@ -119,7 +119,7 @@ export function PointSheet({ pointId, onClose }: Props) {
                       : ''}
                   </Typography>
                   <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                    {priceLabel(connector.tariff?.price_per_kwh) ?? '—'}
+                    {priceLabel(connector.current_price_per_kwh) ?? '—'}
                   </Typography>
                 </Stack>
               ))}

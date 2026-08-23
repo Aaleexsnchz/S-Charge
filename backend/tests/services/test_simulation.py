@@ -9,9 +9,9 @@ from app.models.charging_point import (
     ChargingPointSource,
     Connector,
     Evse,
+    PricingKind,
 )
 from app.models.price import ElectricityPrice
-from app.models.tariff import Tariff
 from app.models.vehicle import Vehicle
 from app.schemas.simulation import SimulationRequest
 from app.services.pricing import MARGIN_DC_EUR_PER_KWH
@@ -117,20 +117,6 @@ async def _make_connector(
     db.add(evse)
     await db.flush()
 
-    tariff_id = None
-    if tariff_price is not None:
-        tariff = Tariff(
-            source_id=str(uuid.uuid4()),
-            currency="EUR",
-            price_per_kwh=tariff_price,
-            raw_data={},
-            source_last_updated_at=SEED_DT,
-            last_refreshed_at=SEED_DT,
-        )
-        db.add(tariff)
-        await db.flush()
-        tariff_id = tariff.id
-
     connector = Connector(
         evse_id=evse.id,
         source_id=str(uuid.uuid4()),
@@ -140,7 +126,10 @@ async def _make_connector(
         max_electric_power=max_electric_power,
         max_voltage=400,
         max_amperage=125,
-        tariff_id=tariff_id,
+        pricing_kind=(
+            PricingKind.ENERGY if tariff_price is not None else PricingKind.UNKNOWN
+        ),
+        current_price_per_kwh=tariff_price,
         source_last_updated_at=SEED_DT,
     )
     db.add(connector)

@@ -121,6 +121,17 @@
       },
       "ConnectorRead": {
         "properties": {
+          "current_price_per_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Price Per Kwh"
+          },
           "format": {
             "title": "Format",
             "type": "string"
@@ -153,6 +164,9 @@
             "title": "Power Type",
             "type": "string"
           },
+          "pricing_kind": {
+            "$ref": "#/components/schemas/PricingKind"
+          },
           "standard": {
             "title": "Standard",
             "type": "string"
@@ -176,6 +190,8 @@
           "max_electric_power",
           "max_voltage",
           "max_amperage",
+          "pricing_kind",
+          "current_price_per_kwh",
           "tariff"
         ],
         "title": "ConnectorRead",
@@ -552,6 +568,18 @@
         "title": "PricePoint",
         "type": "object"
       },
+      "PricingKind": {
+        "description": "How a connector charges, right now, by the bands that apply to it.\n\n``UNKNOWN`` covers no tariff, no band matching the present moment, and a\nprice the source published outside any plausible range.",
+        "enum": [
+          "energy",
+          "time",
+          "flat",
+          "free",
+          "unknown"
+        ],
+        "title": "PricingKind",
+        "type": "string"
+      },
       "SimulationRequest": {
         "properties": {
           "connector_id": {
@@ -708,28 +736,6 @@
             "title": "Id",
             "type": "string"
           },
-          "price_component_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Component Type"
-          },
-          "price_per_kwh": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Per Kwh"
-          },
           "valid_from": {
             "anyOf": [
               {
@@ -753,25 +759,11 @@
               }
             ],
             "title": "Valid To"
-          },
-          "vat_percentage": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vat Percentage"
           }
         },
         "required": [
           "id",
           "currency",
-          "price_per_kwh",
-          "price_component_type",
-          "vat_percentage",
           "valid_from",
           "valid_to"
         ],
