@@ -6,7 +6,7 @@ from app.models.charging_point import (
     PricingKind,
 )
 from app.models.cpo import Cpo
-from app.models.etl import ReveEtlCursor
+from app.models.etl import ReveEtlCursor, ReveUnmirroredConnector
 from app.models.price import ElectricityPrice
 from app.models.tariff import Tariff, TariffElement
 from app.models.user import OAuthAccount, User
@@ -22,6 +22,7 @@ __all__ = [
     "OAuthAccount",
     "PricingKind",
     "ReveEtlCursor",
+    "ReveUnmirroredConnector",
     "Tariff",
     "TariffElement",
     "User",

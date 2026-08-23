@@ -44,20 +44,25 @@ from app.config import settings
 from app.database import SessionLocal, engine
 from app.etl.cursor import (
     read_all_cursors,
+    read_cursor,
     record_error,
     record_refresh_progress,
 )
 from app.etl.lock import reve_etl_lock
 from app.etl.reve import import_tariffs
 from app.integrations.reve import ReveClient, is_rate_limit, is_server_error
+from app.models.etl import ReveUnmirroredConnector
 from app.services.tariff_pricing import recompute_connector_prices
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
 
+TARIFFS_ENDPOINT = "/connectors/tariffs"
+
 ImportFn = Callable[..., Awaitable[tuple[int, int, bool]]]
 REFRESH_PRIORITY: list[tuple[str, ImportFn]] = [
-    ("/connectors/tariffs", import_tariffs),
+    (TARIFFS_ENDPOINT, import_tariffs),
 ]
 
 
@@ -82,6 +87,8 @@ def _one_line(error: str | None) -> str:
 
 async def _print_status(db: AsyncSession) -> int:
     now = datetime.now(UTC)
+    backlog = await db.scalar(select(func.count()).select_from(ReveUnmirroredConnector))
+    print(f"\ncatalogue backlog   {backlog} connector(s) REVE serves and we do not")
     for c in await read_all_cursors(db):
         streak = _ago(c.failing_since, now)
         if c.failing_since is not None:
@@ -95,6 +102,36 @@ async def _print_status(db: AsyncSession) -> int:
         print(f"  failing since    {streak}")
         print(f"  last error       {_one_line(c.last_error)}")
     print()
+    return 0
+
+
+async def _restart_cycle(db: AsyncSession) -> int:
+    """Send the in-flight cycle back to page 1 without moving its window.
+
+    Pages already drained cannot be revisited any other way: the endpoint has no
+    `date_to`, and once a cycle completes the watermark jumps past them for good.
+    Rewinding re-reads the same `date_from` result set from the start, which is
+    how rows dropped before a fix shipped are picked up by the fixed code.
+
+    Only `next_page` moves. `refresh_cycle_end` stays frozen, so the window does
+    not shift under the re-read, and `refresh_watermark` is untouched.
+    """
+    cursor = await read_cursor(db, TARIFFS_ENDPOINT)
+    if cursor.refresh_cycle_end is None:
+        print(
+            f"{TARIFFS_ENDPOINT}: no cycle in flight, nothing to rewind "
+            "(the next tick starts a fresh one at page 1 anyway)",
+            file=sys.stderr,
+        )
+        return 1
+
+    was = cursor.next_page
+    cursor.next_page = 1
+    await db.commit()
+    print(
+        f"{TARIFFS_ENDPOINT}: rewound page {was} -> 1, "
+        f"window held at {cursor.refresh_cycle_end.isoformat()}"
+    )
     return 0
 
 
@@ -203,6 +240,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--restart-cycle",
+        action="store_true",
+        help=(
+            "Rewind the in-flight cycle to page 1 and exit, making no REVE call. "
+            "Leaves the window and the watermark alone, so the next tick re-reads "
+            "the same result set from the start."
+        ),
+    )
+    parser.add_argument(
         "--budget",
         type=int,
         default=DEFAULT_BUDGET_PER_RUN,
@@ -223,6 +269,8 @@ async def main(argv: list[str] | None = None) -> int:
             if not acquired:
                 print("another REVE run holds the lock; nothing to do")
                 return 0
+            if args.restart_cycle:
+                return await _restart_cycle(db)
             async with ReveClient(max_retries=0) as client:
                 exit_code = await _run_tick(
                     db, client, budget=args.budget, date_from_override=args.date_from

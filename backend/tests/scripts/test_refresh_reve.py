@@ -7,7 +7,7 @@ from app.etl.lock import reve_etl_lock
 from app.integrations.reve import ReveClient
 from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
-from scripts.refresh_reve import _run_tick, main
+from scripts.refresh_reve import _restart_cycle, _run_tick, main
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -169,3 +169,34 @@ async def test_a_second_runner_exits_without_writing(
     assert httpx_mock.get_requests() == []
     cursor = await read_cursor(db_session, "/connectors/tariffs")
     assert cursor.refresh_watermark == watermark
+
+
+async def test_restart_cycle_rewinds_to_page_one_without_moving_the_window(
+    db_session: AsyncSession,
+) -> None:
+    """Pages already drained are unreachable any other way: the endpoint has no
+    `date_to`, and a completed cycle moves the watermark past them for good."""
+    watermark = datetime(2026, 7, 8, 19, 30, tzinfo=UTC)
+    cycle_end = datetime(2026, 8, 23, 9, 12, tzinfo=UTC)
+    await _seed_tariff_cursor(db_session, watermark)
+    await db_session.execute(
+        update(ReveEtlCursor)
+        .where(ReveEtlCursor.endpoint == "/connectors/tariffs")
+        .values(next_page=19, refresh_cycle_end=cycle_end)
+    )
+
+    assert await _restart_cycle(db_session) == 0
+
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    assert cursor.next_page == 1
+    # The window must not shift, or the re-read covers a different result set.
+    assert cursor.refresh_cycle_end == cycle_end
+    assert cursor.refresh_watermark == watermark
+
+
+async def test_restart_cycle_refuses_when_no_cycle_is_in_flight(
+    db_session: AsyncSession,
+) -> None:
+    await _seed_tariff_cursor(db_session, datetime(2026, 7, 8, 19, 30, tzinfo=UTC))
+
+    assert await _restart_cycle(db_session) == 1
