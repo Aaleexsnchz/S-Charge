@@ -13,17 +13,21 @@
 # that has never run and the dump fails with "service db is not running". That is
 # how the weekly offsite backup silently did nothing, into a log nobody reads.
 #
-# Restore into a fresh, empty database with:
-#   docker compose exec -T db pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-#     --clean --if-exists --no-owner < backups/<file>.dump
+# Restore into a fresh, empty database with (single quotes again load-bearing):
+#   docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" \
+#     -d "$POSTGRES_DB" --clean --if-exists --no-owner' < backups/<file>.dump
 #
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 : "${COMPOSE_FILE:=docker-compose.yml}"
-: "${POSTGRES_USER:=ev_charging_app}"
-: "${POSTGRES_DB:=ev_charging}"
+
+# Credentials are read inside the container, never here. Production's were
+# rotated at first deploy, so a host-side default is a dev value that fails on
+# the server with `role "ev_charging_app" does not exist` — and cron has no
+# environment to correct it from. The single quotes below are what keeps the
+# expansion in the container.
 
 mode="${1:-full}"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -63,7 +67,7 @@ docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null |
 # the bad file is removed instead of lingering for the next `ls -t` to find.
 status=0
 docker compose -f "$COMPOSE_FILE" exec -T db \
-    pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc \
+    sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc "$@"' _ \
     "${dump_args[@]}" >"$out_file" || status=$?
 
 # Even a schema-only archive clears 4 KiB, so anything smaller is a failure that
