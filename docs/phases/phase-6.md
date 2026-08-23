@@ -2,186 +2,56 @@
 
 **The goal: get the refresh scripts running on the server again, bring the prices current, and store what REVE actually publishes rather than a flattened approximation of it.**
 
-Both ETLs stopped when the laptop's containers did, and [Phase 5](phase-5.md) deployed with the `scheduler` service **deliberately stopped** so the state could be inspected before anything overwrote it. Prices model: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md). Mirror-not-proxy: [be-0001](../decisions/be-0001-reve-mirror-not-proxy.md). The vendored REVE spec is [reve-api-spec.json](../reve-api-spec.json).
-
-## What we measured
-
-Database inventory taken 2026-08-22, local and production **identical to the microsecond** ([Slice 1](#slice-1--confirm-the-server-matches-the-measurement)).
-
-| Data | State | Stale since |
-| --- | --- | --- |
-| PVPC prices | 5111 rows, **continuous — no gaps** | 2026-08-01 21:00 UTC |
-| REVE tariffs | watermark `2026-07-08 19:30:03`, `last_error` = 504 | 2026-07-08 |
-| Catalogue (`/cpos`, `/locations`) | frozen at the seed — **by design**, not a failure | 2026-06-09 / 06-21 |
-
-**13,654** points · 42,088 EVSEs · 46,808 connectors · 142 CPOs · 2,126 tariffs · 41,963 connectors priced.
-
-Two live probes against REVE on 2026-08-22 (2 of the 5/hour budget) established the rest.
-
-### The 504 has healed; the gap is ~16 hours of drain
-
-`date_from = 2026-07-08T19:30:03Z` now returns **HTTP 200 in 16.5 s** with a full page. The wide-window regression that froze the watermark in July is gone — this is the second observation of that failure self-healing, and worth recording as such.
-
-Results are ordered by **`connector_id` ascending**. Page 1 covered 1.303 % of the id space and page 77 ended at 99.18 %, two independent estimates agreeing on **~7,760 rows ≈ 78 pages ≈ 16 h** at 5 requests/hour. Pages 1 and 77 share zero rows.
-
-**~0.7 % of rows will be skipped, and that is accepted.** Churn is **172 connector-rows/day**. Over a 16-hour drain ~115 new rows enter a set ordered by a stable key, and those sorting before the cursor push roughly 57 rows past it. They are *not* recovered by the next cycle — the watermark advances to cycle start, so a skipped row whose change predates that only returns when its connector next changes. **That wait is ~243 days, not the 45 first assumed here**: the 45-day window turned up 7,760 of 41,963 priced connectors, so 18.5 % reprice in 45 days and an average connector waits eight months. The distribution is lumpier still — 698 of the stored tariffs were last touched in March against 25 in July — so for many connectors the honest answer is *maybe never*. The alternative is the unfiltered drain: a stable 46,808-row set with no insertion risk, but 469 pages and ~4 days. Three extra days to save 57 stale prices is the wrong trade.
-
-### The stored price is a flattened approximation, and sometimes cannot be right
-
-A real tariff from the probe — one connector, nine elements:
-
-| Connector power | 00:00–06:59 | 07:00–22:59 | 23:00–23:59 |
-| --- | --- | --- | --- |
-| ≤ 22 kW | 0.25 | 0.29 | 0.25 |
-| ≤ 100 kW | 0.31 | 0.37 | 0.31 |
-| ≤ 450 kW | 0.40 | **0.47** | 0.40 |
-
-`_energy_price_component` takes the **first** ENERGY component it meets and discards the restrictions, so this stores `0.31`. A charge at 20:00 on a 450 kW connector is costed **34 % low**.
-
-Price varies along two axes, and the second is decisive: **44 time-varying tariffs are shared across connectors of different power, covering 6,347 connectors.** For those, one `price_per_kwh` on the tariff row is not imprecise but *structurally incapable* of being correct, because connectors sharing that tariff legitimately have different prices. The denormalised price has to live on the **connector**, which is the grain at which the answer is unique. All 46,808 connectors have `max_electric_power` populated, so it always resolves.
-
-Scale, weighted by connector rather than by tariff: **7,175 of 41,963 priced connectors (17.1 %)** sit on a time-varying tariff today. The fresh probe skews far higher because it samples connectors *whose tariff changed*, which over-represents CPOs that actively manage prices; the figure will rise after the drain but not to that level.
-
-### `price_per_kwh IS NULL` conflates four different facts
-
-Of the 1,195 connectors on a tariff with no per-kWh price:
-
-- 1,152 publish a zero — read at planning time as **free**
-- ~43 are priced by time or session (TIME €0.17–3.85/h, FLAT €0.77)
-- 1 carries `ENERGY 9110.66`, bad data at source, correctly rejected
-
-**The "free" reading did not survive [Slice 5](#slice-5--model-the-tariff).** Against the bands as rows, 1,144 of those 1,152 are an unfilled template — a lone `FLAT 0.0`, no VAT, `step_size` 0, no energy band — and only 30 connectors are genuinely free. Separating the four facts was the right goal; the count attached to it was an artefact of the model being replaced.
-
-### Nothing needs re-fetching to fix the model
-
-**All 2,126 tariffs hold their complete `elements` array in `raw_data`**, including rows last refreshed on 10 June — verified, zero empty. The flattening happens on the way *out*, never on the way in. So the price model can be built and backfilled from the database with no network calls, in parallel with the drain.
-
-Restrictions are resolvable without a session in ~99.6 % of cases: across 200 sampled connectors, `start_time`/`end_time` 1364, `day_of_week` 1165, `max_power` 1161, `start_date`/`end_date` ~200, against `min_duration` 4 and `max_duration` 1. The session-dependent handful is why the denormalised price is *"price now, absent session-dependent restrictions"* and the simulator — which knows the session — can do better.
+The price model is built and shipped; the ETL is running. What remains is the drain finishing, the catalogue repair it revealed the need for, the UI, and a chosen cadence.
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
 | 1 | Confirm the server matches the measurement | Done | host work |
 | 2 | Remove the automatic watermark jump | Done | #37 |
 | 3 | Advisory lock on the REVE tick | Done | #41 |
-| 4 | Turn the scheduler on | Not started | host work |
-| 4b | Record the catalogue drift, then repair it from `/locations` | Not started | — |
-| 5 | Model the tariff | Done | — |
+| 4 | Turn the scheduler on | **Draining** | host work |
+| 4b | Record the catalogue drift, then repair it | **Ledger done** (#48), repair open | #48 |
+| 5 | Model the tariff | Done | #43 |
 | 6 | Use the model | Not started | — |
 | 7 | Cadence and observation | Not started | host work |
 
-**4 and 5 ran in parallel.** The drain is a cron ticking for 16 hours; Slice 5 was desk work against `raw_data` and needed no network. **4b's ledger must land while 4 is still draining** — it records a signal the drain emits and discards, so every page that passes before it ships is evidence lost; its repair pass then waits for the drain to free the budget. 6 depends on 5; 7 closes the phase.
+## Closed slices — where their knowledge went
 
-## Decisions taken
+- **1 · Confirm the server.** Production matched the local snapshot to the microsecond on 2026-08-22. Nothing to carry.
+- **2 · Remove the watermark jump.** A 504 records the error and holds position at any age; `--date-from` aims a probe. Rationale and the *camino no tomado*: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+- **3 · Advisory lock.** `reve_etl_lock` on its own connection, taken by both ETL scripts. Removed from [production-readiness.md](../production-readiness.md) and [Phase 13](../plan.md).
+- **5 · Model the tariff.** Bands in `tariff_elements`, resolved price on the connector. Decision and rejected alternatives: [be-0003](../decisions/be-0003-price-on-the-connector.md). Measurements: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md). Data-model shape: [modelo-de-datos.md](../thesis/modelo-de-datos.md).
+- **4b · The ledger.** `reve_unmirrored_connectors` banks the ids and `tariff_raw` of connectors REVE serves and the mirror lacks; `--restart-cycle` rewinds an in-flight cycle. Operating both: [operations.md](../operations.md) → The REVE refresh. The findings: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
 
-- **Backfill by `date_from`, not by an unfiltered drain.** Measured: 16 h against ~4 days, for a 0.7 % skip rate. Recorded above with the arithmetic.
-- **The watermark is not moved backwards to reach stale rows.** Tempting, because the 2,138 expired tariffs sit just outside the window — but `date_from` filters by *when the row last changed at source*, not by when we last saw it, and a row that has not changed cannot be re-fetched into something different. We already hold exactly what REVE publishes for them. Reaching the bulk means `date_from = 2025-12-01`, a nine-month window on an endpoint that times out on days, to re-download 2,060 byte-identical expired rows. And it is unnecessary by construction: if a CPO ever republishes one, `last_tariff_updated` moves forward and the **current** watermark catches it on the next tick. Moving it back costs budget and 504 risk for no information.
-- **Let the scheduler do the drain.** It is safe now — the watermark cannot be jumped ([#37](https://github.com/Aaleexsnchz/S-Charge/pull/37)) and concurrent writers cannot corrupt the cursor ([#41](https://github.com/Aaleexsnchz/S-Charge/pull/41)) — and 5 calls/hour against ~78 pages is exactly the 16 hours needed. Draining by hand would spend the same budget with more chances to get it wrong.
-- **`tariffs.price_per_kwh` is dropped, not redefined.** A tariff shared across connectors of different power cannot carry one correct price. Replaced by `connectors.current_price_per_kwh` plus `connectors.pricing_kind`.
-- **Unpriced points are shown and labelled, never hidden or deleted.** A point that exists is worth showing even when its price is unknown. Matches [be-0002](../decisions/be-0002-availability-not-modelled.md)'s rule for availability — and the corollary found while building it is that a *label* must be earned too: `unknown` is the honest answer wherever the source did not actually state a price.
-
-## Slice 1 — Confirm the server matches the measurement
-
-**Acceptance:** production either matches the inventory above, or the difference is written down.
-
-- [x] Cursor and counts compared on the host, **2026-08-22: no divergence**, every field identical to the microsecond
-- [x] `scheduler` absent; `db` uptime two weeks against fourteen hours for the app containers, so CD recreated only what changed
-- [x] Nothing to record — the seed dump, the restore and every deploy since left the data identical
-
-## Slice 2 — Remove the automatic watermark jump [x]
-
-A 504 records the error and leaves the position alone at any age. `skip_refresh_window` and `REVE_REFRESH_LOOKBACK_HOURS` are gone with it, `--status` prints `last_error`, and `failing_since` / `consecutive_failures` answer *how long has this been broken* — which `last_attempted_at` never could. `--date-from` aims a run at a chosen window.
-
-**One gap left open deliberately:** `--date-from` does not imply dry-run. A *successful* run still calls `record_refresh_progress`, so probing with the script can advance the cursor. Probe with `curl` until a `--dry-run` exists.
-
-## Slice 3 — Advisory lock on the REVE tick [x]
-
-`reve_etl_lock` taken by both `refresh_reve` and `seed_reve`, on **its own connection** — a session hands its connection back to the pool on commit, so a session-level lock works only by accident in a single-threaded script. A second runner exits 0, makes no REVE call, and writes nothing. Removed from [production-readiness.md](../production-readiness.md) and [Phase 13](../plan.md).
+Shipped as `v0.1.2` (price model), `v0.1.3` (project rename), `v0.1.4` (ledger + scheduler as an ordinary service).
 
 ## Slice 4 — Turn the scheduler on
 
 **Acceptance:** both jobs run unattended, the tariff drain completes, and `electricity_prices` reaches today.
 
-- [x] **Deploy `main` first — and deploying means pushing a tag** ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)), not merging. Merging runs CI and nothing else, so a merged fix is not on the server. Shipped as `v0.1.2` on 2026-08-23, which is what put the advisory lock ([#41](https://github.com/Aaleexsnchz/S-Charge/pull/41)), the stall visibility ([#42](https://github.com/Aaleexsnchz/S-Charge/pull/42)) and the price model ([#43](https://github.com/Aaleexsnchz/S-Charge/pull/43)) on the host. Starting the scheduler before that tag would have run the drain on code without the lock
-- [x] PVPC brought current by hand, 2026-08-23: 5,639 rows through 2026-08-23 21:00 UTC, **zero missing hours**, production identical to local
-- [x] Migration verified on production: 5,513 bands over 2,126 tariffs, `38,548 energy · 8,197 unknown · 33 time · 30 free` — matching local exactly, so the two databases are still in lockstep
-- [x] Scheduler started on the host, 2026-08-23. It needed `--profile scheduler up -d` repeated on every `up`, which is how the profile's cost surfaced: a profiled service is skipped rather than recreated, so **every deploy had been leaving the scheduler on the previous image**, and `down` never stopped it. The profile guarded a parked watermark; this phase unparked it, so the profile is removed and `scheduler` is an ordinary service
-- [ ] Confirm the hourly tick keeps PVPC current on its own, now that the backlog is cleared
-- [ ] Watch the tariff drain across ~16 h with `just etl-status`: `next_page` climbing, `refresh_cycle_end` frozen, `last_error` empty
-- [ ] On completion the watermark advances to the cycle start and `next_page` resets to 1
-- [ ] Record what the drain actually cost — pages, wall time, rows — against the 78/16 h/7,760 estimate, in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md)
-- [ ] **Count `reve_tariff_connector_not_found` in the scheduler log.** Every one is a connector REVE has and the mirror does not, so the drain measures catalogue drift for free — no extra call. This is the evidence the open question below has been waiting for:
-      `docker compose -f docker-compose.prod.yml logs scheduler | grep -c reve_tariff_connector_not_found`
+Done: `v0.1.2` deployed with the lock and stall visibility; PVPC back to gap-free (5,639 rows, zero missing hours); the price migration verified on production; the scheduler started, then rewound to page 1 on 2026-08-23 14:30 UTC so the ledger could catch the 28 pages that drained before it existed.
 
-## Slice 4b — Record the catalogue drift, then repair it from `/locations`
+- [ ] **The drain completes** — expected ~09:00–10:00 UTC on 2026-08-24. Watch with `refresh_reve --status`: `next page` climbing by 5/hour, `cycle end` frozen at `2026-08-23 09:12:55Z`, `last error` empty. On completion the watermark advances to the cycle start and `next page` resets to 1
+- [ ] **Record what it cost** — pages, wall time, rows — against the 78 pages / 16 h / 7,760 rows estimate, in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md)
+- [ ] **Record the final catalogue backlog** (`--status`, first line). It sizes the repair below and is the input to Slice 7's cadence
+- [ ] Confirm the hourly tick keeps PVPC current on its own now the backlog is cleared
 
-**Acceptance:** every tariff row for a connector outside the mirror is recorded rather than dropped, and the backlog is cleared by a filtered `/locations` cycle rather than per-EVSE calls.
+## Slice 4b — Repair the catalogue
 
-**The frozen catalogue did not stay frozen, and the drain measured it on its first three pages.** Of 100 connector-tariff rows per page, the ones whose connector is absent from the mirror were **30, 23 and 21** — about a quarter. Over ~78 pages that is **~1,900 connectors REVE serves and we do not**, roughly 4 % catalogue growth since the June seed. The figure is inflated by the window, since a connector added last week always looks *recently changed* to a `date_from` filter, and that is precisely why the drain surfaces it when nothing else does.
+**Acceptance:** the backlog is seeded in and drains to ~0, and the connectors arrive priced rather than blank.
 
-Two shapes, in a 23:7 ratio on page 1:
+The ledger is shipped and filling. What remains is the pass that consumes it.
 
-- the **EVSE is absent** — a station built since the seed
-- the **EVSE is known and the connector is not** — an operator added a socket to a station we already hold
+- [ ] **Probe the size first**: one call to `/locations?date_from=2026-06-09&page=20`. `date_from` returns every Location whose `last_updated` moved, and if that tracks EVSE status flicker rather than static edits, the "changed" set is most of the 137-page catalogue and this is not the cheap path. The spec hints at a split (`only_dynamic_info` is a separate filter; `Evse` carries its own `last_static_updated`) but a hint is not a measurement. Probe **after** the drain — same budget
+- [ ] **`backend/scripts/backfill_locations.py`**, its own script rather than a fourth `REFRESH_PRIORITY` entry: a standing `/locations` refresh would compete with the tariff tick forever, while a repair ends when the backlog does
+  - **`/cpos` first, then `/locations`, in that order.** `charging_points.party_id` is a foreign key to `cpos.party_id` and `_upsert_location` inserts what REVE sends with no guard. The CPO list is frozen at 2026-06-04, so a station from an operator that joined since raises a `ForeignKeyViolation` and **fails the whole tick** rather than skipping the row. Cheap — 142 CPOs is two pages — but not optional
+  - **Takes `reve_etl_lock`**, which is what makes "shares the 5 req/hour budget" enforced rather than documented
+  - **Resets the `/locations` cursor** (`next_page` → 1, `refresh_cycle_end` → null) before its first cycle. It currently reads `next_page = 5` with a `refresh_cycle_end` from a June cycle abandoned when the refresh was narrowed to tariffs; `_run_tick` resumes at `next_page` whenever that is set, so an unreset cursor starts a brand-new result set at page 5 and **silently skips pages 1–4**
+  - `--budget` and `--status` as the other two scripts have them, so one interface reads across all three
+- [ ] **For every backlog row whose connector now exists: apply `tariff_raw` and delete the row, in one transaction.** The delete belongs at the point of consumption, not on a periodic sweep — a sweep keyed on *"the connector exists now"* races this step, dropping the payload a moment before it is read and leaving the connector blank, which is the failure the ledger exists to prevent. A row whose connector arrived by another route is not a special case: the same loop applies a redundant price and clears it
+- [ ] If the backlog does not reach zero, the residue is the case for one unfiltered `/connectors/tariffs` drain (469 pages, ~4 days), which returns every connector's current tariff regardless of change date
 
-`_upsert_connector_tariff` logs `reve_tariff_connector_not_found` for both and discards the row. A log line is not a work queue, and log rotation makes it not even a record.
-
-### The repair is one filtered `/locations` cycle, not per-EVSE calls
-
-`/locations` accepts **`date_from`**, with the meaning it has everywhere else in this API: *only Locations updated since this instant*. A station built after the seed qualifies, and so does a station that gained a connector. The whole backlog is therefore repairable by machinery that already exists — `import_locations`, the same cursor, the same budget loop — pointed at `date_from = /locations.completed_at` (2026-06-09).
-
-**Per-EVSE repair is not merely expensive, it is impossible for the majority case.** `/evses/{evse_id}` returns `id`, `capabilities`, `connectors`, `coordinates` — and **no reference to its Location**: no `location_id`, no address, no `party_id`. But `evses.charging_point_id` is `NOT NULL`, so a new station's EVSE has nothing to attach to and no way to find its parent. That is 23 of every 30 backlog rows. It would fix only the other 7, the sockets added to stations already held.
-
-The filtered pass fixes both shapes, because an added socket updates its parent Location. Upserts are keyed on `(source, source_id)` and `(evse_id, source_id)`, so it is additive and idempotent — it cannot orphan what is already stored.
-
-**`/cpos` has to run first, in the same script.** `charging_points.party_id` is a foreign key to `cpos.party_id`, and `_upsert_location` inserts what REVE sends with no guard. The CPO list was last refreshed **2026-06-04**, so a station from an operator that joined REVE since then raises a `ForeignKeyViolation` and **fails the whole tick** rather than skipping the row. It is cheap — 142 CPOs is two pages unfiltered, and `/cpos` takes `date_from` — but it is not optional.
-
-**And the size of the `/locations` pass is unknown, so it gets probed before it gets budgeted.** `date_from` returns every Location whose `last_updated` moved, and if that field tracks EVSE status flicker rather than static edits, the "changed" set is most of the 137-page catalogue and the cheap path is not cheap. One call settles it — request a high page (`?date_from=2026-06-09&page=20`) and see whether it comes back full. The spec hints the split exists (`only_dynamic_info` is a separate filter, and `Evse` carries its own `last_static_updated`), but a hint is not a measurement. Probe after the tariff drain, since it spends the same budget.
-
-**Two constraints, both load-bearing:**
-
-- **It shares the 5 req/hour budget, so it runs *after* the tariff drain,** never beside it. Adding `/locations` to `REFRESH_PRIORITY` mid-cycle starves the thing this phase exists to finish.
-- **The `/locations` cursor must be reset before it runs.** It reads `next_page = 5` with `refresh_cycle_end = 2026-06-21` — the remains of a refresh cycle abandoned when the refresh was narrowed to tariffs only. `_run_tick` resumes at `next_page` whenever `refresh_cycle_end` is set, so an unreset cursor would start a brand-new result set at **page 5 and silently skip pages 1–4**. Clear `next_page` to 1 and `refresh_cycle_end` to null in the same change that re-enables the endpoint.
-
-That cursor is misleading about the seed, and the seed was fine: `charging_points.created_at` shows **500 points per hour across 29 hours**, which is 5 calls/hour × 100 rows over ~137 pages — a complete drain, not a truncated one.
-
-### Tasks
-
-- [x] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id` unique together, `tariff_raw`, `first_seen_at`, `last_seen_at`. **Rows are deleted once seeded rather than flagged**, so the table's size is the answer to *how much of the catalogue are we missing* and empty means nothing is. The ids are REVE's internal UUIDs, matching `evses.source_id` — **not** eMI3, which the tariff feed never sends, so the operator cannot be recovered from a backlog row and a `party_id`-filtered repair is not open to us
-- [x] `_upsert_connector_tariff` records here instead of only warning, upserting on `(evse_id, connector_id)` — an unmirrored connector reappears every cycle until repaired, so without the conflict clause the backlog inflates each pass and the count means nothing. The newest payload wins: the repair should import what REVE serves today
-- [x] Counted in the `reve_etl_tariffs` audit line as `unmirrored`, and printed by `--status` — *how stale is the catalogue* is a question nothing currently answers, and the container logs stopped being able to answer it the moment one was recreated
-- [x] **`refresh_reve --restart-cycle`** — rewinds the in-flight cycle to page 1 without moving its window, so a fix that ships mid-drain can re-read the pages that passed before it. Needed because the endpoint has no `date_to` and a completed cycle moves the watermark past those rows for good. **Rewinding once the ledger is live costs ~18 pages and recovers ~470 connectors**; replaying after the drain finishes would cost all 78, since it would re-read what the ledger already caught
-- [ ] **Probe `/locations?date_from=2026-06-09&page=20`** — one call, after the tariff drain, to size the pass before committing budget to it
-- [ ] **`backend/scripts/backfill_locations.py`** — the repair pass, as its own script rather than a fourth entry in `REFRESH_PRIORITY`. A standing refresh of `/locations` would compete with the tariff tick on every run forever; this is a repair that ends when the backlog does.
-  - **`/cpos` first, then `/locations`, in that order** — the party_id foreign key makes the order load-bearing rather than tidy
-  - **Takes `reve_etl_lock`**, the same lock as `seed_reve` and `refresh_reve`. That is what makes "shares the budget" enforceable rather than a note in a doc — the two cannot spend the same hour's 5 calls at once
-  - **Resets the `/locations` cursor** (`next_page` → 1, `refresh_cycle_end` → null) before its first cycle, or it resumes a cancelled June cycle at page 5 and skips pages 1–4 of a new result set
-  - `date_from` defaults to `/locations.completed_at`, overridable with `--date-from`; `--budget` and `--status` as the other two scripts have them, so the operator reads one interface across all three
-  - Paginates through `_paginate_with_budget` and resumes across ticks, exactly like the tariff drain
-- [ ] After each `/locations` page: for every backlog row whose connector now exists, **apply `tariff_raw` and delete the row in the same transaction**. The station arrives priced instead of blank, and the shrinking table is the proof the pass is working.
-  - **The delete belongs here, at the point of consumption, not in a periodic sweep.** A sweep keyed on *"the connector exists now"* races this step: seed the station, and the row qualifies for deletion before its payload has been read. The price it was kept for would be dropped a moment before it was used, leaving the connector blank — the precise failure the ledger exists to prevent.
-  - A row whose connector arrived by some other route is not a special case: the same loop finds it, applies a price that is merely redundant, and clears it.
-- [ ] Whatever the backlog stops at is what [Slice 7](#slice-7--cadence-and-observation) argues the standing catalogue cadence from — and if it does not reach zero, the residue is the case for one unfiltered `/connectors/tariffs` drain (469 pages, ~4 days) to price everything at once
-
-**Deliberately not in this slice:** a standing catalogue cadence. The backlog has to exist, and one repair pass has to be measured, before a cadence can be argued rather than guessed — that is [Slice 7](#slice-7--cadence-and-observation), with a real call-usage figure in hand.
-
-## Slice 5 — Model the tariff [x]
-
-The bands are rows in `tariff_elements` and the resolved price lives on the connector. The decision and its rejected alternatives moved to [be-0003](../decisions/be-0003-price-on-the-connector.md); the measurements to [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
-
-The band-shape count reproduced exactly: **7,175** connectors on a tariff publishing more than one energy price. The backfill runs in ~2 s over 2,126 tariffs → 5,513 band rows, resolving to **38,548 energy · 8,197 unknown · 33 time · 30 free**.
-
-**The plan's "1,152 free" was wrong, and finding out why is the most useful thing this slice did.** That number came from reading `price_per_kwh IS NULL` on the old flattened model. Once the bands are rows, 1,144 of those 1,152 turn out to carry a lone `FLAT 0.0` with no VAT, `step_size` 0 and **no energy band at all** — an unfilled template, not a free charger. The CPOs publishing them price the rest of their estate normally: Etecnic has 685 of these against 1,084 priced connectors, ELECTROMAPS 148 against 1,742. **30 connectors are genuinely free**, each an explicit `ENERGY 0.0` with VAT and step_size populated. Labelling the other 1,144 *gratis* would have sent drivers to chargers that bill them.
-
-**Five things the work turned up that the plan did not anticipate:**
-
-- **The recompute is one SQL statement, not a pure Python function.** "What does this connector cost now?" is a bulk update over ~47,000 rows; "what does this charging window cost?" is a different question, and it is the simulator's, in [Slice 6](#slice-6--use-the-model). The migration carries a frozen copy of the statement rather than importing it, so a later change to the live one cannot break `alembic upgrade head`.
-- **Ends are inclusive, against the spec.** OCPI calls `end_time` and `end_date` exclusive. REVE's publishers do not: bands run `00:00–06:59` / `07:00–22:59`, and **275 of the 406 dated bands set `start_date = end_date`** for a single day — unmatchable on any date at all under an exclusive reading. Both bounds are inclusive here, and the connector power bound with them, since a session never reaches the connector's rating exactly.
-- **An expired tariff was still pricing 2,138 connectors.** The resolver never read `tariffs.valid_from` / `valid_to`. These are not stale defaults: the expired tariffs average **0.1129 €/kWh against 0.3517** for the live ones, so they are ended promotions, and serving one sends a driver to a charger expecting to pay a third of the real price. 2,115 of the 2,138 were already expired when REVE served them, so this predates the stall. The window is now honoured.
-- **Two ordering rules decide the price, and both were wrong at first.** Ranking candidate bands by *how many* restrictions they carry lets a band with a time window outrank a tighter power band, handing a 22 kW connector the fast-charge price; the rule only has to separate a real band from the tariff's unrestricted fallback, so it is a boolean, not a count. And `bool_and` ignores nulls, so a component with no price at all passed as a zero one and would have published an unfilled record as *free* — the exact shape this slice exists to reject. Neither shows up in today's data; both would have arrived with the drain.
-- **REVE writes `0` where it means "not set", and a literal reading is destructive.** A band capped at `max_power = 0` matches no connector at all; one gated behind `min_duration = 0` is not gated, but reads as session-only. Storing the zeros verbatim left **797 connectors resolving to `unknown` that have a perfectly good price**, and a further **1,247 across 127 tariffs** took an unrestricted fallback band over the window that actually applied, because source order decided the tie. Bounds of `0` are now folded to null at ingest, and the resolver prefers the more specific band over the fallback. `raw_data` still holds the literal source.
-- **A stalled ETL can leave a connector with no price rather than a stale one — and the unrestricted band is what stops it.** **1,532** connectors sit on tariffs published as a *dated* schedule: a band per quarter-hour, valid for one named day, frozen the day the watermark did. Every one of those bands has expired, and the tariff's own unrestricted fallback band is what still prices **1,485** of them. Only **47** have no fallback and resolve to `unknown`. That is the argument for keeping the fallback rather than treating it as noise, and it only became visible once the bands were rows that could be counted.
-
-**Answered here:** `tariff_elements` stores **every** restriction the spec defines, including `min_duration` / `max_duration` and the energy and current limits. They are nullable columns on a table that exists anyway, the simulator knows the session and can use them, and leaving them in `raw_data` would have made the mirror lossy for no saving. The "price now" resolver treats a band gated behind any `min_*` as *not yet active* and ignores the `max_*` caps.
+**Per-EVSE repair is closed off, not merely expensive.** `/evses/{evse_id}` returns no reference to its Location — no `location_id`, no address, no `party_id` — while `evses.charging_point_id` is `NOT NULL`. A new station's EVSE has nothing to attach to and no way to find its parent, which is 23 of every 30 backlog rows. The tariff feed's `evse_id` is REVE's internal UUID, not eMI3, so the operator cannot be recovered from a backlog row either and a `party_id`-filtered pass is not available.
 
 ## Slice 6 — Use the model
 
@@ -210,16 +80,20 @@ The band-shape count reproduced exactly: **7,175** connectors on a tariff publis
 
 ## For the memoria
 
-- **A national registry whose change-feed could not serve a window wider than a few hours**, and which recovered without announcement. Two measurements, six weeks apart, both in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
-- **Two thirds of sampled connectors price by time of day**, spanning nearly 2× on one tariff, and price by connector power as well. This is what justifies a charging optimiser existing at a public point rather than only at a domestic one.
-- **An incremental `date_from` feed cannot repair data the source never touches.** 2,138 connectors are priced by an expired promotional tariff, and every one of those tariffs was last modified before the window the refresh asks about. No cadence, no budget and no full drain fixes them, because REVE would serve the same expired row back. The mirror's freshness is bounded by the publisher's diligence, not by the puller's effort — the argument for showing *unknown* rather than a number, and a real limit to state rather than hide.
-- **A registry where a zero is usually a blank.** 1,144 connectors publish a tariff whose every field is a zero default, and reading those as *free* rather than *unfilled* would have mislabelled 38× more chargers than are actually free (30). The same `0`-for-null habit appears in the restrictions, and an expired promotional tariff keeps being served as current. The lesson generalises past this registry: **in an open data feed, a zero is a claim only when the fields around it are populated too** — a finding about data quality in public infrastructure registries, not about this app.
-- **Real-time availability is arithmetically impossible at 5 requests/hour.** `/evses/operational_status` exists and takes `date_from`, so the data is there; 42,088 EVSEs ÷ 100 per page ÷ 5 per hour is **3.5 days for one sweep**, and per-EVSE lookups are worse. Availability therefore comes from the app's own bookings and sessions, and the honest account is that a real deployment solves this with CPO agreements or a purpose-built feed. This corrects [be-0002](../decisions/be-0002-availability-not-modelled.md), which records the *absence of data* as the reason — the budget is the real one, and the stronger argument.
+All of these are written up in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md); listed here only so the phase can be checked off against them.
+
+- A national registry whose change-feed could not serve a window wider than a few hours, and which recovered without announcement — two measurements six weeks apart.
+- Price varies by time of day **and** by connector power, nearly 2× on one tariff. This is what justifies a charging optimiser at a public point rather than only a domestic one.
+- **In an open data feed, a zero is a claim only when the fields around it are populated too.** Reading the registry's blanks as *free* would have mislabelled 38× more chargers than are actually free.
+- **An incremental `date_from` feed cannot repair data the source never touches**, so a mirror's freshness is bounded by the publisher's diligence rather than the puller's effort.
+- **A log line is not a record**: one ordinary container recreation destroyed the drift measurement, which is why it now lives in a table.
+- **Real-time availability is arithmetically impossible at 5 req/hour** — 42,088 EVSEs ÷ 100 ÷ 5 is 3.5 days per sweep. This corrects [be-0002](../decisions/be-0002-availability-not-modelled.md), which records the *absence of data* as the reason; the budget is the real one and the stronger argument.
 
 ## Open questions
 
-- **Is `CONGESTION_TIME` worth pricing?** 218 band rows carry a component type absent from REVE's own published enum. It is a surcharge, so it never outranks `ENERGY`, `TIME` or `FLAT`; a connector whose only applicable band is one resolves to `unknown`. Revisit if the drain makes it common.
-- **~~Does the frozen catalogue stay frozen?~~ Answered on the drain's first three pages: no.** About a quarter of the drained rows are for connectors the mirror does not have — ~1,900 over the full drain. [Slice 4b](#slice-4b--record-the-catalogue-drift-then-repair-it-from-locations) records them and repairs them from a filtered `/locations` cycle. [Slice 7](#slice-7--cadence-and-observation) still owns the standing cadence, now with a measured number to argue from. Right under a laptop's budget; after the drain the ordinary tick needs a few calls a day, so a weekly catalogue pass may now fit. Decide once [Slice 7](#slice-7--cadence-and-observation) has a real call-usage figure.
+- **Is `CONGESTION_TIME` worth pricing?** 218 band rows carry a component type absent from REVE's published enum. It is a surcharge, so it never outranks `ENERGY`, `TIME` or `FLAT`; a connector whose only applicable band is one resolves to `unknown`. Revisit if the drain makes it common.
+- **`price` is ex-VAT per OCPI, and the app does not account for it.** 4,017 of 5,513 band rows carry a `vat`, mostly `21.00` — but **192 write `0.21`**, the same rate as a fraction, so any correction must normalise that first. Pre-existing, not introduced by the price model. Decide in [Slice 6](#slice-6--use-the-model) whether the app shows what the driver pays.
+- **What catalogue cadence, now that drift is measured?** [Slice 7](#slice-7--cadence-and-observation), against the final backlog figure.
 
 ## Out of scope
 
@@ -229,6 +103,6 @@ The band-shape count reproduced exactly: **7,175** connectors on a tariff publis
 
 ## Risks
 
-- **The drain stalls on a 504 partway through.** No longer destructive — the watermark holds and `failing_since` shows how long. Resume by re-probing with `curl` and waiting for REVE.
-- **The 0.7 % skip.** Accepted and quantified above; the remedy if it ever matters is one unfiltered drain.
-- **`current_price_per_kwh` goes stale between recomputes.** It is a denormalisation of a band that changes on the hour, recomputed hourly. The simulator reads the bands directly and does not depend on it.
+- **The drain stalls on a 504 partway through.** Not destructive — the watermark holds and `failing_since` shows how long. Resume by re-probing with `curl` and waiting for REVE.
+- **The `/locations` repair turns out to cost most of the catalogue.** That is what the probe is for, before any budget is committed.
+- **`current_price_per_kwh` goes stale between recomputes.** It is a denormalisation of a band that changes on the hour, recomputed on the hourly tick. The simulator reads the bands directly and does not depend on it.
