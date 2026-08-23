@@ -64,12 +64,12 @@ Restrictions are resolvable without a session in ~99.6 % of cases: across 200 sa
 | 2 | Remove the automatic watermark jump | Done | #37 |
 | 3 | Advisory lock on the REVE tick | Done | #41 |
 | 4 | Turn the scheduler on | Not started | host work |
-| 4b | Capture the connectors REVE has and we do not | Not started | — |
+| 4b | Record the catalogue drift, then repair it from `/locations` | Not started | — |
 | 5 | Model the tariff | Done | — |
 | 6 | Use the model | Not started | — |
 | 7 | Cadence and observation | Not started | host work |
 
-**4 and 5 run in parallel.** The drain is a cron ticking for 16 hours; Slice 5 is desk work against `raw_data` and needs no network. **4b must land while 4 is still draining** — it records a signal the drain emits and discards, so every page that passes before it ships is a page whose evidence is lost. 6 depends on 5; 7 closes the phase.
+**4 and 5 ran in parallel.** The drain is a cron ticking for 16 hours; Slice 5 was desk work against `raw_data` and needed no network. **4b's ledger must land while 4 is still draining** — it records a signal the drain emits and discards, so every page that passes before it ships is evidence lost; its repair pass then waits for the drain to free the budget. 6 depends on 5; 7 closes the phase.
 
 ## Decisions taken
 
@@ -112,21 +112,47 @@ A 504 records the error and leaves the position alone at any age. `skip_refresh_
 - [ ] **Count `reve_tariff_connector_not_found` in the scheduler log.** Every one is a connector REVE has and the mirror does not, so the drain measures catalogue drift for free — no extra call. This is the evidence the open question below has been waiting for:
       `docker compose -f docker-compose.prod.yml logs scheduler | grep -c reve_tariff_connector_not_found`
 
-## Slice 4b — Capture the connectors REVE has and we do not
+## Slice 4b — Record the catalogue drift, then repair it from `/locations`
 
-**Acceptance:** every tariff row for a connector outside the mirror is recorded rather than dropped, and the record is enough to fetch that EVSE later.
+**Acceptance:** every tariff row for a connector outside the mirror is recorded rather than dropped, and the backlog is cleared by a filtered `/locations` cycle rather than per-EVSE calls.
 
-The catalogue is frozen at the June seed and drifts a day every day ([be-0001](../decisions/be-0001-reve-mirror-not-proxy.md) accepts this; refreshing `/locations` would starve the tariff budget). But the refresh already *meets* the evidence: `/connectors/tariffs` returns rows for connectors that were never seeded, and `_upsert_connector_tariff` logs `reve_tariff_connector_not_found` and throws the row away. A log line is not a work queue.
+**The frozen catalogue did not stay frozen, and the drain measured it on its first three pages.** Of 100 connector-tariff rows per page, the ones whose connector is absent from the mirror were **30, 23 and 21** — about a quarter. Over ~78 pages that is **~1,900 connectors REVE serves and we do not**, roughly 4 % catalogue growth since the June seed. The figure is inflated by the window, since a connector added last week always looks *recently changed* to a `date_from` filter, and that is precisely why the drain surfaces it when nothing else does.
 
-**The API supports repair, which is what makes this worth storing.** `/evses/{evse_id}` fetches one EVSE by exactly the id the discarded row carries, and `/locations` accepts `party_id` / `cpo_id`, so a later slice can drain the backlog one call at a time under the 5 req/hr cap instead of re-seeding for ~12 days.
+Two shapes, in a 23:7 ratio on page 1:
 
-- [ ] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id`, unique together; `first_seen_at`, `last_seen_at`, `tariff_raw` (the payload we could not attach, so nothing is lost), `resolved_at` nullable
-- [ ] `_upsert_connector_tariff` upserts here instead of only warning; the warning stays, since a sudden jump is worth seeing in the logs
-- [ ] Counted in the `reve_etl_tariffs` audit line, so each tick reports how many rows landed outside the mirror
-- [ ] `--status` prints the backlog size — it is the answer to *how stale is the catalogue*, which nothing currently reports
-- [ ] The `evse_id` is eMI3 (`ES*ABC*E1`), so the party id is recoverable from it for a `party_id`-filtered `/locations` pass. Derive it when the backfill slice needs it, not now
+- the **EVSE is absent** — a station built since the seed
+- the **EVSE is known and the connector is not** — an operator added a socket to a station we already hold
 
-**Deliberately not in this slice:** fetching the missing EVSEs. That spends REVE budget and competes with the drain, and the backlog has to exist before its size can justify a cadence. [Slice 7](#slice-7--cadence-and-observation) decides that with a real number in hand.
+`_upsert_connector_tariff` logs `reve_tariff_connector_not_found` for both and discards the row. A log line is not a work queue, and log rotation makes it not even a record.
+
+### The repair is one filtered `/locations` cycle, not per-EVSE calls
+
+`/locations` accepts **`date_from`**, with the meaning it has everywhere else in this API: *only Locations updated since this instant*. A station built after the seed qualifies, and so does a station that gained a connector. The whole backlog is therefore repairable by machinery that already exists — `import_locations`, the same cursor, the same budget loop — pointed at `date_from = /locations.completed_at` (2026-06-09).
+
+| Approach | Cost |
+| --- | --- |
+| `/evses/{evse_id}`, one per missing EVSE | ~1,900 calls ≈ **16 days** |
+| `/locations?date_from=2026-06-09` | new *and* changed locations only ≈ **hours** |
+
+Per-EVSE calls also only fix the first shape. The filtered pass fixes both, because an added socket updates its parent Location. Upserts are keyed on `(source, source_id)` and `(evse_id, source_id)`, so the pass is additive and idempotent — it cannot orphan what is already stored.
+
+**Two constraints, both load-bearing:**
+
+- **It shares the 5 req/hour budget, so it runs *after* the tariff drain,** never beside it. Adding `/locations` to `REFRESH_PRIORITY` mid-cycle starves the thing this phase exists to finish.
+- **The `/locations` cursor must be reset before it runs.** It reads `next_page = 5` with `refresh_cycle_end = 2026-06-21` — the remains of a refresh cycle abandoned when the refresh was narrowed to tariffs only. `_run_tick` resumes at `next_page` whenever `refresh_cycle_end` is set, so an unreset cursor would start a brand-new result set at **page 5 and silently skip pages 1–4**. Clear `next_page` to 1 and `refresh_cycle_end` to null in the same change that re-enables the endpoint.
+
+That cursor is misleading about the seed, and the seed was fine: `charging_points.created_at` shows **500 points per hour across 29 hours**, which is 5 calls/hour × 100 rows over ~137 pages — a complete drain, not a truncated one.
+
+### Tasks
+
+- [ ] **`reve_unmirrored_connectors`** — `evse_id`, `connector_id`, unique together; `first_seen_at`, `last_seen_at`, `tariff_raw` (the payload we could not attach, so the price is not lost with it), `resolved_at` nullable
+- [ ] `_upsert_connector_tariff` upserts here instead of only warning; keep the warning, since a sudden jump is worth seeing in the logs
+- [ ] Counted in the `reve_etl_tariffs` audit line and printed by `--status` — *how stale is the catalogue* is a question nothing currently answers
+- [ ] **The repair pass**: `/locations` with `date_from`, budget-shared, cursor reset first, run once the tariff drain has completed
+- [ ] On repair, the stored `tariff_raw` prices the new connectors immediately rather than leaving them unpriced until their next tariff cycle
+- [ ] `resolved_at` stamped when the connector appears, so the backlog draining to ~0 is the proof the pass worked
+
+**Deliberately not in this slice:** a standing catalogue cadence. The backlog has to exist, and one repair pass has to be measured, before a cadence can be argued rather than guessed — that is [Slice 7](#slice-7--cadence-and-observation), with a real call-usage figure in hand.
 
 ## Slice 5 — Model the tariff [x]
 
@@ -183,7 +209,7 @@ The band-shape count reproduced exactly: **7,175** connectors on a tariff publis
 ## Open questions
 
 - **Is `CONGESTION_TIME` worth pricing?** 218 band rows carry a component type absent from REVE's own published enum. It is a surcharge, so it never outranks `ENERGY`, `TIME` or `FLAT`; a connector whose only applicable band is one resolves to `unknown`. Revisit if the drain makes it common.
-- **Does the frozen catalogue stay frozen?** `/cpos` and `/locations` have not moved since June and drift a day every day. [Slice 4b](#slice-4b--capture-the-connectors-reve-has-and-we-do-not) turns the drain's `reve_tariff_connector_not_found` count into a stored backlog, which is the free lower bound on how many connectors REVE has gained since the seed. Decide the catalogue cadence in [Slice 7](#slice-7--cadence-and-observation) against that number. Right under a laptop's budget; after the drain the ordinary tick needs a few calls a day, so a weekly catalogue pass may now fit. Decide once [Slice 7](#slice-7--cadence-and-observation) has a real call-usage figure.
+- **~~Does the frozen catalogue stay frozen?~~ Answered on the drain's first three pages: no.** About a quarter of the drained rows are for connectors the mirror does not have — ~1,900 over the full drain. [Slice 4b](#slice-4b--record-the-catalogue-drift-then-repair-it-from-locations) records them and repairs them from a filtered `/locations` cycle. [Slice 7](#slice-7--cadence-and-observation) still owns the standing cadence, now with a measured number to argue from. Right under a laptop's budget; after the drain the ordinary tick needs a few calls a day, so a weekly catalogue pass may now fit. Decide once [Slice 7](#slice-7--cadence-and-observation) has a real call-usage figure.
 
 ## Out of scope
 
