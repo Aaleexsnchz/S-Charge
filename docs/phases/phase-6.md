@@ -101,9 +101,11 @@ A 504 records the error and leaves the position alone at any age. `skip_refresh_
 
 **Acceptance:** both jobs run unattended, the tariff drain completes, and `electricity_prices` reaches today.
 
-- [ ] Deploy current `main` first — the scheduler must be running the code with the jump removed and the lock in place
+- [x] **Deploy `main` first — and deploying means pushing a tag** ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)), not merging. Merging runs CI and nothing else, so a merged fix is not on the server. Shipped as `v0.1.2` on 2026-08-23, which is what put the advisory lock ([#41](https://github.com/Aaleexsnchz/S-Charge/pull/41)), the stall visibility ([#42](https://github.com/Aaleexsnchz/S-Charge/pull/42)) and the price model ([#43](https://github.com/Aaleexsnchz/S-Charge/pull/43)) on the host. Starting the scheduler before that tag would have run the drain on code without the lock
+- [x] PVPC brought current by hand, 2026-08-23: 5,639 rows through 2026-08-23 21:00 UTC, **zero missing hours**, production identical to local
+- [x] Migration verified on production: 5,513 bands over 2,126 tariffs, `38,548 energy · 8,197 unknown · 33 time · 30 free` — matching local exactly, so the two databases are still in lockstep
 - [ ] `--profile scheduler up -d` on the host. **Repeat it on every subsequent `up`** — the profile is not sticky ([operations.md](../operations.md))
-- [ ] PVPC current within one tick; verify the curve is still gap-free afterwards
+- [ ] Confirm the hourly tick keeps PVPC current on its own, now that the backlog is cleared
 - [ ] Watch the tariff drain across ~16 h with `just etl-status`: `next_page` climbing, `refresh_cycle_end` frozen, `last_error` empty
 - [ ] On completion the watermark advances to the cycle start and `next_page` resets to 1
 - [ ] Record what the drain actually cost — pages, wall time, rows — against the 78/16 h/7,760 estimate, in [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md)
