@@ -19,7 +19,7 @@ Los fallos de autenticación devuelven un único `401 "Invalid credentials"` gen
 
 ## Sesión
 
-Un único JWT en una cookie `HttpOnly; Secure; SameSite=Lax` en la ruta `/`, con 14 días de vida, firmado con HS256 y audiencia `tfm:session`. Sin refresh tokens. Composición: `JWTStrategy + CookieTransport` en un único `AuthenticationBackend`. El patrón SPA de doble token se evita deliberadamente — justificación completa en [auth-0002](../decisions/auth-0002-cookie-session.md).
+Un único JWT en una cookie `HttpOnly; Secure; SameSite=Lax` en la ruta `/`, con 14 días de vida, firmado con HS256 y audiencia `s-charge:session`. Sin refresh tokens. Composición: `JWTStrategy + CookieTransport` en un único `AuthenticationBackend`. El patrón SPA de doble token se evita deliberadamente — justificación completa en [auth-0002](../decisions/auth-0002-cookie-session.md).
 
 ## OAuth (Google)
 
