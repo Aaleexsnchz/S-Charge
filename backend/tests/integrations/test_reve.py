@@ -2,7 +2,7 @@ import logging
 
 import httpx
 import pytest
-from app.integrations.reve import ReveClient
+from app.integrations.reve import ReveClient, is_rate_limit, is_server_error
 from pytest_httpx import HTTPXMock
 
 BASE_URL = "https://reve.test/api/v1"
@@ -167,3 +167,31 @@ async def test_get_paginated_rejects_oversized_page_size() -> None:
 async def test_missing_api_key_raises() -> None:
     with pytest.raises(RuntimeError, match="REVE_API_KEY"):
         ReveClient(api_key="", base_url=BASE_URL)
+
+
+def _status_error(code: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", f"{BASE_URL}/cpos")
+    return httpx.HTTPStatusError(
+        "boom", request=request, response=httpx.Response(code, request=request)
+    )
+
+
+@pytest.mark.parametrize(
+    ("exc", "rate_limited", "server_error"),
+    [
+        (_status_error(429), True, False),
+        (_status_error(502), False, True),
+        (_status_error(503), False, True),
+        (_status_error(504), False, True),
+        (_status_error(404), False, False),
+        (httpx.ReadTimeout("slow"), False, True),
+        (httpx.ConnectError("down"), False, True),
+        (RuntimeError("unrelated"), False, False),
+    ],
+    ids=["429", "502", "503", "504", "404", "timeout", "connect", "other"],
+)
+def test_failure_predicates_classify_exceptions(
+    exc: Exception, rate_limited: bool, server_error: bool
+) -> None:
+    assert is_rate_limit(exc) is rate_limited
+    assert is_server_error(exc) is server_error

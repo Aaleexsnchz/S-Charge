@@ -24,6 +24,23 @@ TRANSIENT_STATUS = frozenset(
         HTTPStatus.GATEWAY_TIMEOUT,
     }
 )
+SERVER_STATUS = TRANSIENT_STATUS - {HTTPStatus.TOO_MANY_REQUESTS}
+
+
+def is_rate_limit(exc: Exception) -> bool:
+    return (
+        isinstance(exc, httpx.HTTPStatusError)
+        and exc.response.status_code == HTTPStatus.TOO_MANY_REQUESTS
+    )
+
+
+def is_server_error(exc: Exception) -> bool:
+    if isinstance(exc, httpx.TransportError):
+        return True
+    return (
+        isinstance(exc, httpx.HTTPStatusError)
+        and exc.response.status_code in SERVER_STATUS
+    )
 
 
 class ReveClient:
