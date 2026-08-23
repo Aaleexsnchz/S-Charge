@@ -39,9 +39,7 @@ import asyncio
 import sys
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from http import HTTPStatus
 
-import httpx
 from app.config import settings
 from app.database import SessionLocal, engine
 from app.etl.cursor import (
@@ -51,40 +49,16 @@ from app.etl.cursor import (
 )
 from app.etl.lock import reve_etl_lock
 from app.etl.reve import import_tariffs
-from app.integrations.reve import ReveClient
+from app.integrations.reve import ReveClient, is_rate_limit, is_server_error
 from app.services.tariff_pricing import recompute_connector_prices
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
 
-_SKIP_STATUS = frozenset(
-    {
-        HTTPStatus.BAD_GATEWAY,
-        HTTPStatus.SERVICE_UNAVAILABLE,
-        HTTPStatus.GATEWAY_TIMEOUT,
-    }
-)
-
 ImportFn = Callable[..., Awaitable[tuple[int, int, bool]]]
 REFRESH_PRIORITY: list[tuple[str, ImportFn]] = [
     ("/connectors/tariffs", import_tariffs),
 ]
-
-
-def _is_rate_limit(exc: Exception) -> bool:
-    return (
-        isinstance(exc, httpx.HTTPStatusError)
-        and exc.response.status_code == HTTPStatus.TOO_MANY_REQUESTS
-    )
-
-
-def _is_server_error(exc: Exception) -> bool:
-    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
-        return True
-    return (
-        isinstance(exc, httpx.HTTPStatusError)
-        and exc.response.status_code in _SKIP_STATUS
-    )
 
 
 def _ago(when: datetime | None, now: datetime) -> str:
@@ -178,12 +152,12 @@ async def _run_tick(
                 max_pages=remaining,
             )
         except Exception as exc:
-            if _is_rate_limit(exc):
+            if is_rate_limit(exc):
                 await db.commit()
                 print(f"rate-limited on {endpoint}; resume next tick")
                 return 0
             await db.rollback()
-            if _is_server_error(exc):
+            if is_server_error(exc):
                 await _handle_server_error(db, endpoint, exc)
                 return 0
             await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")

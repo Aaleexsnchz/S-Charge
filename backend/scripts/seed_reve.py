@@ -3,7 +3,6 @@ import asyncio
 import sys
 from collections.abc import Awaitable, Callable
 
-import httpx
 from app.config import settings
 from app.database import SessionLocal, engine
 from app.etl.cursor import read_all_cursors, read_cursor, record_error, record_progress
@@ -13,7 +12,7 @@ from app.etl.reve import (
     import_locations,
     import_tariffs,
 )
-from app.integrations.reve import ReveClient
+from app.integrations.reve import ReveClient, is_rate_limit
 from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
@@ -24,12 +23,6 @@ ENDPOINT_PRIORITY: list[tuple[str, ImportFn]] = [
     ("/locations", import_locations),
     ("/connectors/tariffs", import_tariffs),
 ]
-
-
-def _is_rate_limit(exc: Exception) -> bool:
-    if not isinstance(exc, httpx.HTTPStatusError):
-        return False
-    return exc.response.status_code == httpx.codes.TOO_MANY_REQUESTS
 
 
 async def _print_status(db: AsyncSession) -> int:
@@ -59,7 +52,7 @@ async def _run_tick(db: AsyncSession, client: ReveClient, budget: int) -> int:
                 client, db, start_page=start_page, max_pages=remaining
             )
         except Exception as exc:
-            if _is_rate_limit(exc):
+            if is_rate_limit(exc):
                 await db.commit()
                 print(f"rate-limited on {endpoint}; resume next tick")
                 return 0
