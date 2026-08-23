@@ -184,6 +184,33 @@ async def test_run_simulation_falls_back_to_pvpc(db_session: AsyncSession) -> No
     assert result.margin_per_kwh == pytest.approx(float(MARGIN_DC_EUR_PER_KWH))
 
 
+async def test_free_connector_costs_nothing_rather_than_pvpc(
+    db_session: AsyncSession,
+) -> None:
+    """A free connector stores no price, and reading that as "no tariff" would
+    quote PVPC + margin at the chargers we know cost nothing."""
+    vehicle = await _make_vehicle(db_session)
+    connector = await _make_connector(
+        db_session, power_type="AC", max_electric_power=22000, tariff_price=None
+    )
+    connector.pricing_kind = PricingKind.FREE
+    slot = datetime(2026, 6, 26, 12, 0, tzinfo=MADRID)
+    db_session.add(ElectricityPrice(hour_start=slot, price_per_kwh=Decimal("0.10000")))
+    await db_session.flush()
+
+    result = await run_simulation(
+        db_session,
+        SimulationRequest(
+            vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
+        ),
+        at=slot,
+    )
+
+    assert result.price_source == "reve_tariff"
+    assert result.price_per_kwh == pytest.approx(0.0)
+    assert result.cost_eur == pytest.approx(0.0)
+
+
 async def test_run_simulation_rejects_dc_without_capability(
     db_session: AsyncSession,
 ) -> None:

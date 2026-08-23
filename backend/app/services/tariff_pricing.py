@@ -11,10 +11,16 @@ _RECOMPUTE_SQL = text("""
 WITH applicable AS (
     SELECT c.id AS connector_id, e.component_type, e.price,
            e.max_power_kw, e.element_index,
-           (e.start_time IS NOT NULL)::int + (e.days_of_week IS NOT NULL)::int
-             + (e.start_date IS NOT NULL)::int + (e.end_date IS NOT NULL)::int
-             + (e.max_power_kw IS NOT NULL)::int
-             + (e.min_power_kw IS NOT NULL)::int AS specificity
+           -- Any restriction at all, not how many: counting them lets a band
+           -- with a time window outrank a tighter power band, which inverts
+           -- the "up to 22 kW" rule below. This only has to separate a real
+           -- band from the tariff's unrestricted fallback.
+           (e.start_time IS NOT NULL OR e.end_time IS NOT NULL
+            OR e.start_date IS NOT NULL OR e.end_date IS NOT NULL
+            OR e.days_of_week IS NOT NULL
+            OR e.min_power_kw IS NOT NULL OR e.max_power_kw IS NOT NULL
+            OR e.max_kwh IS NOT NULL OR e.max_current IS NOT NULL
+            OR e.max_duration_s IS NOT NULL) AS is_restricted
     FROM connectors c
     JOIN evses ev ON ev.id = c.evse_id
     JOIN charging_points p ON p.id = ev.charging_point_id
@@ -71,8 +77,10 @@ free_agg AS (
     -- of them prices energy. A lone `FLAT 0` with no vat, step_size 0 and no
     -- ENERGY band is an unfilled template, not a free charger -- the CPOs that
     -- publish them price the rest of their estate normally.
+    -- bool_and ignores NULLs, so a component with no price at all would pass
+    -- as zero and publish an unfilled record as free.
     SELECT connector_id,
-           bool_and(price = 0)
+           bool_and(price IS NOT NULL AND price = 0)
              AND bool_or(component_type = 'ENERGY') AS all_free
     FROM applicable GROUP BY connector_id
 ),
@@ -93,7 +101,7 @@ chosen AS (
                  WHEN 'FLAT' THEN 3
                  ELSE 4
              END,
-             specificity DESC,
+             is_restricted DESC,
              max_power_kw ASC NULLS LAST,
              element_index
 ),

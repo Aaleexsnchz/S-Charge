@@ -66,9 +66,18 @@ async def _connector_on(
                     tariff_id=tariff.id,
                     element_index=index,
                     component_type=spec.get("component_type", "ENERGY"),
-                    price=Decimal(spec["price"]),
+                    price=(
+                        Decimal(spec["price"])
+                        if spec.get("price") is not None
+                        else None
+                    ),
                     start_time=band[0] if band else None,
                     end_time=band[1] if band else None,
+                    min_power_kw=(
+                        Decimal(str(spec["min_power_kw"]))
+                        if spec.get("min_power_kw") is not None
+                        else None
+                    ),
                     max_power_kw=(
                         Decimal(str(spec["max_power_kw"]))
                         if spec.get("max_power_kw") is not None
@@ -78,6 +87,7 @@ async def _connector_on(
                     start_date=spec.get("start_date"),
                     end_date=spec.get("end_date"),
                     min_kwh=spec.get("min_kwh"),
+                    max_kwh=spec.get("max_kwh"),
                     reservation=spec.get("reservation"),
                 )
             )
@@ -270,6 +280,53 @@ async def test_implausible_source_price_is_rejected(db_session: AsyncSession) ->
 
     assert connector.pricing_kind == PricingKind.UNKNOWN
     assert connector.current_price_per_kwh is None
+
+
+async def test_a_tighter_power_band_beats_a_more_restricted_one(
+    db_session: AsyncSession,
+) -> None:
+    """Ranking by how *many* restrictions a band carries would hand a 22 kW
+    connector the fast-charge band, because that one also sets min_power."""
+    connector_id = await _connector_on(
+        db_session,
+        [
+            {"price": "0.29", "max_power_kw": 22},
+            {"price": "0.47", "min_power_kw": 22, "max_power_kw": 50},
+        ],
+        max_electric_power=22_000,
+    )
+    connector = await _resolve(db_session, connector_id, _madrid(12))
+
+    assert connector.current_price_per_kwh == Decimal("0.29")
+
+
+async def test_a_band_restricted_only_by_a_cap_beats_the_fallback(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(
+        db_session,
+        [
+            {"price": "0.50"},
+            {"price": "0.30", "max_kwh": Decimal("10")},
+        ],
+    )
+    connector = await _resolve(db_session, connector_id, _madrid(12))
+
+    assert connector.current_price_per_kwh == Decimal("0.30")
+
+
+async def test_a_component_with_no_price_is_not_free(db_session: AsyncSession) -> None:
+    """bool_and ignores NULLs, so a missing price could pass as a zero one."""
+    connector_id = await _connector_on(
+        db_session,
+        [
+            {"component_type": "ENERGY", "price": None},
+            {"component_type": "FLAT", "price": "0.0"},
+        ],
+    )
+    connector = await _resolve(db_session, connector_id, _madrid(12))
+
+    assert connector.pricing_kind == PricingKind.UNKNOWN
 
 
 async def test_an_expired_tariff_does_not_price(db_session: AsyncSession) -> None:

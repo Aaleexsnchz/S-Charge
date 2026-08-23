@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.charging_point import Connector
+from app.models.charging_point import Connector, PricingKind
 from app.models.vehicle import Vehicle
 from app.schemas.simulation import ChargeType, SimulationRequest, SimulationResult
 from app.services.pricing import estimate_price
@@ -132,10 +132,17 @@ async def run_simulation(
         soc_to=Decimal(str(request.soc_to)),
     )
 
+    # A free connector has no price to store, but zero is a price the source
+    # stated: without this it reads as "no tariff" and gets PVPC + margin.
+    tariff_price = (
+        Decimal(0)
+        if connector.pricing_kind is PricingKind.FREE
+        else connector.current_price_per_kwh
+    )
     estimate = await estimate_price(
         db,
         power_type=connector.power_type,
-        tariff_price=connector.current_price_per_kwh,
+        tariff_price=tariff_price,
         hour=at or datetime.now(UTC),
     )
     cost_eur = (
