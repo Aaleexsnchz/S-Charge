@@ -22,6 +22,32 @@ export default defineConfig({
         // the navigation fallback answers it from the precache, so the backend
         // never sets the session cookie and the SPA renders its 404 instead.
         navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            // The catalogue only changes when the REVE seed runs, so a stale
+            // read is worth an instant cold-start map. Prices are never served
+            // from a cache: a stale price read as current is worse than an error.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname === '/api/points/map',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'points-map',
+              expiration: { maxEntries: 1, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Cached at runtime rather than precached so only the subsets the
+            // browser actually asks for are stored; @fontsource ships 28 files
+            // per build and the app renders one of them.
+            urlPattern: ({ request, sameOrigin }) => sameOrigin && request.destination === 'font',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fonts',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
