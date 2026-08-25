@@ -297,6 +297,34 @@ año. De ahí `reve_unmirrored_connectors`: los identificadores **y el payload d
 tarifa**, borrados en cuanto se siembran, de modo que el tamaño de la tabla
 responde a *cuánto del catálogo nos falta* y vacía significa que no falta nada.
 
+**La reparación tiene que entrar por la estación, no por el EVSE, y eso no es una
+preferencia sino un callejón cerrado.** Lo natural sería pedir el EVSE que falta y
+listo: `/evses/{evse_id}` existe. Pero su respuesta **no menciona su Location** —ni
+`location_id`, ni dirección, ni `party_id`— mientras que en el espejo
+`evses.charging_point_id` es `NOT NULL`. El EVSE de una estación nueva no tiene
+dónde colgarse ni forma de encontrar a su padre, y ese es el caso de 23 de cada 30
+filas del registro. Tampoco cabe filtrar por operador: el `evse_id` que viaja en el
+feed de tarifas es el UUID interno de REVE, no un identificador eMI3, así que desde
+una fila del registro no se puede recuperar de quién es la estación. Queda una sola
+vía, `/locations`, y resulta que es la eficiente: un elemento de esa respuesta trae
+el anidamiento completo —estación, EVSEs y conectores—, de modo que **una llamada
+siembra un centenar de estaciones enteras**. Las ~1.800 filas pendientes abarcan
+sobre un 4 % del catálogo, y drenarlo entero son 137 páginas: unas 34 horas
+desatendidas junto al tick de tarifas.
+
+**Y aquí el filtro incremental deja de servir, que es lo interesante.** Sobre
+`/locations`, `date_from` cubriendo los 77 días desde la siembra devolvía páginas
+llenas hasta la 68: más de 6.800 de 13.654 ubicaciones «habían cambiado». El campo
+`last_updated` se mueve por casi cualquier cosa, así que a esa distancia el filtro
+no filtra —pedir lo cambiado cuesta más que pedirlo todo, y encima devuelve un
+resultado parcial—. La conclusión no es que el filtro sea malo, sino que **su
+utilidad depende del ancho de la ventana**: inservible a 77 días, excelente a seis
+horas, cuando cambian ~88 ubicaciones al día. De ahí que el catálogo se ponga al
+día con un drenaje liso y se mantenga después con ventanas estrechas, y que ambos
+compartan la cuota con las tarifas por orden de prioridad en lugar de correr por su
+cuenta: el presupuesto se reparte de arriba abajo, así que una puesta al día del
+catálogo no puede retrasar nunca un precio.
+
 **Un log no es un registro.** Esas filas se venían anotando con un `warning` y
 descartando. Recrear el contenedor del planificador durante un despliegue
 ordinario destruyó las 262 líneas acumuladas: no hizo falta ni una rotación de
