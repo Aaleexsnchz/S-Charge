@@ -7,7 +7,7 @@ The whole Spanish catalogue on one map, clustered on the GPU, filterable without
 ## Today
 
 - **Backend** — `GET /api/points/map` returns the full catalogue as a slim GeoJSON FeatureCollection (~13.7k features, ~3.5 MB of JSON, ~500 KB gzipped).
-- **Frontend** — `features/map`: MapLibre GL JS over OpenFreeMap's dark style, native clustering, colour driven by `aggregate_status`. Filter chips (availability, connector, price band) refilter the source client-side. The map centres on the user on open.
+- **Frontend** — `features/map`: MapLibre GL JS over OpenFreeMap's dark style, native clustering, colour driven by `aggregate_status`. Filter chips (availability, connector, price band) refilter the source client-side. The map centres on the user on open. The service worker serves the FeatureCollection stale-while-revalidate, so a repeat visit paints from cache while the refresh runs behind it.
 
 ## Decisions
 
@@ -31,4 +31,4 @@ Lighthouse, production build, mobile preset, 2026-06-13 — recorded here rather
 | `/login` | 94 | 98 | 96 | 82 |
 | `/map` | 31 | 100 | 100 | 82 |
 
-After slimming the map payload (772 → 503 KB gzipped, −35%): FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map`. The remaining gap is inherent to map pages at this scale — MapLibre's engine, WebGL first paint, a 13.6k-feature source. Remaining levers: service-worker runtime caching of `/api/points/map`, and fetching the source after first paint.
+After slimming the map payload (772 → 503 KB gzipped, −35%): FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map`. The remaining gap is inherent to map pages at this scale — MapLibre's engine, WebGL first paint, a 13.6k-feature source. That is the cost of a first visit; repeat visits now come off the service-worker cache. Remaining lever: fetching the source after first paint.

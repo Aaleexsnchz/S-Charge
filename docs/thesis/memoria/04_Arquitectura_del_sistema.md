@@ -162,6 +162,26 @@ con el apartado anterior: las interfaces del *service worker* solo están dispon
 seguro [34], de modo que HTTPS no es una buena práctica añadida sino un
 requisito de instalabilidad.
 
+Tener un *service worker* obliga a decidir algo que la literatura de PWA suele dar por resuelto:
+qué se puede servir desde una caché. La carcasa se precachea entera, porque un *build* es
+inmutable por construcción y su versión la fija el propio artefacto. Los datos no, y el criterio
+que los separa no es cuánto ocupan sino **cuánta caducidad toleran**. El catálogo de puntos solo
+se mueve cuando se ejecuta la siembra, así que servirlo con *stale-while-revalidate* cambia un
+dato de horas por un mapa que aparece de inmediato y se refresca por detrás. Los precios siguen
+al PVPC hora a hora, y ahí una caché sería una mentira silenciosa: un fallo de red se ve —la
+pantalla no pinta— y el usuario sabe que no debe fiarse, mientras que un precio caducado
+presentado como actual es indistinguible de uno correcto. La aplicación prefiere fallar de forma
+visible a acertar de forma dudosa, que es la misma premisa por la que una sesión vale el
+presupuesto que aceptó y no el precio del instante en que se consulta. El monedero y el
+histórico quedan fuera por esa razón y por una segunda: son datos de un usuario concreto, y una
+caché del dispositivo los sobreviviría al cierre de sesión.
+
+Conviene entonces no exagerar qué significa aquí «funciona sin conexión». Sin red la aplicación
+arranca y pinta su interfaz, pero no tiene datos que mostrar, y el mapa —que es la pantalla
+principal— tampoco se dibuja, porque su cartografía base se descarga de un tercero. La casilla
+que la instalabilidad parece prometer está deliberadamente medio marcada, y decirlo es más útil
+que dar por hecho que un *service worker* equivale a una aplicación sin conexión.
+
 En el servidor, **FastAPI** con **SQLAlchemy 2.0 en modo asíncrono**, **Alembic** para las
 migraciones y **Pydantic** para el contrato; un solo motor asíncrono sirve tanto a la API como a
 los procesos ETL. Los datos viven en **PostgreSQL 18**, elegido por tener restricciones de
