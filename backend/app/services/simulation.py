@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.charging_point import Connector, PricingKind
 from app.models.vehicle import Vehicle
 from app.schemas.simulation import ChargeType, SimulationRequest, SimulationResult
-from app.services.pricing import estimate_price
+from app.services.tariff_pricing import connector_prices_over
 
 DC_TAPER_KNEE_SOC = Decimal("80")
 DC_TAPER_TAIL_FRACTION = Decimal("0.2")
@@ -32,12 +32,21 @@ class InvalidConnectorPower(Exception):
 
 
 @dataclass(frozen=True)
+class ChargeStep:
+    """One SoC step: when its energy arrives, measured from the start of the charge."""
+
+    midpoint_minutes: Decimal
+    energy_kwh: Decimal
+
+
+@dataclass(frozen=True)
 class ChargePhysics:
     charge_type: ChargeType
     energy_kwh: Decimal
     duration_minutes: Decimal
     peak_power_kw: Decimal
     average_power_kw: Decimal
+    steps: tuple[ChargeStep, ...]
 
 
 def _power_at_soc(peak_kw: Decimal, charge_type: ChargeType, soc: Decimal) -> Decimal:
@@ -67,11 +76,20 @@ def simulate_charge(
     hours = Decimal(0)
     soc = soc_from
     step = Decimal(1)
+    steps: list[ChargeStep] = []
     while soc < soc_to:
         nxt = min(soc + step, soc_to)
         midpoint = (soc + nxt) / Decimal(2)
         power = _power_at_soc(peak_power_kw, charge_type, midpoint)
-        hours += energy_per_pct * (nxt - soc) / power
+        step_energy = energy_per_pct * (nxt - soc)
+        step_hours = step_energy / power
+        steps.append(
+            ChargeStep(
+                midpoint_minutes=(hours + step_hours / Decimal(2)) * Decimal(60),
+                energy_kwh=step_energy,
+            )
+        )
+        hours += step_hours
         soc = nxt
 
     energy_kwh = energy_per_pct * (soc_to - soc_from)
@@ -81,6 +99,7 @@ def simulate_charge(
         duration_minutes=hours * Decimal(60),
         peak_power_kw=peak_power_kw,
         average_power_kw=energy_kwh / hours,
+        steps=tuple(steps),
     )
 
 
@@ -97,6 +116,53 @@ async def _load_connector(db: AsyncSession, connector_id: uuid.UUID) -> Connecto
     if connector is None:
         raise ConnectorNotFound
     return connector
+
+
+async def _price_window(
+    db: AsyncSession,
+    connector: Connector,
+    physics: ChargePhysics,
+    started_at: datetime,
+) -> tuple[Decimal | None, Decimal | None]:
+    """Cost and effective per-kWh price for the charge, or ``(None, None)``.
+
+    Each SoC step is priced by the band covering the moment its energy arrives,
+    so a charge that runs from a day band into a cheaper night one is billed at
+    both. The effective price is what the driver would divide by, not a band:
+    quoting one band for a charge that crossed two would be a number no meter
+    ever reads.
+
+    A connector the source published no usable energy price for costs nothing
+    rather than an estimate. ``PVPC + margen`` is a suggestion for an owner
+    pricing their own point, and attributing it to someone else's charger makes
+    a plausible number look like a quoted one.
+    """
+    if connector.pricing_kind is PricingKind.FREE:
+        return Decimal(0), Decimal(0)
+    if connector.pricing_kind is not PricingKind.ENERGY:
+        return None, None
+
+    # The series is generated a minute at a time, so both ends and every lookup
+    # have to sit on the same minute boundary or nothing ever matches.
+    window_start = started_at.replace(second=0, microsecond=0)
+    ends_at = window_start + timedelta(minutes=float(physics.duration_minutes))
+    prices = await connector_prices_over(db, connector.id, window_start, ends_at)
+    if not prices:
+        return None, None
+
+    cost = Decimal(0)
+    for step in physics.steps:
+        minute = window_start + timedelta(minutes=int(step.midpoint_minutes))
+        price = prices.get(minute)
+        # A cost covering part of the session reads as covering all of it, and
+        # understating one is the same failure as inventing one. Bands tile the
+        # day for every priced connector measured, so this is a guard on a
+        # tariff that leaves a hole, not a path taken today.
+        if price is None:
+            return None, None
+        cost += step.energy_kwh * price
+
+    return cost, cost / physics.energy_kwh
 
 
 async def run_simulation(
@@ -132,24 +198,8 @@ async def run_simulation(
         soc_to=Decimal(str(request.soc_to)),
     )
 
-    # A free connector has no price to store, but zero is a price the source
-    # stated: without this it reads as "no tariff" and gets PVPC + margin.
-    tariff_price = (
-        Decimal(0)
-        if connector.pricing_kind is PricingKind.FREE
-        else connector.current_price_per_kwh
-    )
-    estimate = await estimate_price(
-        db,
-        power_type=connector.power_type,
-        tariff_price=tariff_price,
-        hour=at or datetime.now(UTC),
-    )
-    cost_eur = (
-        float(physics.energy_kwh * estimate.price_per_kwh)
-        if estimate is not None
-        else None
-    )
+    started_at = at or datetime.now(UTC)
+    cost_eur, price_per_kwh = await _price_window(db, connector, physics, started_at)
 
     return SimulationResult(
         charge_type=charge_type,
@@ -159,13 +209,6 @@ async def run_simulation(
         duration_minutes=float(physics.duration_minutes),
         peak_power_kw=float(physics.peak_power_kw),
         average_power_kw=float(physics.average_power_kw),
-        cost_eur=cost_eur,
-        price_per_kwh=float(estimate.price_per_kwh) if estimate else None,
-        price_source=estimate.source if estimate else None,
-        pvpc_per_kwh=float(estimate.pvpc_per_kwh)
-        if estimate and estimate.pvpc_per_kwh is not None
-        else None,
-        margin_per_kwh=float(estimate.margin_per_kwh)
-        if estimate and estimate.margin_per_kwh is not None
-        else None,
+        cost_eur=float(cost_eur) if cost_eur is not None else None,
+        price_per_kwh=float(price_per_kwh) if price_per_kwh is not None else None,
     )

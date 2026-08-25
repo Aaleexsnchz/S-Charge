@@ -1,7 +1,12 @@
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import { Box, Button, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router'
-import { priceLabel, STATUS_LABELS, standardLabel } from '@/features/points/display'
+import {
+  pointPricingState,
+  STATUS_LABELS,
+  shortPriceLabel,
+  standardLabel,
+} from '@/features/points/display'
 import type { Point } from '@/features/points/usePoint'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { type NearbyPoint, useNearbyPoints } from './useNearbyPoints'
@@ -16,13 +21,6 @@ function pointName(point: Point): string {
   return point.name ?? point.cpo_name ?? 'Punto de carga'
 }
 
-function minPriceLabel(point: Point): string | null {
-  const prices = point.evses
-    .flatMap((evse) => evse.connectors.map((connector) => connector.current_price_per_kwh))
-    .filter((price): price is number => price != null)
-  return prices.length > 0 ? priceLabel(Math.min(...prices)) : null
-}
-
 function connectorStandards(point: Point): string[] {
   const standards = new Set<string>()
   for (const evse of point.evses) {
@@ -33,7 +31,7 @@ function connectorStandards(point: Point): string[] {
 
 function NearbyCard({ point }: { point: NearbyPoint }) {
   const navigate = useNavigate()
-  const price = minPriceLabel(point)
+  const price = pointPricingState(point)
   return (
     <Paper
       onClick={() => navigate(`/points/${point.id}`)}
@@ -64,15 +62,16 @@ function NearbyCard({ point }: { point: NearbyPoint }) {
         {pointName(point)}
       </Typography>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mt: 0.5 }}>
-        {price ? (
-          <Typography variant="numeric" sx={{ fontWeight: 600 }}>
-            {price}
-          </Typography>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            Precio no disponible
-          </Typography>
-        )}
+        {price !== null &&
+          (price.kind === 'per_kwh' || price.kind === 'free' ? (
+            <Typography variant="numeric" sx={{ fontWeight: 600 }}>
+              {shortPriceLabel(price)}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              {shortPriceLabel(price)}
+            </Typography>
+          ))}
         <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }} noWrap>
           {connectorStandards(point).join(' · ')}
         </Typography>

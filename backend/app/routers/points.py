@@ -7,8 +7,9 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
-from app.schemas.point import PointRead
+from app.schemas.point import ConnectorScheduleRead, PointDetailRead, PointRead
 from app.services.points import Bbox, get_point, list_points, map_feature_collection
+from app.services.tariff_pricing import point_price_schedules
 
 router = APIRouter(prefix="/points", tags=["points"])
 
@@ -67,7 +68,7 @@ async def read_points_map(
 
 @router.get(
     "/{point_id}",
-    response_model=PointRead,
+    response_model=PointDetailRead,
     responses={404: {"description": "Unknown point; body mirrors REVE's error shape."}},
 )
 async def read_point(
@@ -79,4 +80,11 @@ async def read_point(
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND, content=NOT_FOUND_BODY
         )
-    return JSONResponse(content=PointRead.model_validate(point).model_dump(mode="json"))
+    schedules = await point_price_schedules(db, point_id)
+    detail = PointDetailRead(
+        **PointRead.model_validate(point).model_dump(),
+        price_schedules=[
+            ConnectorScheduleRead.model_validate(schedule) for schedule in schedules
+        ],
+    )
+    return JSONResponse(content=detail.model_dump(mode="json"))

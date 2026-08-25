@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -69,3 +69,30 @@ class PointRead(BaseModel):
     charging_when_closed: bool | None
     aggregate_status: AggregateStatus
     evses: list[EvseRead]
+
+
+class PriceBandRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    start_time: time
+    end_time: time
+    price_per_kwh: float
+    is_current: bool
+
+
+class ConnectorScheduleRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    connector_ids: list[uuid.UUID]
+    bands: list[PriceBandRead]
+
+
+class PointDetailRead(PointRead):
+    """One point, with the price schedules its connectors are charged by.
+
+    Separate from ``PointRead`` because ``GET /points`` takes a bbox and has no
+    limit: resolving bands for every connector in a viewport would serve a list
+    that shows none of them.
+    """
+
+    price_schedules: list[ConnectorScheduleRead]

@@ -9,6 +9,7 @@ from app.models.charging_point import (
     Evse,
     PricingKind,
 )
+from app.models.tariff import Tariff, TariffElement
 from app.models.vehicle import Vehicle
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,8 +37,23 @@ async def _seed_chain(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
         opening_24_7=True,
         source_last_updated_at=SEED_DT,
     )
-    db.add_all([vehicle, cp])
+    tariff = Tariff(
+        source_id=str(uuid.uuid4()),
+        currency="EUR",
+        raw_data={},
+        source_last_updated_at=SEED_DT,
+        last_refreshed_at=SEED_DT,
+    )
+    db.add_all([vehicle, cp, tariff])
     await db.flush()
+    db.add(
+        TariffElement(
+            tariff_id=tariff.id,
+            element_index=0,
+            component_type="ENERGY",
+            price=Decimal("0.50"),
+        )
+    )
     evse = Evse(
         charging_point_id=cp.id,
         source_id=str(uuid.uuid4()),
@@ -56,6 +72,7 @@ async def _seed_chain(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
         max_amperage=125,
         pricing_kind=PricingKind.ENERGY,
         current_price_per_kwh=Decimal("0.50"),
+        tariff_id=tariff.id,
         source_last_updated_at=SEED_DT,
     )
     db.add(connector)
@@ -84,7 +101,7 @@ async def test_simulate_returns_prediction(
     assert body["peak_power_kw"] == 50.0
     assert body["energy_kwh"] == 36.0
     assert body["cost_eur"] == 18.0
-    assert body["price_source"] == "reve_tariff"
+    assert body["price_per_kwh"] == 0.5
 
 
 async def test_simulate_unknown_vehicle_returns_404(

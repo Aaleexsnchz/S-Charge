@@ -13,9 +13,10 @@ import { useNavigate } from 'react-router'
 import {
   googleMapsDirectionsUrl,
   powerLabel,
-  priceLabel,
+  pricingState,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
+  shortPriceLabel,
   standardLabel,
 } from '@/features/points/display'
 import { usePoint } from '@/features/points/usePoint'
@@ -119,7 +120,7 @@ export function PointSheet({ pointId, onClose }: Props) {
                       : ''}
                   </Typography>
                   <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                    {priceLabel(connector.current_price_per_kwh) ?? '—'}
+                    {shortPriceLabel(pricingState(connector))}
                   </Typography>
                 </Stack>
               ))}

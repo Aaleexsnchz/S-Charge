@@ -140,6 +140,20 @@ ellos, un número en la fila de la tarifa no es una aproximación, es una
 imposibilidad estructural. El grano en el que la respuesta es única es el
 **conector**.
 
+**Los dos ejes son disjuntos, y eso decide qué puede ofrecerse al conductor.**
+Ninguna tarifa del catálogo varía a la vez por hora y por potencia: de los 38.548
+conectores con precio de energía, **4.297 (11 %) varían solo por potencia**,
+**1.547 (4 %) varían solo por hora** y **31.426 (82 %) tienen un único precio
+constante**. La distinción no es estadística sino práctica: la variación por
+potencia es la diferencia entre *dos conectores de la misma estación* y no se
+puede esperar a que pase, mientras que la variación por hora sí admite la
+decisión *vuelvo más tarde y me cuesta menos*. Solo el 4 % del parque tarificado
+la ofrece —y ninguno de esos conectores supera las **seis franjas** diarias—, de
+modo que la tabla horaria que la app enseña debe desaparecer limpiamente en el
+96 % restante en lugar de repetir el mismo número tres veces. Que el argumento
+del optimizador se apoye en una minoría medida, y no en una impresión, es
+justamente lo que permite dimensionar la interfaz.
+
 De ahí el modelo actual: las franjas se almacenan como filas consultables
 (`tariff_elements`, una por componente de precio con las restricciones que lo
 condicionan) y el precio resuelto vive en el conector, junto a un `pricing_kind`

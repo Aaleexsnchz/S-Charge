@@ -13,7 +13,11 @@ from app.models.charging_point import (
     PricingKind,
 )
 from app.models.tariff import Tariff, TariffElement
-from app.services.tariff_pricing import recompute_connector_prices
+from app.services.tariff_pricing import (
+    connector_price_bands,
+    point_price_schedules,
+    recompute_connector_prices,
+)
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -404,3 +408,158 @@ async def test_reservation_and_session_gated_bands_do_not_price_now(
 
     assert connector.pricing_kind == PricingKind.ENERGY
     assert connector.current_price_per_kwh == Decimal("0.31")
+
+
+async def _point_of(db: AsyncSession, connector_id: uuid.UUID) -> uuid.UUID:
+    return (
+        await db.execute(
+            select(Evse.charging_point_id)
+            .join(Connector, Connector.evse_id == Evse.id)
+            .where(Connector.id == connector_id)
+        )
+    ).scalar_one()
+
+
+async def test_schedule_returns_only_the_connectors_own_power_band(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(
+        db_session, NINE_ELEMENT_TARIFF, max_electric_power=450_000
+    )
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), _madrid(12)
+    )
+
+    prices = [band.price_per_kwh for band in bands[connector_id]]
+    assert prices == [Decimal("0.40"), Decimal("0.47"), Decimal("0.40")]
+
+
+async def test_schedule_marks_exactly_one_band_current(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(db_session, NINE_ELEMENT_TARIFF)
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), _madrid(12)
+    )
+
+    current = [band for band in bands[connector_id] if band.is_current]
+    assert len(current) == 1
+    assert current[0].price_per_kwh == Decimal("0.29")
+
+
+async def test_schedule_marks_one_band_current_on_an_inclusive_boundary(
+    db_session: AsyncSession,
+) -> None:
+    """Both 00:00-06:59 and 07:00-22:59 are inclusive, so 07:00 sits in one only."""
+    connector_id = await _connector_on(db_session, NINE_ELEMENT_TARIFF)
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), _madrid(7)
+    )
+
+    assert sum(band.is_current for band in bands[connector_id]) == 1
+
+
+async def test_schedule_omits_a_connector_priced_by_one_band(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(db_session, [{"price": "0.42"}])
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), _madrid(12)
+    )
+
+    assert connector_id not in bands
+
+
+async def test_schedule_drops_the_tariffs_unrestricted_fallback(
+    db_session: AsyncSession,
+) -> None:
+    """The fallback prices nothing while real windows exist, so it is not a band."""
+    connector_id = await _connector_on(
+        db_session,
+        [
+            {"price": "0.99"},
+            {"band": NIGHT, "price": "0.25"},
+            {"band": DAY, "price": "0.29"},
+            {"band": LATE, "price": "0.25"},
+        ],
+    )
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), _madrid(12)
+    )
+
+    assert Decimal("0.99") not in [band.price_per_kwh for band in bands[connector_id]]
+    assert len(bands[connector_id]) == 3
+
+
+async def test_schedules_group_connectors_priced_alike(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(db_session, NINE_ELEMENT_TARIFF)
+    point_id = await _point_of(db_session, connector_id)
+    evse_id = (
+        await db_session.execute(
+            select(Connector.evse_id).where(Connector.id == connector_id)
+        )
+    ).scalar_one()
+    tariff_id = (
+        await db_session.execute(
+            select(Connector.tariff_id).where(Connector.id == connector_id)
+        )
+    ).scalar_one()
+    twin = Connector(
+        source_id=str(uuid.uuid4()),
+        evse_id=evse_id,
+        standard="IEC_62196_T2",
+        format="SOCKET",
+        power_type="AC_3_PHASE",
+        max_voltage=400,
+        max_amperage=32,
+        max_electric_power=22000,
+        tariff_id=tariff_id,
+        source_last_updated_at=NOW,
+    )
+    db_session.add(twin)
+    await db_session.flush()
+
+    schedules = await point_price_schedules(db_session, point_id, _madrid(12))
+
+    assert len(schedules) == 1
+    assert sorted(schedules[0].connector_ids, key=str) == sorted(
+        [connector_id, twin.id], key=str
+    )
+
+
+async def test_schedules_separate_connectors_priced_differently(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(db_session, NINE_ELEMENT_TARIFF)
+    point_id = await _point_of(db_session, connector_id)
+    evse_id = (
+        await db_session.execute(
+            select(Connector.evse_id).where(Connector.id == connector_id)
+        )
+    ).scalar_one()
+    tariff_id = (
+        await db_session.execute(
+            select(Connector.tariff_id).where(Connector.id == connector_id)
+        )
+    ).scalar_one()
+    db_session.add(
+        Connector(
+            source_id=str(uuid.uuid4()),
+            evse_id=evse_id,
+            standard="IEC_62196_T2_COMBO",
+            format="CABLE",
+            power_type="DC",
+            max_voltage=400,
+            max_amperage=32,
+            max_electric_power=450_000,
+            tariff_id=tariff_id,
+            source_last_updated_at=NOW,
+        )
+    )
+    await db_session.flush()
+
+    schedules = await point_price_schedules(db_session, point_id, _madrid(12))
+
+    assert len(schedules) == 2

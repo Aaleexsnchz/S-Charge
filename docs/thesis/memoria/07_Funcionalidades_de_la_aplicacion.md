@@ -148,15 +148,21 @@ carga por encima del 80 %, que es justamente donde la intuición del conductor f
 respuesta incluye además la **potencia media**, $\bar{P} = E/t$, como resumen interpretable de lo
 anterior: si es menor que el pico, el usuario está viendo cuánto le cuesta el último tramo.
 
-**Coste.** Se reutiliza la cascada de precios del capítulo 5, sin redefinirla aquí: tarifa real del
-conector si el espejo la tiene y, si no, PVPC de la hora más el margen que corresponda al tipo de
-corriente. El coste es energía por precio. Lo que sí es propio de esta pantalla es que la respuesta
-declara la **procedencia** del precio, y la interfaz la muestra junto a la cifra, de modo que el
-usuario sabe si está leyendo un dato o una estimación. Que la información de precio sea clara y
-comparable es, además, lo que los conductores europeos señalan como una de las tres cosas que más
-valoran de una sesión de recarga pública [2]. La sesión se valora a un único precio
-horario, el del instante de la simulación; repartirla entre franjas es competencia del optimizador
-(más adelante en este mismo capítulo).
+**Coste.** Se valora con lo que el operador publica y con nada más (capítulo 5). **La sesión se
+tarifica por la ventana que ocupa, no por el instante en que se consulta**: una recarga dura horas
+y las franjas cambian a hora en punto, así que cada paso de carga paga la franja que cubre el
+minuto en que llega su energía. El reparto es minuto a minuto y no por intersección de intervalos,
+porque en corriente continua la potencia decae por encima del codo y la energía no se distribuye
+uniformemente entre las franjas que la sesión cruza. La respuesta devuelve el **precio efectivo**
+—el coste dividido entre la energía—, no una franja concreta: citar una sola para una carga que
+cruzó dos sería un número que ningún contador marca. Sobre un conector real, la misma recarga de
+42 kWh cuesta 13,21 € empezando a las 10:00 y 14,86 € empezando a las 21:00, un 12,5 % de
+diferencia que depende solo de cuándo se enchufa. Si el conector no tiene precio publicado, la
+casilla de coste **se queda vacía** y se dicen igualmente duración y energía. Que la información de
+precio sea clara y comparable es, además, lo que los conductores europeos señalan como una de las
+tres cosas que más valoran de una sesión de recarga pública [2]. Elegir *cuándo* cargar sigue
+siendo competencia del optimizador (más adelante en este mismo capítulo); aquí solo se valora bien
+una ventana que el conductor ya ha decidido.
 
 **Qué no modela.** Es una predicción basada en especificaciones, no una medida. Fuera quedan la
 temperatura de la batería y del ambiente, la degradación por edad, las pérdidas de conversión y el
@@ -170,10 +176,11 @@ se presenta como estimación, nunca como garantía.
 
 > **[FIGURA 7.5]** — *Diálogo de simulación con resultado.* El diálogo «Simular carga» sobre
 > `/points/:id` a 360 px, ya calculado: selector de conector y de vehículo, ventana 20–80 %, las
-> tres métricas (duración, energía, coste) y la línea inferior con la potencia media y la
-> procedencia del precio.
-> **Cómo obtenerla:** captura sobre un conector DC con tarifa real y otra sobre uno sin tarifa, para
-> que se vea la diferencia de procedencia; si solo cabe una, la de precio estimado.
+> tres métricas (duración, energía, coste) y la línea inferior con la potencia media y el precio
+> efectivo de la carga.
+> **Cómo obtenerla:** captura sobre un conector con tarifa y otra sobre uno sin ella, para que se
+> vea que en el segundo el coste queda vacío en lugar de estimado; si solo cabe una, la del
+> conector sin tarifa, que es la decisión que se defiende.
 
 > **[FIGURA 7.6]** — *Curva de potencia del modelo.* Diagrama con el estado de carga en el eje X
 > (0–100 %) y la potencia en el eje Y: una recta horizontal para AC y, para DC, el tramo plano
@@ -392,8 +399,8 @@ energía por franja—, su coste estimado, una o dos alternativas (el plan parti
 barata si el usuario pudiera salir más tarde) y, sobre todo, **el ahorro frente a cargar ahora**:
 el mismo cálculo empezando en el instante de la petición. Esa cifra es la que da sentido a la
 funcionalidad, y si resulta ser de céntimos, decirlo también es parte del trabajo. Como en la
-simulación, la respuesta indica la procedencia del precio de cada franja, para que la interfaz no
-presente como dato lo que es estimación.
+simulación, el cálculo se apoya en el PVPC realmente almacenado para cada franja, no en una
+proyección: si falta la curva del día, no hay recomendación que dar.
 
 > **[FIGURA 8.1]** — *La ventana óptima sobre la curva real de un día.* Gráfica de barras con las
 > 24 franjas horarias del PVPC de un día concreto ya almacenado (€/kWh en el eje vertical, hora

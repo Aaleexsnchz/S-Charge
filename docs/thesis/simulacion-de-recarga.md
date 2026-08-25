@@ -41,14 +41,31 @@ la **potencia media** (`energía / tiempo`) como resumen interpretable.
 
 ## Coste
 
-El coste reutiliza el servicio de precios (véase
-[precios-y-actualizacion.md](precios-y-actualizacion.md)): se cobra la tarifa real
-del conector si existe y, si no, se estima `PVPC(hora) + margen[AC|DC]`. El coste es
-`energía · precio`. La respuesta indica la **procedencia del precio** (tarifa real o
-estimación), de modo que la interfaz es explícita sobre qué parte es dato real y qué
-parte es estimación. La sesión se valora a un único precio horario (el del momento de
-la simulación); el reparto por tramos horarios es competencia del optimizador
-(capítulo de optimización de carga), no de la simulación.
+**La sesión se tarifica por la ventana que ocupa, no por el instante en que se
+consulta.** Una recarga dura horas y las franjas cambian a hora en punto, así que
+cobrarla entera al precio del momento de la simulación era exacto solo si empezaba
+y terminaba dentro de la misma franja. Cada paso de SoC paga la franja que cubre el
+minuto en que llega su energía, y la respuesta devuelve el **precio efectivo** —el
+coste dividido entre la energía tarificada—, no una franja concreta: citar una sola
+para una carga que cruzó dos sería un número que ningún contador marca. Sobre un
+conector real, la misma recarga de 42 kWh cuesta **13,21 €** empezando a las 10:00 y
+**14,86 €** empezando a las 21:00.
+
+El reparto se hace **minuto a minuto** y no por intersección de intervalos, porque
+la potencia en DC decae por encima del codo: la energía no se reparte
+uniformemente entre las franjas que la sesión cruza, y hay que pesar cada minuto por
+la energía que realmente entrega. Esto es distinto del optimizador (capítulo de
+optimización de carga), que *elige* cuándo cargar; aquí solo se valora correctamente
+una ventana que el conductor ya ha decidido.
+
+**Un conector sin precio publicado no tiene coste, y esa casilla se queda vacía.**
+Antes se rellenaba con `PVPC(hora) + margen[AC|DC]` y se etiquetaba la procedencia,
+confiando en que el usuario leyera la etiqueta. Es la misma objeción que se le hace
+a simular disponibilidad: *un número verosímil que se lee como real es peor que un
+campo vacío*, y aquí además se atribuía una estimación propia a la tarifa de un
+tercero. La estimación sobrevive, pero cambiada de sitio: es la que se **ofrece** al
+propietario de un punto privado cuando fija su propio precio, donde sugerir un
+número es justamente el objetivo y no una afirmación sobre nadie más.
 
 ## Honestidad del modelo
 

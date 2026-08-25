@@ -197,6 +197,31 @@
         "title": "ConnectorRead",
         "type": "object"
       },
+      "ConnectorScheduleRead": {
+        "properties": {
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/PriceBandRead"
+            },
+            "title": "Bands",
+            "type": "array"
+          },
+          "connector_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Connector Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connector_ids",
+          "bands"
+        ],
+        "title": "ConnectorScheduleRead",
+        "type": "object"
+      },
       "ErrorModel": {
         "properties": {
           "detail": {
@@ -360,6 +385,202 @@
           "authorization_url"
         ],
         "title": "OAuth2AuthorizeResponse",
+        "type": "object"
+      },
+      "PointDetailRead": {
+        "description": "One point, with the price schedules its connectors are charged by.\n\nSeparate from ``PointRead`` because ``GET /points`` takes a bbox and has no\nlimit: resolving bands for every connector in a viewport would serve a list\nthat shows none of them.",
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "aggregate_status": {
+            "enum": [
+              "available",
+              "occupied",
+              "unknown"
+            ],
+            "title": "Aggregate Status",
+            "type": "string"
+          },
+          "charging_when_closed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charging When Closed"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "cpo_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpo Name"
+          },
+          "evses": {
+            "items": {
+              "$ref": "#/components/schemas/EvseRead"
+            },
+            "title": "Evses",
+            "type": "array"
+          },
+          "facilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facilities"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "opening_24_7": {
+            "title": "Opening 24 7",
+            "type": "boolean"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "parking_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parking Type"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "price_schedules": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorScheduleRead"
+            },
+            "title": "Price Schedules",
+            "type": "array"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "time_zone": {
+            "title": "Time Zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "name",
+          "cpo_name",
+          "address",
+          "city",
+          "postal_code",
+          "region",
+          "state",
+          "country_code",
+          "latitude",
+          "longitude",
+          "parking_type",
+          "facilities",
+          "time_zone",
+          "opening_24_7",
+          "opening_hours",
+          "charging_when_closed",
+          "aggregate_status",
+          "evses",
+          "price_schedules"
+        ],
+        "title": "PointDetailRead",
         "type": "object"
       },
       "PointRead": {
@@ -549,6 +770,36 @@
         "title": "PointRead",
         "type": "object"
       },
+      "PriceBandRead": {
+        "properties": {
+          "end_time": {
+            "format": "time",
+            "title": "End Time",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "price_per_kwh": {
+            "title": "Price Per Kwh",
+            "type": "number"
+          },
+          "start_time": {
+            "format": "time",
+            "title": "Start Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "end_time",
+          "price_per_kwh",
+          "is_current"
+        ],
+        "title": "PriceBandRead",
+        "type": "object"
+      },
       "PricePoint": {
         "properties": {
           "hour_start": {
@@ -647,17 +898,6 @@
             "title": "Energy Kwh",
             "type": "number"
           },
-          "margin_per_kwh": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Margin Per Kwh"
-          },
           "peak_power_kw": {
             "title": "Peak Power Kw",
             "type": "number"
@@ -672,32 +912,6 @@
               }
             ],
             "title": "Price Per Kwh"
-          },
-          "price_source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "reve_tariff",
-                  "pvpc_plus_margin"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Source"
-          },
-          "pvpc_per_kwh": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pvpc Per Kwh"
           },
           "soc_from": {
             "title": "Soc From",
@@ -717,10 +931,7 @@
           "peak_power_kw",
           "average_power_kw",
           "cost_eur",
-          "price_per_kwh",
-          "price_source",
-          "pvpc_per_kwh",
-          "margin_per_kwh"
+          "price_per_kwh"
         ],
         "title": "SimulationResult",
         "type": "object"
@@ -1803,7 +2014,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PointRead"
+                  "$ref": "#/components/schemas/PointDetailRead"
                 }
               }
             },

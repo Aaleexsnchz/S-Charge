@@ -6,10 +6,11 @@ La batería del backend son **134 pruebas** en veintitrés módulos que reproduc
 `app/`, en tres niveles que se distinguen por lo que necesitan para correr.
 
 Las **pruebas de servicio no tocan la base de datos**, y pueden no tocarla porque la lógica de
-negocio no importa el framework: la simulación de recarga y la cascada de precio son funciones
-sobre objetos de dominio, de modo que esa separación —descrita en el capítulo 4— convierte su
-verificación en aritmética comprobable sin arrancar nada: una prueba que fija el codo del *taper*
-al 80 % de estado de carga y comprueba la energía resultante falla por una sola razón.
+negocio no importa el framework: la simulación de recarga y la resolución de precio por franjas
+son funciones sobre objetos de dominio, de modo que esa separación —descrita en el capítulo 4—
+convierte su verificación en aritmética comprobable sin arrancar nada: una prueba que fija el
+codo del *taper* al 80 % de estado de carga y comprueba la energía resultante falla por una
+sola razón.
 
 Las **pruebas de ruta sí usan una base de datos real**, dentro de una transacción que se deshace
 al terminar. Una base de datos falsa en memoria habría verificado un motor que producción no
@@ -66,10 +67,14 @@ El 31 de `/map` no se esconde porque explicarlo vale más que maquillarlo. La ca
 el código de la aplicación sino la pantalla: el motor de mapas ha de descargarse, compilar su
 estilo y completar el primer pintado WebGL antes de que haya nada visible, y sobre él se cargan
 ~13.700 puntos en una sola fuente. Reducir el payload del mapa —de 772 a 503 KB comprimidos, un
-35 % menos— dejó FCP en 3,0 s, LCP en 4,5 s y Speed Index en 3,4 s. Las palancas que quedan están
-identificadas y ninguna aplicada: caché del *service worker* sobre la respuesta del catálogo,
-carga por *viewport* con un `bbox` en lugar de España entera, y la migración del frontend, que
-elimina el CSS que hoy se inyecta en cada render.
+35 % menos— dejó FCP en 3,0 s, LCP en 4,5 s y Speed Index en 3,4 s. De las palancas
+identificadas, la primera ya está aplicada: el *service worker* sirve la respuesta del catálogo
+con *stale-while-revalidate*, de modo que la tabla anterior describe una visita fría y una
+segunda visita se ahorra esos 503 KB.
+La mejora no aparece en una auditoría corriente, porque Lighthouse limpia el almacenamiento entre
+ejecuciones y mide siempre una primera visita; cuantificarla exige conservarlo, y esa medición
+está pendiente. Siguen sin aplicar la carga por *viewport* con un `bbox` en lugar de España
+entera y la migración del frontend, que elimina el CSS que hoy se inyecta en cada render.
 
 Esta medición es **deliberadamente la línea base** contra la que se comparará esa migración, y por
 eso se registró antes de tocar nada. El compromiso adquirido es que el resultado se publique sea

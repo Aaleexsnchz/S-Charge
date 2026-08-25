@@ -12,7 +12,9 @@ The price model is built and shipped; the ETL is running. What remains is the dr
 | 4 | Turn the scheduler on | **Draining** | host work |
 | 4b | Record the catalogue drift, then repair it | **Ledger done** (#48), repair open | #48 |
 | 5 | Model the tariff | Done | #43 |
-| 6 | Use the model | Not started | — |
+| 6a | Say what the price model knows | **Done** | — |
+| 6b | The bands a connector charges by | **Done** | — |
+| 6c | Simulate on the bands | **Done** | — |
 | 7 | Cadence and observation | Not started | host work |
 
 ## Closed slices — where their knowledge went
@@ -53,21 +55,41 @@ The ledger is shipped and filling. What remains is the pass that consumes it.
 
 **Per-EVSE repair is closed off, not merely expensive.** `/evses/{evse_id}` returns no reference to its Location — no `location_id`, no address, no `party_id` — while `evses.charging_point_id` is `NOT NULL`. A new station's EVSE has nothing to attach to and no way to find its parent, which is 23 of every 30 backlog rows. The tariff feed's `evse_id` is REVE's internal UUID, not eMI3, so the operator cannot be recovered from a backlog row either and a `party_id`-filtered pass is not available.
 
-## Slice 6 — Use the model
+## Slice 6a — Say what the price model knows
 
-**Acceptance:** the map filter, the point detail and the simulator all answer with the price that actually applies, and free chargers say so.
+**Acceptance:** no surface shows an em dash where the model has a fact, and no surface shows a number the source did not publish.
 
-- [ ] Map filter by **price now**, not by a minimum: `pricing_kind = 'free' OR current_price_per_kwh <= :max`. Without the `OR`, a price filter hides the free chargers — only 30 of them, but they are the ones a price filter is looking hardest for
-- [ ] Point detail shows the band the driver is in, and that the price changes later — the difference between 0.25 and 0.47 is the app's whole argument
-- [ ] **Free chargers labelled *gratis*** rather than "no price"
-- [ ] Time- and session-priced connectors say how they are priced instead of showing nothing
-- [ ] **A connector REVE priced at nothing and a connector REVE said nothing about are different, and must read differently.** *Gratis* is a fact from the source; 4,845 connectors with no tariff are an absence of information. **No estimated price is shown for the second** — an invented number next to a real one confuses the driver, and it is the same objection [be-0002](../decisions/be-0002-availability-not-modelled.md) raises against simulated availability. The simulator still reports time and energy for them, and simply has no cost
-- [ ] **`unknown` is one driver-facing state, with exactly two messages.** 8,197 connectors have no resolvable price, from five causes — **4,845** REVE published no tariff for, **2,138** past their `valid_to`, **1,155** a record with no energy band, 52 with bands none of which apply now, 7 an implausible price. Four of those five mean the same thing to a driver and collapse to *el operador no publica precio*. The fifth is different and worth its own line:
-- [ ] **An expired tariff says when it expired**: *la tarifa publicada caducó el 12/08/2026*. Stale is not the same as absent — it tells the driver the price was real once and is not to be trusted now, and it asserts no number. **This needs no backend change**: `TariffRead` already carries `valid_to`, so `pricing_kind === 'unknown'` plus a `valid_to` in the past is the whole condition. It is also the reason `valid_to` stays on `TariffRead` rather than being trimmed with the flattened columns
-- [ ] Keep the reason derivation **in one place**. If a second consumer needs it, it becomes a computed field on `ConnectorRead` served by the backend, not a second copy of the rule — the whole point of [be-0003](../decisions/be-0003-price-on-the-connector.md) is that price semantics live where they can be tested
-- [ ] **`PVPC + margen` survives as a recommendation, not as a displayed price.** `estimate_price` and the calibrated AC/DC margins stay for [Phase 7](../plan.md), where the owner of a private point is *offered* a price to set. That is a suggestion the owner accepts or overrides, not a number attributed to someone else's charger
-- [ ] The simulator prices the actual charging window from the bands, spanning them where a charge crosses a boundary
-- [ ] `just gen-api` — the response models change
+Done. `features/points/display.ts` derives one `PricingState` per connector and every price render goes through it — the point detail, the map sheet and the dashboard's nearby cards, which each derived their own before.
+
+- The **map filter** needed no work: `pricing_kind = 'free' OR current_price_per_kwh <= :max` was already in both `services/points.py` and `map/filters.ts`, and the GeoJSON already carries `has_free`.
+- **Free chargers say *gratis***, and a point whose cheapest connector is free leads with it — free outranks any price in the point-level summary, the same rule the map filter applies.
+- **Time- and session-priced connectors say how they are priced** instead of showing nothing.
+- **`unknown` is one state with two messages.** Four of its five causes collapse to *el operador no publica precio*; an expired tariff instead says *la tarifa publicada caducó el 12/08/2026*. Stale is not absent — it says the price was real once and is not to be trusted now, and it asserts no number. No backend change was needed: `TariffRead` already carried `valid_to`, which is why it survived the flattening.
+- **No estimate fills the gap.** The 4,845 connectors REVE published no tariff for get no invented price.
+
+## Slice 6b — The bands a connector charges by
+
+**Acceptance:** the point detail shows the price now *and* what it will be later, so a driver can decide to wait.
+
+Done. `GET /api/points/{id}` carries `price_schedules` — the day's energy bands per connector, already power-gated, with exactly one marked current; the detail page renders them as a table with the current row highlighted.
+
+- **On the detail response, not on `ConnectorRead`.** `GET /points` takes a bbox and has no limit, so a schedule on the *shared* connector model would resolve bands for every connector in the viewport to serve a list that shows none — the alternative [be-0003](../decisions/be-0003-price-on-the-connector.md) rejected as "resolve the price on every read". A `PointDetailRead` subclass confines it to the one-point endpoint, which measured 1–2 ms against that endpoint's 5 ms. A separate endpoint would have bought nothing for a second round trip on a phone at the charger.
+- **The band-matching rules are not duplicated.** The resolver's source, restriction predicates and restriction columns are module-level SQL fragments that both the hourly recompute and the schedule compose. Checked estate-wide: over 1,316 connectors at all 286 points that price by time, the schedule's current band and the stored `current_price_per_kwh` never disagree.
+- **Two bugs the real data caught, neither visible in a unit test.** The tariff's unrestricted fallback listed itself as an all-day band beside the real windows, and REVE's inclusive end bounds made 18:00 belong to both `00:00-18:00` and `18:00-22:00`, highlighting two prices at once. The fallback is now dropped wherever real windows exist, and the current band breaks its tie the way the resolver breaks it.
+- **Connectors are grouped by identical schedule.** One measured point has 18 connectors on one schedule; per-connector rendering would repeat the table 18 times. The 8% of points whose connectors differ keep a table each, because the connector is the grain where the price is unique.
+
+## Slice 6c — Simulate on the bands
+
+**Acceptance:** the simulator prices the real charging window, and never attributes an estimate to an operator.
+
+Done. Measured on a real AC connector, the same 42 kWh charge costs **13,21 €** started at 10:00 and **14,86 €** started at 21:00 — 12.5% apart on when the driver plugs in, which is the argument the app exists to make.
+
+- **The window is priced a minute at a time**, composed from the fragments [6b](#slice-6b--the-bands-a-connector-charges-by) added: `_LOCAL_TS_SERIES` generates the session's minutes where the other two statements take one instant, so the band rules are still written once. The physics loop now reports when each SoC step's energy arrives, and each step pays the band covering that moment.
+- **A row per minute, not a band intersection.** The bands a session crosses are few, but DC power tapers, so energy is not spread evenly across them — the cost has to weight each minute by the energy actually delivered in it.
+- **The result reports the effective price**, the cost divided by the energy priced. Quoting a band for a charge that crossed two would be a number no meter reads.
+- **`price_source`, `pvpc_per_kwh` and `margin_per_kwh` are gone from `SimulationResult`.** With the estimate no longer served, `price_source` had one possible value; keeping the enum would be an interface for a requirement nobody has.
+- **`services/price_suggestion.py` now has no caller and stays anyway**, which its module docstring records so the next reader does not delete it. `PVPC + margen` is the suggestion an owner gets in [Phase 7](../plan.md) when pricing their own point.
+- **The bug the fixtures could not show**: `generate_series` starts at the instant it is given, so a session beginning at 14:32:07 produced minute keys carrying those seconds while the lookup truncated them — no minute ever matched and every charge came back unpriced. Both ends now floor to the minute.
 
 ## Slice 7 — Cadence and observation
 
@@ -92,7 +114,7 @@ All of these are written up in [precios-y-actualizacion.md](../thesis/precios-y-
 ## Open questions
 
 - **Is `CONGESTION_TIME` worth pricing?** 218 band rows carry a component type absent from REVE's published enum. It is a surcharge, so it never outranks `ENERGY`, `TIME` or `FLAT`; a connector whose only applicable band is one resolves to `unknown`. Revisit if the drain makes it common.
-- **`price` is ex-VAT per OCPI, and the app does not account for it.** 4,017 of 5,513 band rows carry a `vat`, mostly `21.00` — but **192 write `0.21`**, the same rate as a fraction, so any correction must normalise that first. Pre-existing, not introduced by the price model. Decide in [Slice 6](#slice-6--use-the-model) whether the app shows what the driver pays.
+- **`price` is ex-VAT per OCPI, and the app does not account for it.** 4,017 of 5,513 band rows carry a `vat`, mostly `21.00` — but **192 write `0.21`**, the same rate as a fraction, so any correction must normalise that first. Pre-existing, not introduced by the price model. Decide in [Slice 6b](#slice-6b--the-bands-a-connector-charges-by) whether the app shows what the driver pays.
 - **What catalogue cadence, now that drift is measured?** [Slice 7](#slice-7--cadence-and-observation), against the final backlog figure.
 
 ## Out of scope

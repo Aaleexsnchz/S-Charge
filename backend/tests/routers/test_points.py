@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -10,7 +10,7 @@ from app.models.charging_point import (
     Evse,
     PricingKind,
 )
-from app.models.tariff import Tariff
+from app.models.tariff import Tariff, TariffElement
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -330,3 +330,61 @@ async def test_get_point_unknown_returns_reve_error_shape(
         "status_code": 404,
         "status_message": "Charging point not found",
     }
+
+
+async def test_price_schedule_lists_the_bands_with_one_current(
+    auth_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    tariff = make_tariff()
+    db_session.add(tariff)
+    await db_session.flush()
+    for index, (band, price) in enumerate(
+        [
+            ((time(0, 0), time(6, 59)), "0.25"),
+            ((time(7, 0), time(22, 59)), "0.29"),
+            ((time(23, 0), time(23, 59)), "0.25"),
+        ]
+    ):
+        db_session.add(
+            TariffElement(
+                tariff_id=tariff.id,
+                element_index=index,
+                component_type="ENERGY",
+                price=Decimal(price),
+                start_time=band[0],
+                end_time=band[1],
+            )
+        )
+    point = make_point()
+    evse = make_evse()
+    evse.connectors.append(
+        make_connector("0.29", max_electric_power=22000, tariff=tariff)
+    )
+    point.evses.append(evse)
+    db_session.add(point)
+    await db_session.commit()
+
+    response = await auth_client.get(f"/api/points/{point.id}")
+
+    assert response.status_code == 200
+    schedules = response.json()["price_schedules"]
+    assert len(schedules) == 1
+    bands = schedules[0]["bands"]
+    assert [band["price_per_kwh"] for band in bands] == [0.25, 0.29, 0.25]
+    assert sum(band["is_current"] for band in bands) == 1
+
+
+async def test_price_schedule_is_empty_for_a_single_price(
+    auth_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    point = make_point()
+    evse = make_evse()
+    evse.connectors.append(make_connector("0.42"))
+    point.evses.append(evse)
+    db_session.add(point)
+    await db_session.commit()
+
+    response = await auth_client.get(f"/api/points/{point.id}")
+
+    assert response.status_code == 200
+    assert response.json()["price_schedules"] == []

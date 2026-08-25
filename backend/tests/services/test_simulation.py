@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -11,10 +11,9 @@ from app.models.charging_point import (
     Evse,
     PricingKind,
 )
-from app.models.price import ElectricityPrice
+from app.models.tariff import Tariff, TariffElement
 from app.models.vehicle import Vehicle
 from app.schemas.simulation import SimulationRequest
-from app.services.pricing import MARGIN_DC_EUR_PER_KWH
 from app.services.simulation import (
     DCNotSupported,
     _power_at_soc,
@@ -94,6 +93,7 @@ async def _make_connector(
     power_type: str,
     max_electric_power: int,
     tariff_price: Decimal | None,
+    bands: list[tuple[time, time, str]] | None = None,
 ) -> Connector:
     cp = ChargingPoint(
         source=ChargingPointSource.REVE_SEED,
@@ -117,6 +117,32 @@ async def _make_connector(
     db.add(evse)
     await db.flush()
 
+    tariff = None
+    elements = bands if bands is not None else []
+    if tariff_price is not None and not elements:
+        elements = [(time(0, 0), time(23, 59), str(tariff_price))]
+    if elements:
+        tariff = Tariff(
+            source_id=str(uuid.uuid4()),
+            currency="EUR",
+            raw_data={},
+            source_last_updated_at=SEED_DT,
+            last_refreshed_at=SEED_DT,
+        )
+        db.add(tariff)
+        await db.flush()
+        for index, (start, end, price) in enumerate(elements):
+            db.add(
+                TariffElement(
+                    tariff_id=tariff.id,
+                    element_index=index,
+                    component_type="ENERGY",
+                    price=Decimal(price),
+                    start_time=start,
+                    end_time=end,
+                )
+            )
+
     connector = Connector(
         evse_id=evse.id,
         source_id=str(uuid.uuid4()),
@@ -130,6 +156,7 @@ async def _make_connector(
             PricingKind.ENERGY if tariff_price is not None else PricingKind.UNKNOWN
         ),
         current_price_per_kwh=tariff_price,
+        tariff_id=tariff.id if tariff else None,
         source_last_updated_at=SEED_DT,
     )
     db.add(connector)
@@ -137,7 +164,7 @@ async def _make_connector(
     return connector
 
 
-async def test_run_simulation_uses_real_tariff(db_session: AsyncSession) -> None:
+async def test_run_simulation_prices_from_the_bands(db_session: AsyncSession) -> None:
     vehicle = await _make_vehicle(db_session)
     connector = await _make_connector(
         db_session,
@@ -151,51 +178,100 @@ async def test_run_simulation_uses_real_tariff(db_session: AsyncSession) -> None
         SimulationRequest(
             vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
         ),
+        at=datetime(2026, 6, 26, 12, 0, tzinfo=MADRID),
     )
 
     assert result.charge_type == "DC"
     assert result.peak_power_kw == pytest.approx(50.0)
     assert result.energy_kwh == pytest.approx(30.0)
-    assert result.price_source == "reve_tariff"
     assert result.price_per_kwh == pytest.approx(0.45)
     assert result.cost_eur == pytest.approx(30.0 * 0.45)
 
 
-async def test_run_simulation_falls_back_to_pvpc(db_session: AsyncSession) -> None:
+async def test_charge_crossing_a_boundary_is_priced_by_both_bands(
+    db_session: AsyncSession,
+) -> None:
+    """An 11 kW charge for 30 kWh runs nearly three hours, so it cannot be one band."""
     vehicle = await _make_vehicle(db_session)
     connector = await _make_connector(
-        db_session, power_type="DC", max_electric_power=150000, tariff_price=None
+        db_session,
+        power_type="AC",
+        max_electric_power=22000,
+        tariff_price=Decimal("0.20"),
+        bands=[
+            (time(0, 0), time(6, 59), "0.20"),
+            (time(7, 0), time(23, 59), "0.40"),
+        ],
     )
-    slot = datetime(2026, 6, 26, 12, 0, tzinfo=MADRID)
-    db_session.add(ElectricityPrice(hour_start=slot, price_per_kwh=Decimal("0.10000")))
-    await db_session.flush()
 
     result = await run_simulation(
         db_session,
         SimulationRequest(
             vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
         ),
-        at=slot,
+        at=datetime(2026, 6, 26, 6, 30, tzinfo=MADRID),
     )
 
-    expected_price = float(Decimal("0.10000") + MARGIN_DC_EUR_PER_KWH)
-    assert result.price_source == "pvpc_plus_margin"
-    assert result.price_per_kwh == pytest.approx(expected_price)
-    assert result.margin_per_kwh == pytest.approx(float(MARGIN_DC_EUR_PER_KWH))
+    assert result.price_per_kwh is not None
+    assert 0.20 < result.price_per_kwh < 0.40
+    assert result.cost_eur == pytest.approx(result.energy_kwh * result.price_per_kwh)
 
 
-async def test_free_connector_costs_nothing_rather_than_pvpc(
+async def test_charge_wholly_inside_one_band_pays_that_band(
     db_session: AsyncSession,
 ) -> None:
-    """A free connector stores no price, and reading that as "no tariff" would
-    quote PVPC + margin at the chargers we know cost nothing."""
+    vehicle = await _make_vehicle(db_session)
+    connector = await _make_connector(
+        db_session,
+        power_type="AC",
+        max_electric_power=22000,
+        tariff_price=Decimal("0.20"),
+        bands=[
+            (time(0, 0), time(6, 59), "0.20"),
+            (time(7, 0), time(23, 59), "0.40"),
+        ],
+    )
+
+    result = await run_simulation(
+        db_session,
+        SimulationRequest(
+            vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
+        ),
+        at=datetime(2026, 6, 26, 9, 0, tzinfo=MADRID),
+    )
+
+    assert result.price_per_kwh == pytest.approx(0.40)
+
+
+async def test_unpriced_connector_reports_time_and_energy_but_no_cost(
+    db_session: AsyncSession,
+) -> None:
+    """No estimate stands in for a price the operator never published."""
+    vehicle = await _make_vehicle(db_session)
+    connector = await _make_connector(
+        db_session, power_type="DC", max_electric_power=150000, tariff_price=None
+    )
+
+    result = await run_simulation(
+        db_session,
+        SimulationRequest(
+            vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
+        ),
+        at=datetime(2026, 6, 26, 12, 0, tzinfo=MADRID),
+    )
+
+    assert result.cost_eur is None
+    assert result.price_per_kwh is None
+    assert result.energy_kwh == pytest.approx(30.0)
+    assert result.duration_minutes > 0
+
+
+async def test_free_connector_costs_nothing(db_session: AsyncSession) -> None:
     vehicle = await _make_vehicle(db_session)
     connector = await _make_connector(
         db_session, power_type="AC", max_electric_power=22000, tariff_price=None
     )
     connector.pricing_kind = PricingKind.FREE
-    slot = datetime(2026, 6, 26, 12, 0, tzinfo=MADRID)
-    db_session.add(ElectricityPrice(hour_start=slot, price_per_kwh=Decimal("0.10000")))
     await db_session.flush()
 
     result = await run_simulation(
@@ -203,10 +279,9 @@ async def test_free_connector_costs_nothing_rather_than_pvpc(
         SimulationRequest(
             vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
         ),
-        at=slot,
+        at=datetime(2026, 6, 26, 12, 0, tzinfo=MADRID),
     )
 
-    assert result.price_source == "reve_tariff"
     assert result.price_per_kwh == pytest.approx(0.0)
     assert result.cost_eur == pytest.approx(0.0)
 
@@ -229,3 +304,32 @@ async def test_run_simulation_rejects_dc_without_capability(
                 vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
             ),
         )
+
+
+async def test_charge_crossing_an_unpriced_gap_reports_no_cost(
+    db_session: AsyncSession,
+) -> None:
+    """A tariff leaving an hour unpriced yields no cost, not a cost for the rest."""
+    vehicle = await _make_vehicle(db_session)
+    connector = await _make_connector(
+        db_session,
+        power_type="AC",
+        max_electric_power=22000,
+        tariff_price=Decimal("0.20"),
+        bands=[
+            (time(0, 0), time(6, 59), "0.20"),
+            (time(8, 0), time(23, 59), "0.40"),
+        ],
+    )
+
+    result = await run_simulation(
+        db_session,
+        SimulationRequest(
+            vehicle_id=vehicle.id, connector_id=connector.id, soc_from=20, soc_to=80
+        ),
+        at=datetime(2026, 6, 26, 6, 30, tzinfo=MADRID),
+    )
+
+    assert result.cost_eur is None
+    assert result.price_per_kwh is None
+    assert result.energy_kwh == pytest.approx(30.0)

@@ -401,6 +401,13 @@ export interface components {
       standard: string
       tariff: components['schemas']['TariffRead'] | null
     }
+    /** ConnectorScheduleRead */
+    ConnectorScheduleRead: {
+      /** Bands */
+      bands: components['schemas']['PriceBandRead'][]
+      /** Connector Ids */
+      connector_ids: string[]
+    }
     /** ErrorModel */
     ErrorModel: {
       /** Detail */
@@ -451,6 +458,68 @@ export interface components {
     OAuth2AuthorizeResponse: {
       /** Authorization Url */
       authorization_url: string
+    }
+    /**
+     * PointDetailRead
+     * @description One point, with the price schedules its connectors are charged by.
+     *
+     *     Separate from ``PointRead`` because ``GET /points`` takes a bbox and has no
+     *     limit: resolving bands for every connector in a viewport would serve a list
+     *     that shows none of them.
+     */
+    PointDetailRead: {
+      /** Address */
+      address: string
+      /**
+       * Aggregate Status
+       * @enum {string}
+       */
+      aggregate_status: 'available' | 'occupied' | 'unknown'
+      /** Charging When Closed */
+      charging_when_closed: boolean | null
+      /** City */
+      city: string
+      /** Country Code */
+      country_code: string
+      /** Cpo Name */
+      cpo_name: string | null
+      /** Evses */
+      evses: components['schemas']['EvseRead'][]
+      /** Facilities */
+      facilities: string[] | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Latitude */
+      latitude: number
+      /** Longitude */
+      longitude: number
+      /** Name */
+      name: string | null
+      /** Opening 24 7 */
+      opening_24_7: boolean
+      /** Opening Hours */
+      opening_hours:
+        | {
+            [key: string]: unknown
+          }[]
+        | null
+      /** Parking Type */
+      parking_type: string | null
+      /** Postal Code */
+      postal_code: string | null
+      /** Price Schedules */
+      price_schedules: components['schemas']['ConnectorScheduleRead'][]
+      /** Region */
+      region: string | null
+      /** Source */
+      source: string
+      /** State */
+      state: string | null
+      /** Time Zone */
+      time_zone: string
     }
     /** PointRead */
     PointRead: {
@@ -504,6 +573,23 @@ export interface components {
       state: string | null
       /** Time Zone */
       time_zone: string
+    }
+    /** PriceBandRead */
+    PriceBandRead: {
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string
+      /** Is Current */
+      is_current: boolean
+      /** Price Per Kwh */
+      price_per_kwh: number
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string
     }
     /** PricePoint */
     PricePoint: {
@@ -562,16 +648,10 @@ export interface components {
       duration_minutes: number
       /** Energy Kwh */
       energy_kwh: number
-      /** Margin Per Kwh */
-      margin_per_kwh: number | null
       /** Peak Power Kw */
       peak_power_kw: number
       /** Price Per Kwh */
       price_per_kwh: number | null
-      /** Price Source */
-      price_source: ('reve_tariff' | 'pvpc_plus_margin') | null
-      /** Pvpc Per Kwh */
-      pvpc_per_kwh: number | null
       /** Soc From */
       soc_from: number
       /** Soc To */
@@ -1152,7 +1232,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['PointRead']
+          'application/json': components['schemas']['PointDetailRead']
         }
       }
       /** @description Unknown point; body mirrors REVE's error shape. */

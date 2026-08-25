@@ -1,5 +1,3 @@
-import type { SimulationResult } from './useSimulate'
-
 export function durationLabel(minutes: number): string {
   const total = Math.round(minutes)
   const hours = Math.floor(total / 60)
@@ -14,11 +12,6 @@ export function energyLabel(kwh: number): string {
 }
 
 export function costLabel(eur: number | null): string {
-  if (eur === null) return '—'
+  if (eur === null) return 'Sin precio'
   return `${eur.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
-}
-
-export const PRICE_SOURCE_LABELS: Record<NonNullable<SimulationResult['price_source']>, string> = {
-  reve_tariff: 'tarifa real del punto',
-  pvpc_plus_margin: 'estimado (PVPC + margen)',
 }

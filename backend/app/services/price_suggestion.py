@@ -1,15 +1,20 @@
+"""PVPC plus a calibrated CPO margin: a price to *suggest*, never to attribute.
+
+No caller today, deliberately. The simulator used to fall back to this when REVE
+published no tariff, which presented an estimate as the operator's price; it now
+reports no cost instead. What survives is the recommendation an owner is offered
+when pricing their own point in Phase 7, where a suggested number is the point
+rather than a claim about someone else's charger.
+"""
+
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal
-from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.price import ElectricityPrice
-
-MADRID = ZoneInfo("Europe/Madrid")
+from app.services.pvpc import price_for_hour
 
 MARGIN_AC_EUR_PER_KWH = Decimal("0.22")
 MARGIN_DC_EUR_PER_KWH = Decimal("0.32")
@@ -31,15 +36,6 @@ def margin_for_power_type(power_type: str) -> Decimal:
     return MARGIN_AC_EUR_PER_KWH
 
 
-async def pvpc_for_hour(db: AsyncSession, hour: datetime) -> Decimal | None:
-    """PVPC price for the slot containing ``hour`` (a tz-aware instant)."""
-    slot = hour.astimezone(MADRID).replace(minute=0, second=0, microsecond=0)
-    stmt = select(ElectricityPrice.price_per_kwh).where(
-        ElectricityPrice.hour_start == slot
-    )
-    return (await db.execute(stmt)).scalar_one_or_none()
-
-
 async def estimate_price(
     db: AsyncSession,
     *,
@@ -54,7 +50,7 @@ async def estimate_price(
     if tariff_price is not None:
         return PriceEstimate(price_per_kwh=tariff_price, source="reve_tariff")
 
-    pvpc = await pvpc_for_hour(db, hour)
+    pvpc = await price_for_hour(db, hour)
     if pvpc is None:
         return None
 

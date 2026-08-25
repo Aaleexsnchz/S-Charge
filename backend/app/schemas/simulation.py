@@ -4,7 +4,6 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 ChargeType = Literal["AC", "DC"]
-PriceSource = Literal["reve_tariff", "pvpc_plus_margin"]
 
 
 class SimulationRequest(BaseModel):
@@ -30,6 +29,4 @@ class SimulationResult(BaseModel):
     average_power_kw: float
     cost_eur: float | None
     price_per_kwh: float | None
-    price_source: PriceSource | None
-    pvpc_per_kwh: float | None
-    margin_per_kwh: float | None
+    """Effective price across the charge: the cost divided by the energy priced."""

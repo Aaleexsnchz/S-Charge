@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/api/client'
 import type { components } from '@/lib/api/schema'
 
 export type Point = components['schemas']['PointRead']
+export type PointDetail = components['schemas']['PointDetailRead']
 
 export class PointNotFoundError extends Error {
   constructor() {
@@ -16,7 +17,7 @@ export function usePoint(pointId: string | null) {
     queryKey: ['point', pointId],
     enabled: pointId !== null,
     retry: (failureCount, error) => !(error instanceof PointNotFoundError) && failureCount < 2,
-    queryFn: async (): Promise<Point> => {
+    queryFn: async (): Promise<PointDetail> => {
       const { data, response } = await apiClient.GET('/api/points/{point_id}', {
         params: { path: { point_id: pointId as string } },
       })

@@ -16,15 +16,83 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { type ConnectorOption, SimulateDialog } from '@/features/simulate/SimulateDialog'
 import {
   googleMapsDirectionsUrl,
+  longPriceLabel,
+  type PricingState,
+  pointPricingState,
   powerLabel,
-  priceLabel,
+  pricingState,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
+  shortPriceLabel,
   standardLabel,
 } from './display'
+import { PriceScheduleCard } from './PriceScheduleCard'
 import { PointNotFoundError, usePoint } from './usePoint'
 
 const WEEKDAY_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+function PriceCard({ state }: { state: PricingState }) {
+  if (state.kind === 'per_kwh') {
+    return (
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="overline" color="text.secondary">
+          Desde
+        </Typography>
+        <Typography
+          variant="numeric"
+          sx={{
+            display: 'block',
+            fontSize: 32,
+            fontWeight: 700,
+            color: 'primary.main',
+            lineHeight: 1.1,
+          }}
+        >
+          {state.pricePerKwh.toLocaleString('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}{' '}
+          €
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          por kWh
+        </Typography>
+      </Paper>
+    )
+  }
+
+  if (state.kind === 'free') {
+    return (
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="overline" color="text.secondary">
+          Precio
+        </Typography>
+        <Typography
+          sx={{
+            display: 'block',
+            fontSize: 32,
+            fontWeight: 700,
+            color: 'success.main',
+            lineHeight: 1.1,
+          }}
+        >
+          Gratis
+        </Typography>
+      </Paper>
+    )
+  }
+
+  return (
+    <Paper sx={{ p: 2 }}>
+      <Typography variant="overline" color="text.secondary">
+        Precio
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {longPriceLabel(state)}
+      </Typography>
+    </Paper>
+  )
+}
 
 export function PointDetailPage() {
   const { pointId } = useParams<{ pointId: string }>()
@@ -69,10 +137,9 @@ export function PointDetailPage() {
     })),
   )
 
-  const prices = point.evses
-    .flatMap((evse) => evse.connectors.map((connector) => connector.current_price_per_kwh))
-    .filter((price): price is number => price != null)
-  const minPrice = prices.length > 0 ? Math.min(...prices) : null
+  const pointPrice = pointPricingState(point)
+
+  const connectorLabels = new Map(connectorOptions.map((option) => [option.id, option.label]))
 
   return (
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
@@ -105,32 +172,9 @@ export function PointDetailPage() {
           )}
         </Stack>
 
-        {minPrice !== null && (
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="overline" color="text.secondary">
-              Desde
-            </Typography>
-            <Typography
-              variant="numeric"
-              sx={{
-                display: 'block',
-                fontSize: 32,
-                fontWeight: 700,
-                color: 'primary.main',
-                lineHeight: 1.1,
-              }}
-            >
-              {minPrice.toLocaleString('es-ES', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}{' '}
-              €
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              por kWh
-            </Typography>
-          </Paper>
-        )}
+        {pointPrice !== null && <PriceCard state={pointPrice} />}
+
+        <PriceScheduleCard schedules={point.price_schedules} connectorLabels={connectorLabels} />
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
@@ -202,7 +246,7 @@ export function PointDetailPage() {
                         {` · ${connector.power_type === 'DC' ? 'DC' : 'AC'}`}
                       </Typography>
                       <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                        {priceLabel(connector.current_price_per_kwh) ?? '—'}
+                        {shortPriceLabel(pricingState(connector))}
                       </Typography>
                     </Stack>
                   ))}

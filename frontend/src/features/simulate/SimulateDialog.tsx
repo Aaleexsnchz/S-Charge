@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
-import { costLabel, durationLabel, energyLabel, PRICE_SOURCE_LABELS } from './display'
+import { costLabel, durationLabel, energyLabel } from './display'
 import { useSimulate } from './useSimulate'
 import { useVehicles } from './useVehicles'
 
@@ -171,18 +171,26 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
                     kW
                   </Typography>
                 </Stack>
-                {result.price_source && (
+                {result.price_per_kwh !== null ? (
                   <Typography
                     variant="caption"
                     color="text.secondary"
                     sx={{ mt: 0.5, display: 'block' }}
                   >
-                    Precio:{' '}
-                    {result.price_per_kwh?.toLocaleString('es-ES', {
+                    Precio medio de la carga:{' '}
+                    {result.price_per_kwh.toLocaleString('es-ES', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{' '}
-                    €/kWh · {PRICE_SOURCE_LABELS[result.price_source]}
+                    €/kWh
+                  </Typography>
+                ) : (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, display: 'block' }}
+                  >
+                    El operador no publica precio, así que no se calcula el coste.
                   </Typography>
                 )}
               </Paper>
