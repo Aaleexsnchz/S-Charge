@@ -97,7 +97,8 @@ Done. Measured on a real AC connector, the same 42 kWh charge costs **13,21 €*
 
 **Acceptance:** both jobs run on a cadence that was chosen, and the phase's numbers are recorded.
 
-- [ ] Choose the cadence per job and record why in [backend/crontab](../../backend/crontab). REE publishes the next day's PVPC once each evening, so hourly is ~23 wasted runs a day; the tariff refresh after the drain is asking about one hour of a ~7/hour change rate
+- [x] **REVE's cadence is decided and encoded** in `RefreshTarget`, with the numbers behind each choice: tariffs every tick, `/cpos` daily (one changed in June, one in March), `/locations` six-hourly (~88 change a day, so an hourly window holds four). Priority order does the rest — the catalogue only ever gets what prices leave
+- [ ] **PVPC's cadence is still open.** REE publishes the next day once each evening, so `0 9 * * *` is one useful run and no wasted ones — but the fetch also back-fills, and nothing has tested what happens when REE is late. Decide against a real failure rather than in advance
 - [ ] Both jobs observed running unattended for a day, with `last_error` empty
 - [ ] **Re-run the unpriced census after the drain and record what moved.** The 8,197 split into what the ETL can repair and what it cannot, and the split is a measurement worth having: of the 1,155 unfilled records, **740 changed at source since the stall** and the drain should carry a real price for them. The **2,138 expired tariffs cannot be repaired at all** — every one was last touched at source on or before 2026-06-26, so a `date_from = 2026-07-08` window never returns them, and an unfiltered drain would only re-fetch the same expired row. That is a limit of the source, not of the ETL, and it belongs in the memoria as one
 - [ ] The measured price-model numbers written into the memoria — see below
