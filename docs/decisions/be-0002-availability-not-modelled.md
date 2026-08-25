@@ -3,7 +3,7 @@ id: be-0002
 status: accepted
 phase: 3
 date: 2026-06
-related: [be-0001]
+related: [be-0001, be-0004]
 ---
 
 # be-0002: Do not model live availability — show points as available and say so
@@ -17,7 +17,7 @@ Inventing it was planned twice and abandoned twice. First calibrated against ACN
 **Consequences.**
 
 - The map's status filter is present but effectively inert until a real source exists. Keep it — it is wired to the same rollup a real feed would populate.
-- **Bookings cannot mean "this point is free now"**, only "this slot is reserved in our system". Phase 9 must decide what a booking implies for a point nobody else can observe, and must not present a reservation as a guarantee of physical availability.
+- **A reservation could never mean "this point is free now"**, only "this slot is reserved in our system", for a point nobody else can observe. [be-0004](be-0004-session-is-the-quote-it-accepted.md) resolves this by not building reservations at all: a session asserts only that a driver charged, and the occupancy it implies covers this app's own sessions alone.
 - The honesty statement is load-bearing thesis content, not a caveat: it appears in `plan.md`, the data-model chapter, and the defense narrative.
 - The schema is left ready for a real source — a CPO agreement, or REVE publishing a feed — with no migration required beyond writing to `Evse.status`.
 

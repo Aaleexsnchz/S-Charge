@@ -229,51 +229,72 @@ completa o una forma simplificada, ya que un enchufe de garaje no tiene tres EVS
 propietario la ubicación, con chincheta en el mapa o geocodificando una dirección; y si la
 propiedad se verifica de alguna manera o se acepta bajo declaración.
 
-### Reservas
+### Sesiones de recarga: un solo flujo de la estimación al cobro
 
-Reservar una franja horaria en un punto, con detección de solapes para que la reserva signifique
-algo. El diseño previsto es un *endpoint* de creación que rechace el solape en la propia base de
-datos, el listado y la cancelación de las reservas propias, y la tarjeta de próxima reserva del
-dashboard alimentada por fin con datos reales.
+Configurar una recarga en un conector, ver lo que va a costar, confirmarla o rechazarla, y que la
+sesión corra hasta agotar su duración prevista o hasta que el conductor la pare. Al confirmar se
+**bloquea** el importe presupuestado contra el monedero; al terminar se cobra la energía realmente
+entregada y se libera el resto. Hoy no existe ni la tabla.
 
-La pregunta de fondo es incómoda y conviene formularla tal cual: no tiene sentido reservar un punto
-sembrado de REVE, porque ningún operador real va a respetar una reserva hecha en una aplicación con
-la que no tiene relación alguna. La opción defendible es restringir las reservas a los puntos dados
-de alta por particulares, que es el modelo que siguen las plataformas entre pares existentes
-[23], y dejar el resto del catálogo en consulta. Quedan por fijar la granularidad y los
-límites —duración de la franja, máximo por reserva, antelación admitida, plazo de cancelación— y
-qué significa una reserva para la disponibilidad de un punto cuya disponibilidad real no se modela.
+**Por qué la estimación y el registro son la misma cosa, y no dos.** Sin hardware y sin flujo de
+estado, **nada observa una recarga real**: la energía entregada no se puede medir, solo se puede
+observar el tiempo de reloj. Una «sesión registrada» no es entonces una medición que la simulación
+aproxima —**es la simulación, registrada**—. Mantenerlas como funcionalidades separadas obligaría a
+implementar dos veces el mismo modelo, con la certeza de que divergirían, y la segunda copia no
+tendría mejor derecho a la verdad que la primera. De ahí que el flujo sea uno.
 
-### Registro de sesiones
+**El presupuesto es vinculante, y eso simplifica el dinero.** La sesión se tarifica con las franjas
+vigentes en el momento de confirmar y no se vuelve a tarificar al liquidar. Como una sesión puede
+acabar antes de lo previsto pero nunca después, **su coste solo puede ser menor que el bloqueado,
+jamás mayor**: el saldo se comprueba una sola vez, al bloquear, y desaparece la pregunta de qué
+hacer cuando no alcanza a mitad de recarga. La otra cara es igual de importante para el conductor:
+el ETL reescribe las franjas de un conector cada hora, y honrar el presupuesto significa que nadie
+paga un número que cambió mientras estaba enchufado. Es el mismo principio que sostiene todo el
+capítulo de precios —lo que la aplicación dice es lo que la aplicación hace después.
 
-Un historial de recargas efectivamente ocurridas, con energía, duración y coste, por conductor y
-por punto, del que se derivarían las estadísticas del dashboard y el uso que ve el propietario. Hoy
-no existe ni la tabla.
+Parar antes de tiempo no cuesta un modelo nuevo: el modelo de carga ya informa de en qué momento
+llega la energía de cada tramo, porque una recarga que cruza una frontera de franja hay que
+tarificarla franja a franja, así que una sesión interrumpida es esa misma suma truncada.
 
-El obstáculo no es de programación. Sin hardware y sin flujo de estado, **nada observa una recarga
-real**: el sistema no puede saber que ocurrió. Solo hay dos salidas honestas. O el conductor pulsa
-iniciar y parar, y la aplicación mide tiempo de reloj y estima la energía; o una reserva completada
-se convierte automáticamente en sesión usando la simulación como cifra de energía. La primera
-depende de que el usuario coopere; la segunda registra una recarga que quizá no sucedió. Se elija
-la que se elija, hay que declararla en la interfaz y en la memoria, porque de ella depende el valor
-de todas las cifras agregadas que la aplicación muestre después.
+**Las reservas quedan fuera, y la razón merece decirse.** Reservar una plaza exige una contraparte.
+No tiene sentido reservar un punto sembrado de REVE, porque ningún operador va a respetar una
+reserva hecha en una aplicación con la que no tiene relación alguna, y una reserva que nadie va a
+respetar no vale nada para quien llega y encuentra el poste ocupado. La opción defendible sería
+restringirlas a los puntos dados de alta por particulares, como hacen las plataformas entre pares
+existentes [23], pero eso deja la funcionalidad ejercitable sobre casi nada. Una sesión, en cambio,
+no afirma más que lo ocurrido —el conductor enchufó, y esto costó—, no necesita la cooperación de
+nadie y funciona sobre el catálogo entero. Reservar con antelación sobrevive como idea para cuando
+existan propietarios, no como alcance comprometido.
+
+**Lo que la sesión no puede saber.** Que un conector esté ocupado porque esta aplicación inició una
+sesión en él no es saber si está ocupado en el mundo, y la interfaz no debe confundir las dos
+cosas: la disponibilidad real sigue sin modelarse. La sesión termina además **por reloj y calculada
+al leerla**, no con un temporizador ni un trabajo de fondo, de modo que una sesión cuya duración
+venció con la aplicación cerrada o el contenedor reiniciándose está sencillamente terminada la
+próxima vez que se mira.
 
 ### Monedero simulado
 
 Para que cargar en el punto de otro mueva dinero hace falta un monedero: al conductor se le
-descuenta, al propietario se le abona y ambos ven el movimiento. El diseño fija una restricción
-desde el principio: **el saldo es un valor derivado de un libro de anotaciones *append-only***,
-nunca una columna mutable que se suma y se resta. Un apunte inmutable por movimiento permite
-reconstruir cualquier saldo, auditar una discrepancia y hacer idempotente un reintento; una columna
-mutable no permite ninguna de las tres cosas y convierte cualquier error de concurrencia en dinero
-perdido sin rastro.
+descuenta, al propietario se le abona y ambos ven el movimiento. **El dinero tiene que existir
+antes de que algo lo gaste**, así que el monedero precede a las sesiones en lugar de seguirlas: lo
+primero que hace una sesión es bloquear saldo, y sin libro de anotaciones no hay nada contra lo que
+construirla.
 
-No hay pasarela de pago real, ni la habrá dentro del alcance de este trabajo: la recarga de saldo
-es simulada y el dinero no existe fuera de la base de datos. Las preguntas abiertas son si los
-apuntes se registran como filas con signo o como movimientos por partida doble, qué ocurre cuando
-el saldo es insuficiente —bloquear al reservar, bloquear al completar o admitir saldo negativo— y
-si la plataforma se queda una comisión, que es el argumento del modelo de negocio (capítulo 11) y
-obliga a introducir una tercera cuenta en el libro.
+El diseño fija una restricción desde el principio: **el saldo es un valor derivado de un libro de
+anotaciones *append-only***, nunca una columna mutable que se suma y se resta. Un apunte inmutable
+por movimiento permite reconstruir cualquier saldo, auditar una discrepancia y hacer idempotente un
+reintento; una columna mutable no permite ninguna de las tres cosas y convierte cualquier error de
+concurrencia en dinero perdido sin rastro.
+
+Bloquear y liquidar es además lo que hacen las redes de recarga reales, que preautorizan un importe
+y ajustan al final. **El dinero es simulado; el mecanismo no lo es**, y la memoria reivindica lo
+segundo sin reivindicar lo primero. No hay pasarela de pago real ni la habrá dentro del alcance de
+este trabajo: la recarga de saldo es simulada y el dinero no existe fuera de la base de datos. Las
+preguntas abiertas son si los apuntes se registran como filas con signo o como movimientos por
+partida doble, si un bloqueo es un apunte más o una reserva aparte del saldo, y si la plataforma se
+queda una comisión, que es el argumento del modelo de negocio (capítulo 11) y obliga a introducir
+una tercera cuenta en el libro.
 
 ## Optimización de la carga
 

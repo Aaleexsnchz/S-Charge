@@ -151,7 +151,7 @@ construido y lo diseñado: estos quedan fuera incluso del diseño.
 
 - **La disponibilidad en tiempo real no se modela.** El sistema no recibe estado de los puntos
   desde sus operadores, de modo que la ocupación que muestra el mapa no procede de la
-  infraestructura, sino de las reservas y las sesiones que los usuarios inician en la propia
+  infraestructura, sino de las sesiones que los usuarios inician en la propia
   aplicación. Es una simulación coherente entre usuarios, no un reflejo del estado real, y así se
   declara; el apartado 3.2 explica la decisión de diseño y el capítulo 5, el modelo que la
   sostiene.

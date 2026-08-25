@@ -9,6 +9,6 @@ The landing screen at `/`: who you are, what is near you, and a summary of your 
 - ✅ **Greeting + date** from `GET /api/users/me`.
 - ✅ **Nearby points** from browser geolocation (grant-once) + `GET /api/points?bbox`.
 - 🟡 **Stat tiles** (sessions, kWh, €, CO₂) — `dashboard.mock.ts`, badged "datos de ejemplo". Needs [session history](sessions.md) to be real; CO₂ needs a defensible emissions factor or it should be dropped from the UI.
-- 🟡 **Next reservation card** — `dashboard.mock.ts`. Needs [bookings](bookings.md).
+- 🟡 **Active session card** — `dashboard.mock.ts`. Needs [charging sessions](sessions.md).
 
 Both mock surfaces become real in [Phase 9](../plan.md).

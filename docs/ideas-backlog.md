@@ -9,7 +9,7 @@ remove it here.
 
 AI is a committed **Phase 12** (planned), but the **specific features are not yet decided** —
 this is the menu to choose from. All call the app's own APIs (points, simulate, recommend,
-bookings, prices) as tools — no new data sources. Depth scales to remaining hours.
+sessions, prices) as tools — no new data sources. Depth scales to remaining hours.
 
 - **NL charging/trip assistant** — a tool-calling agent that plans a charge or trip
   end-to-end: find a point → simulate the session for the user's car → optimise the
@@ -67,3 +67,10 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
 - The original ACN-Data integration (real-session-grounded occupancy + simulation
   realism) was **dropped, not deferred** — it is not a backlog item. It lives only as a
   documented road-not-taken in [thesis/indice.md](thesis/indice.md).
+
+## Reserving a point ahead
+
+Booking a point for a future window, which [Phase 10](plan.md) deliberately leaves out: on the REVE
+catalogue a reservation is a promise no operator has agreed to keep. It becomes defensible only for
+a point whose owner controls it, and only once owners exist — so it is an idea for after
+[owner points](features/owner-points.md), not committed scope.

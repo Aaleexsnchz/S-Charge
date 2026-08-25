@@ -187,7 +187,9 @@ sistema español con el que se dialoga habla 2.2.1. De lo que añade —pago dir
 poste, campos fiscales, extensibilidad y un módulo opcional de reservas— solo el último tiene algo
 que ver con este trabajo, ya que estandariza calendarios, reservas y penalizaciones por no
 comparecer. Tampoco se emplea porque usarlo exigiría un acuerdo con el operador del punto que este
-trabajo no tiene; la reserva se resuelve, por tanto, sobre la réplica propia del catálogo.
+trabajo no tiene, y esa misma ausencia de contraparte es la que descarta reservar aquí: sin
+operador que la respete, lo que se registra sobre la réplica propia del catálogo es la sesión que
+el conductor dice haber hecho, no una plaza reservada (capítulo 7).
 
 Conviene no confundir OCPI con OCPP (*Open Charge Point Protocol*), de la Open Charge Alliance,
 porque actúan en niveles distintos. OCPP conecta cada estación de recarga con el sistema de gestión

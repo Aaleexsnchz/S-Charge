@@ -35,8 +35,8 @@ energía, duración y coste a partir de las especificaciones del coche y del con
 La aplicación está desplegada y accesible públicamente bajo HTTPS, es instalable en el móvil y
 se entrega mediante una cadena de integración y despliegue continuos. La memoria documenta
 también lo que queda diseñado y no implementado —la optimización del momento de la recarga
-contra la curva de precios, los puntos aportados por particulares, la reserva, el monedero y la
-capa de asistencia conversacional—, el marco regulador que
+contra la curva de precios, los puntos aportados por particulares, las sesiones de recarga cobradas
+contra un monedero simulado y la capa de asistencia conversacional—, el marco regulador que
 aplica al sistema, su viabilidad económica y las carencias conocidas frente a una explotación
 real. Un criterio recorre el trabajo: distinguir de forma explícita qué parte es dato real, qué
 parte es estimación y qué parte no existe todavía. Por eso el estado real de la red pública, que

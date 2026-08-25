@@ -113,9 +113,9 @@ cuando pertenece a una fase declarada opcional.
 | **RF-14** | Un usuario da de alta un punto propio indicando ubicación, tipo de conector, potencia y visibilidad | Alta | Diseñado (fase 8) |
 | **RF-15** | El propietario fija el precio de un punto público como PVPC más margen o como precio fijo por kWh | Alta | Diseñado (fase 8) |
 | **RF-16** | Dada la energía necesaria y la hora de salida, el sistema propone la franja más barata en un punto propio y cuantifica el ahorro frente a cargar de inmediato | Alta | Diseñado (fase 9) |
-| **RF-17** | La reserva de un punto detecta solapes y rechaza la que se pisa con otra ya existente | Media | Diseñado (fase 10) |
-| **RF-18** | Al cerrarse una reserva queda registrada la sesión con energía, duración y coste | Media | Diseñado (fase 10) |
-| **RF-19** | El saldo del monedero se deriva de un libro de apuntes de solo anexado; una sesión de pago adeuda al conductor y abona al propietario, y ambos ven el movimiento | Baja | Diseñado (fase 11) |
+| **RF-17** | Al confirmar una sesión el sistema bloquea el importe presupuestado; la sesión se tarifica con las franjas vigentes en ese momento y no se vuelve a tarificar | Media | Diseñado (fase 11) |
+| **RF-18** | Una sesión termina al agotarse su duración prevista o cuando el conductor la para, y al liquidarse queda registrada con energía, duración y coste, cobrando solo la energía entregada | Media | Diseñado (fase 11) |
+| **RF-19** | El saldo del monedero se deriva de un libro de apuntes de solo anexado; una sesión de pago adeuda al conductor y abona al propietario, y ambos ven el movimiento | Baja | Diseñado (fase 10) |
 | **RF-20** | El asistente conversacional opera sobre las APIs propias del sistema, sin incorporar fuentes de datos nuevas | Baja | Diseñado (fase 12) |
 
 **Tabla 3.3.** Requisitos funcionales. El estado distingue lo construido de lo formulado, e

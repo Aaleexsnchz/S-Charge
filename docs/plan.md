@@ -4,13 +4,13 @@ The high-level definition of the project: what it is, what it is built from, and
 
 ## Context
 
-Master's thesis (IoT): a **PWA** for managing EV charging. It unifies, under one app, what is today fragmented across each operator's own application, and improves on the Spanish government's REVE app (which only lets you view points and plan a route). It seeds the real Spanish network from the **REVE API** (locations, EVSEs, connectors, tariffs) and adds the functionality REVE lacks: private charging points with paid use, bookings, price/time charging optimisation, charge simulation, and AI/agent features. Alongside the app, the thesis includes a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (including the transition to a native mobile app).
+Master's thesis (IoT): a **PWA** for managing EV charging. It unifies, under one app, what is today fragmented across each operator's own application, and improves on the Spanish government's REVE app (which only lets you view points and plan a route). It seeds the real Spanish network from the **REVE API** (locations, EVSEs, connectors, tariffs) and adds the functionality REVE lacks: private charging points with paid use, charging sessions paid from a simulated wallet, price/time charging optimisation, charge simulation, and AI/agent features. Alongside the app, the thesis includes a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (including the transition to a native mobile app).
 
 **The thesis pillar is the application itself** — its conception, design, full-stack development, deployment, and viability. The charging optimiser and the AI/agent features are *value-add functionalities of the app*, not separate cores standing apart from it.
 
 **Goal:** a real, deployed, usable application to demo at thesis defense, publicly accessible.
 
-**Two user roles.** **Drivers** find points on the map, book them, navigate via Google Maps, simulate a charge for their car model before plugging in, charge their own point on an economically optimised schedule, pay for public sessions from a simulated wallet, and review their session history. **Owners** register points for private or public use, price public ones (PVPC + margin, or fixed), and manage/monitor their points' usage and revenue.
+**Two user roles.** **Drivers** find points on the map, start a charging session at them, navigate via Google Maps, see what a charge will cost for their car model before confirming, charge their own point on an economically optimised schedule, pay for public sessions from a simulated wallet, and review their session history. **Owners** register points for private or public use, price public ones (PVPC + margin, or fixed), and manage/monitor their points' usage and revenue.
 
 ---
 
@@ -21,7 +21,7 @@ Master's thesis (IoT): a **PWA** for managing EV charging. It unifies, under one
 | **REVE API** | Real-world map layer (seed source) | Spanish CPO catalogue (locations, EVSEs, connectors), tariffs, OCPI 2.2.1 metadata. Seeded once into Postgres, refreshed incrementally. |
 | **REE / PVPC** | Hourly electricity prices (Spain) | Drives owner dynamic pricing (PVPC + margin) and the smart home-charging optimiser. Public API, no token. |
 | **Vehicle catalogue** | Simulation input | Curated table of common EVs in Spain (battery capacity, max AC/DC charging power) seeded from public spec sheets. |
-| **User-generated** | Platform contribution | Private charging points with public/private toggle, paid use, bookings, recorded sessions. |
+| **User-generated** | Platform contribution | Private charging points with public/private toggle, paid use, recorded sessions. |
 
 REVE provides the real network presence; PVPC provides the economics; user-generated points provide the platform contribution.
 
@@ -52,7 +52,7 @@ React + Vite + TypeScript with MUI, React Router and TanStack Query on the front
                    ▼
   ┌──────────────────────────────────┐         ┌───────────────────────┐
   │  PostgreSQL                      │ ◄─────── │  ETL scripts          │
-  │  users · bookings                │ periodic │  (backend/scripts/)   │
+  │  users · sessions                │ periodic │  (backend/scripts/)   │
   │  charging_points · connectors    │  writes  │   seed_reve.py        │
   │  tariffs · vehicles · prices     │          │   fetch_pvpc.py       │
   └──────────────────────────────────┘         └───────────────────────┘
@@ -68,11 +68,11 @@ React + Vite + TypeScript with MUI, React Router and TanStack Query on the front
 ## Features
 
 1. **Map** — REVE + public user points with filters (availability, connector, price), Google Maps redirect
-2. **Point detail** — real data from REVE + booking
+2. **Point detail** — real data from REVE + starting a charging session
 3. **Pre-charge simulation** — driver picks car model + connector (+ SoC range): predicted duration, energy, cost (spec/physics-based: power = min(vehicle, connector), AC/DC-aware taper)
 4. **Smart home charging** — at an owned point: cheapest charging schedule for tonight given PVPC hourly prices and departure time
 5. **Private charging points + paid use** — user-registered, private or public; public ones priced as PVPC + margin or fixed; drivers pay from a simulated wallet/ledger, owners credited (real payment processing: stretch)
-6. **Driver dashboard** — bookings + recorded session history (energy, duration, cost) + wallet balance/transactions
+6. **Driver dashboard** — the active session + recorded history (energy, duration, cost) + wallet balance/transactions
 7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue from the ledger) and management
 8. **AI/agent assistant** — value-add features over the app's own APIs; feature set decided in Phase 12
 
@@ -89,7 +89,6 @@ One document per feature, with live implementation status: [features/](features/
 | `/points/:id` | Point detail + pre-charge simulation dialog |
 | `/sessions` | Driver session history |
 | `/my-points` | Owner point management + stats |
-| `/bookings` | Driver bookings (Phase 9) |
 | `/profile`, `/login`, … | Profile (opened from the avatar) + auth |
 
 Per-screen implementation status: [features/](features/).
@@ -110,8 +109,8 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 6 | ETL reactivation + backfill | Core | Not started | [phase-6](phases/phase-6.md) |
 | 7 | Private charging points + owner pricing | Core | Not started | planned at phase start |
 | 8 | Smart charging optimiser | Core | Not started | planned at phase start |
-| 9 | Bookings + session recording | Core | Not started | planned at phase start |
-| 10 | Wallet + paid sessions | Core | Not started | planned at phase start |
+| 9 | Wallet + ledger | Core | Not started | planned at phase start |
+| 10 | Charging sessions | Core | Not started | planned at phase start |
 | 11 | Trip planner with charging stops | Core | Not started | planned at phase start |
 | 12 | AI/agent assistant | **Optional** | Not started | planned at phase start |
 | 13 | Polish, security + hardening | Core | Not started | planned at phase start |
@@ -236,28 +235,32 @@ The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule 
 - [ ] Optimiser UI at an owned point
 - [ ] Algorithm write-up in [thesis/](thesis/): formulation, pseudocode, evaluation
 
-### Phase 9 — Bookings + session recording — not started
+### Phase 9 — Wallet + ledger — not started
 
-Reserving a point and recording what actually happened. Turns the dashboard's next-reservation card and the Sessions screen into real data.
-
-**Done when:**
-
-- [ ] Booking creation with conflict detection that rejects overlaps; user can view and cancel bookings
-- [ ] `/bookings` screen; the dashboard's next-reservation card reads real data
-- [ ] Completed bookings record a session (energy, duration, cost)
-- [ ] `/sessions` shows real history (mock removed); dashboard stats derive from it
-- [ ] Owner sees per-point sessions and energy delivered on `/my-points`
-
-### Phase 10 — Wallet + paid sessions — not started
-
-The economics: a simulated wallet/ledger so a session at someone else's public point moves money from driver to owner.
+The economics: a simulated wallet and append-only ledger, so that money exists before anything spends it. It lands before sessions because a session's first act is to hold funds against a balance.
 
 **Done when:**
 
-- [ ] Wallet/ledger: per-user balance, simulated top-up, transaction history
-- [ ] A paid session debits the driver and credits the owner; both see the movement
+- [ ] Wallet/ledger: per-user balance derived from an append-only ledger, simulated top-up, transaction history
+- [ ] Funds can be held against a balance and later settled or released, since that is how a session pays
 - [ ] Owner dashboard shows revenue derived from the ledger
 - [ ] **The offsite backup must start carrying user data — this phase is the trigger.** Today only the PII-free seed dump leaves the machine ([operations.md](operations.md)), which is right while accounts are reproducible: the irreplaceable asset is the REVE catalogue, ~12 days under a 5 req/hr cap, and an owner can re-register in a minute. A balance cannot be re-registered. From here, losing the host means losing money that existed, so the weekly copy has to become a **full dump encrypted client-side** — an `rclone crypt` remote, because B2's server-side encryption leaves the keys with Backblaze and the point is that the processor cannot read it. That in turn brings retention and right-to-erasure into scope for the backups, not just the database: a deleted account must age out of the offsite copies on a stated schedule
+
+### Phase 10 — Charging sessions — not started
+
+One flow from quote to settlement: the driver configures a charge at a point, sees what it will cost, confirms, and the session runs until it completes or they stop it. Replaces the Sessions mock and the dashboard's placeholder card with real data.
+
+**Reservations are not part of it.** Booking a point from the REVE catalogue is a promise no operator has agreed to keep, and a reservation that will not be honoured is worth nothing to the driver standing at an occupied charger. A session claims only what is true — the driver plugged in, and this is what it cost — so it works across the whole catalogue instead of only user-registered points. Reserving ahead survives as a parked idea for owned points ([ideas-backlog.md](ideas-backlog.md)).
+
+**Done when:**
+
+- [ ] Configure → quote → confirm at a point: the [simulation](features/simulation.md) prices the charge and the driver accepts or declines
+- [ ] Confirming holds the quoted amount; the session is priced at the bands quoted then, so it can only cost less than quoted and never more
+- [ ] A session ends when its planned duration elapses or the driver stops it, computed on read rather than by a timer or a background job
+- [ ] Stopping early charges only the energy delivered, priced band by band, and releases the rest of the hold
+- [ ] `/sessions` shows the active session and real history (mock removed); dashboard stats derive from it
+- [ ] Owner sees per-point sessions and energy delivered on `/my-points`
+- [ ] The thesis states plainly that nothing measures the charge: energy is modelled, only wall-clock time is observed, and occupancy covers this app's own sessions alone
 
 ### Phase 11 — Trip planner with charging stops — not started
 
@@ -274,7 +277,7 @@ Deterministic, and separate from [Phase 12](#phase-12--aiagent-assistant--not-st
 
 ### Phase 12 — AI/agent assistant — not started
 
-A value-add layer of natural-language / tool-calling features over the app's own APIs (points, simulate, recommend, bookings, prices). Money and optimisation stay deterministic; the LLM orchestrates and explains. The **specific feature set is decided at the start of the phase**, from the menu in [ideas-backlog.md](ideas-backlog.md), against remaining time.
+A value-add layer of natural-language / tool-calling features over the app's own APIs (points, simulate, recommend, sessions, prices). Money and optimisation stay deterministic; the LLM orchestrates and explains. The **specific feature set is decided at the start of the phase**, from the menu in [ideas-backlog.md](ideas-backlog.md), against remaining time.
 
 **Done when:**
 
@@ -307,7 +310,7 @@ Document, diagram, defend. Includes the business and strategy chapters that elev
 - [ ] Algorithm chapter: formulation, pseudocode, evaluation of the charging optimiser
 - [ ] Business plan & viability chapter; future-roadmap chapter (incl. native mobile)
 - [ ] Deployment & scaling chapter: architecture-for-scale + cost/unit-economics model. **Argued, not built** — the live deploy stays a single VPS. The chapter's job is to name where one box breaks first (concurrent connections, image builds competing with Postgres for RAM, no failover during a deploy) and what replaces each part at each step: managed Postgres, an image registry so the host only pulls, a second node behind a load balancer, and container orchestration (Kubernetes, ECS) only once there is a fleet to schedule. Justifying why orchestration is *not* used at this scale is as much a result as describing when it would be. Source material and the full gap register: [production-readiness.md](production-readiness.md) — the strongest parts are the ones specific to this system rather than generic (the scheduler cannot be replicated under a 5 req/hr cap; the ETL cursor races; in-process rate limiting weakens as replicas multiply), plus the two disciplines a multi-node move forces: **expand/contract migrations** and **observability**, of which there is currently none
-- [ ] Compliance section in the business chapter: **GDPR is unaddressed and unrecorded**, in an app storing EU personal data (`users`, `oauth_account`). Name what real users would make binding — privacy policy, lawful basis, processor agreements (Hetzner, Resend, Google), retention, right to erasure, portability, 72-hour breach notification — and note that erasure is not merely a missing endpoint, since deleting a user has to reckon with their sessions, bookings and ledger rows. Arguing the posture is legitimate chapter content even with nothing built; having never considered it is not
+- [ ] Compliance section in the business chapter: **GDPR is unaddressed and unrecorded**, in an app storing EU personal data (`users`, `oauth_account`). Name what real users would make binding — privacy policy, lawful basis, processor agreements (Hetzner, Resend, Google), retention, right to erasure, portability, 72-hour breach notification — and note that erasure is not merely a missing endpoint, since deleting a user has to reckon with their sessions and ledger rows. Arguing the posture is legitimate chapter content even with nothing built; having never considered it is not
 - [ ] **Rights over the mirrored REVE data — unexamined, needs research before it is argued.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the *engineering* case for holding a local copy and never asked the legal one. Mirroring a third party's dataset for one's own use and re-serving it to the public are different acts, and the second is what a deployed instance does. What has to be established: REVE's terms of use and whether they permit redistribution, whether the catalogue attracts the EU *sui generis* database right (Directive 96/9/EC) separately from copyright, whether attribution is owed and where it would be shown, and how much the answer is helped by the fact that the data is served only to authenticated users of this application rather than published openly. **Do not assert a conclusion in the thesis before checking the terms** — an invented permission is worse than an acknowledged open question, and "we mirror a public dataset" is not itself an argument
 - [ ] Defense slides (15–20) + demo plan
 - [ ] Tutor approves final version
@@ -326,7 +329,7 @@ Only if hours remain after the evaluated build (`v1.0.0`). Not committed scope; 
 ## What makes this thesis-worthy
 
 1. **The application itself** — a real, unified, multi-provider EV-charging PWA that improves on the government REVE app (which only views points and plans routes), built end-to-end: conception, design, full-stack implementation, deployment.
-2. **Platform model** — user-contributed charging infrastructure with paid use, bookings and a wallet/ledger economy.
+2. **Platform model** — user-contributed charging infrastructure with paid use and a wallet/ledger economy.
 3. **Charging optimiser** — a price/time optimisation algorithm over real PVPC prices, with evaluable output.
 4. **Deployed and usable** — at a real HTTPS URL, installable as a PWA, with at least one real external user.
 5. **Business & viability** — a brief business plan, a deployment/scaling/profitability strategy, and a roadmap (incl. native mobile) that argue the product beyond the prototype.

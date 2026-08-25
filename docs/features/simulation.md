@@ -4,6 +4,8 @@
 
 Before plugging in, a driver picks their car model and a connector and gets the predicted duration, energy and cost of the charge. Spec-based, not measured: power is `min(vehicle, connector)`, AC is flat, DC tapers above 80% SoC.
 
+**This is the quote step of a [charging session](sessions.md).** It stands alone today, and from Phase 10 it is what a driver accepts or declines before a session starts — the number it returns is the amount held against their [wallet](wallet.md). Nothing about the model changes; what changes is that its answer becomes binding, so a session records this prediction rather than computing a second one of its own.
+
 ## Today
 
 - **Backend** — `POST /api/simulate` over the simulation service. Cost is the sum over SoC steps of the energy each delivers times the band pricing the minute it arrives, so a session crossing a band boundary is billed at both; the result reports the effective price, the cost divided by the energy priced.

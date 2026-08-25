@@ -39,6 +39,7 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 | [be-0001](be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it | 2 |
 | [be-0002](be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so | 3 |
 | [be-0003](be-0003-price-on-the-connector.md) | Store the tariff's price bands, and resolve the price on the connector | 6 |
+| [be-0004](be-0004-session-is-the-quote-it-accepted.md) | A charging session is the quote the driver accepted, and the funds are held before it starts | 10 |
 
 ## Frontend
 
