@@ -56,6 +56,15 @@ una capacidad de ~12 000/día; los `upsert` idempotentes absorben cualquier
 reproceso en el borde y una página mayor que el presupuesto se reanuda en el
 siguiente tick.
 
+**Dos llamadas bastaron para dimensionar el drenaje.** Bajo un límite de 5
+peticiones/hora, planificar un trabajo largo sin gastar presupuesto en medirlo es
+en sí un problema. Se resolvió extrapolando desde la cobertura del espacio de
+identificadores: la página 1 abarcaba el 1,303 % y la 77 terminaba en el 99,18 %,
+dos estimaciones independientes que coincidían en ~7.760 filas y 78 páginas. El
+drenaje real fueron **7.774 filas en 78 páginas**, un error del 0,2 % —la técnica
+es reutilizable para cualquier fuente paginada con clave ordenada y cuota
+restrictiva.
+
 **Qué significa realmente un `504`, medido en directo.** El diagnóstico de junio
 —«las ventanas de una hora o más agotan el tiempo»— se dedujo *después* de que el
 fallo se curara solo, sin haberlo sondeado nunca mientras ocurría. En agosto de
