@@ -56,6 +56,39 @@ una capacidad de ~12 000/día; los `upsert` idempotentes absorben cualquier
 reproceso en el borde y una página mayor que el presupuesto se reanuda en el
 siguiente tick.
 
+**Qué significa realmente un `504`, medido en directo.** El diagnóstico de junio
+—«las ventanas de una hora o más agotan el tiempo»— se dedujo *después* de que el
+fallo se curara solo, sin haberlo sondeado nunca mientras ocurría. En agosto de
+2026 se pudo sondear, y lo contradice:
+
+| `date_from` | Intentos | Resultado |
+| --- | --- | --- |
+| `2026-08-24T09:00:04Z` | **27** | todos `504`, a ~29 s |
+| `2026-08-24T08:00:05Z` | **2** | ambos `200`, en 14,8 s y 15 s |
+
+La segunda ventana es una hora **más ancha** y contiene a la primera. Con la
+misma probabilidad de fallo, 27 fallos seguidos en un valor mientras su
+superconjunto no falla nunca es del orden de uno entre 134 millones: no es carga
+ni azar, es una propiedad de esa ventana concreta. Y sin `date_from` el endpoint
+responde en 1,7 s, mientras `/cpos` y `/locations` responden en 1,2 s y 3,9 s con
+la misma clave y el mismo host —ni la clave ni la IP estaban bloqueadas—.
+
+**El fallo tampoco empezó por una ventana ancha: el primero pidió sesenta
+minutos.** La anchura es la *consecuencia*, no la causa. Como la marca de agua
+solo avanza cuando la llamada tiene éxito, un refresco atascado ensancha su
+propia ventana una hora por cada hora que pasa. Ese trinquete es lo que convierte
+una hora mala en REVE en un hueco que ya no se puede cerrar, y explica la parada
+de julio mucho mejor que «se dejó el portátil apagado».
+
+**De ahí la recuperación: ensanchar a propósito, nunca saltar.** Ante un `504`,
+el tick reintenta con la última ventana que REVE sí sirvió
+(`reve_etl_cursor.last_good_date_from`). Una ventana más ancha devuelve todo lo
+que devolvería la estrecha, así que **no se pierde nada** —al contrario que
+adelantar la marca de agua por encima de un hueco no servido, que lo pierde para
+siempre—. Si esa también falla, el tick se detiene y lo dice: la única opción más
+ancha es el drenaje sin filtro, 469 páginas y unos cuatro días, demasiado grande
+para lanzarlo solo ante un fallo que nadie ha mirado.
+
 **Por qué la marca de agua no puede quedarse atrás.** Lo que pesa no es la
 antigüedad absoluta de `date_from`, sino cuánto ha cambiado **entre `date_from` y
 ahora**: una marca de agua reciente es un resultado pequeño y barato; una que ha

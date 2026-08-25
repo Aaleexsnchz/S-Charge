@@ -129,6 +129,30 @@ That makes no REVE call, so it is free to run as often as you like. A healthy dr
 
 **Deploy first, rewind second.** Rewinding before the fix is live re-reads those pages with the old code and discards them again.
 
+### What a `504` on the tariff refresh means
+
+**It means REVE could not serve *that window*, not that the data is gone, and not that the window is too wide.** Measured on 2026-08-24, while the refresh was stuck:
+
+| `date_from` | Attempts | Result |
+| --- | --- | --- |
+| `2026-08-24T09:00:04Z` | **27** | every one a `504`, at ~29 s |
+| `2026-08-24T08:00:05Z` | **2** | both `200`, in 14.8 s and 15 s |
+
+The second window is an hour **wider** and strictly contains the first. At even odds, 27 consecutive failures on one value while its superset never fails is about one in 134 million — so this is a property of the specific window, not load or luck.
+
+Two more probes from the same hour, which rule out the obvious explanations:
+
+- **no `date_from` at all** — `200` in 1.7 s. The endpoint is healthy.
+- **`/cpos` and `/locations`** — `200` in 1.2 s and 3.9 s on the same key and host. Neither the key nor the IP is blocked.
+
+Status codes separate the cases and are worth reading before theorising: `403` or a refused connection is a block, `401` a bad key, `429` the 5/hour cap, and `504` means the request authenticated and *their* backend then timed out.
+
+**The failure did not start because the window was wide.** The first failure asked for **sixty minutes** — the ticks either side of it were routine. The width is a consequence: the watermark only advances on success, so a stuck refresh widens its own window by an hour every hour. That ratchet is what turns one bad hour at REVE into a gap that cannot be closed.
+
+**So the recovery is to widen deliberately, never to skip.** `refresh_reve` retries a `504` against the last window REVE actually served (`reve_etl_cursor.last_good_date_from`). A wider window returns everything the narrower one would, so nothing is lost — unlike advancing the watermark past an unserved gap, which loses it for good and is why that behaviour was removed. If the remembered window fails too, the tick stops and says so rather than escalating: the only wider option is the unfiltered drain, 469 pages and about four days, which is too large to start unattended.
+
+**This invalidates the June 2026 diagnosis.** That incident was recorded as *"windows of an hour or more time out"*, inferred after it had healed and never probed while live. The measurements above contradict it, and the automatic watermark jump it justified is precisely what turned a transient failure into a 45-day hole.
+
 **Never run either ETL against production from a laptop.** The 5 req/hour cap is per API key, so a local run steals from the scheduler's budget and the two will fight over the same cursor — the advisory lock keeps them from corrupting it, but one of them simply loses its tick.
 
 ## Major Postgres upgrades

@@ -8,6 +8,7 @@ from app.etl.reve import (
     import_cpos,
     import_locations,
     import_tariffs,
+    seed_backlog_from_ledger,
 )
 from app.integrations.reve import ReveClient
 from app.models.charging_point import (
@@ -593,3 +594,66 @@ def test_tariff_changed_in_window(updated: str | None, expected: bool) -> None:
 def test_tariff_changed_in_window_no_tariff() -> None:
     window_start = datetime(2026, 6, 21, 0, 0, tzinfo=UTC)
     assert _tariff_changed_in_window({"tariffs": []}, window_start, None) is False
+
+
+async def test_the_backlog_prices_a_station_the_moment_it_arrives(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """The tariff arrives before the station and is banked; the station arrives
+    later and the banked price is applied then.
+
+    That ordering is the normal case, not an edge one: the refresh only fetches
+    `/connectors/tariffs`, so it meets stations built since the seed before the
+    catalogue pass can create them. Without the replay they would land unpriced
+    and stay so for the ~243 days until their price next changes.
+    """
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=_tariff_payload(0.37),
+    )
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+
+    async with reve_client as client:
+        await import_tariffs(client, db_session)
+        banked = (
+            await db_session.execute(select(ReveUnmirroredConnector))
+        ).scalar_one()
+        assert banked.evse_id == "evse-1"
+
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+
+    assert await seed_backlog_from_ledger(db_session) == 1
+
+    connector = (await db_session.execute(select(Connector))).scalar_one()
+    assert connector.tariff_id is not None, "the station must arrive priced"
+    element = (await db_session.execute(select(TariffElement))).scalar_one()
+    assert element.price == Decimal("0.3700")
+
+    remaining = await db_session.scalar(
+        select(func.count()).select_from(ReveUnmirroredConnector)
+    )
+    assert remaining == 0, "a consumed row is gone; the table size is the backlog"
+
+
+async def test_the_backlog_keeps_rows_whose_station_never_arrives(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """Whatever the catalogue pass cannot resolve stays, and its count is the
+    measurement: connectors REVE serves tariffs for that it does not publish."""
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100",
+        json=_tariff_payload(0.37),
+    )
+
+    async with reve_client as client:
+        await import_tariffs(client, db_session)
+
+    assert await seed_backlog_from_ledger(db_session) == 0
+    remaining = await db_session.scalar(
+        select(func.count()).select_from(ReveUnmirroredConnector)
+    )
+    assert remaining == 1

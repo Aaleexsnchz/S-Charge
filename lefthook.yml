@@ -63,6 +63,32 @@ pre-push:
       root: frontend/
       run: pnpm run test
 
-    - name: build
-      root: frontend/
-      run: pnpm run build
+    # Both halves of the API contract, and the build that consumes it. They are
+    # push-gated rather than commit-gated because neither is a function of the
+    # staged files: `--check` imports the whole app to render the schema, and
+    # gen:api regenerates the types from the committed openapi.json. A slice
+    # also legitimately splits the router edit and the regenerated artifacts
+    # across commits, which a per-commit gate would reject.
+    - name: api-contract
+      # Piped, not parallel: gen:api and biome --write rewrite schema.d.ts in
+      # the working tree, and `pnpm run build` typechecks against that same
+      # file. Run concurrently, tsc reads it mid-truncation and the build fails
+      # for reasons that have nothing to do with the code.
+      group:
+        piped: true
+        jobs:
+          - name: openapi-check
+            root: backend/
+            run: uv run python -m scripts.export_openapi --check
+
+          - name: api-types-check
+            root: frontend/
+            run: >-
+              pnpm run gen:api &&
+              pnpm exec biome check --write src/lib/api/schema.d.ts &&
+              { git diff --exit-code -- src/lib/api/schema.d.ts ||
+                { echo "schema.d.ts is stale. Run 'just gen-api' and commit."; exit 1; }; }
+
+          - name: build
+            root: frontend/
+            run: pnpm run build

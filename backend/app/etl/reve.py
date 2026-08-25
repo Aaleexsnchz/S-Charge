@@ -188,12 +188,19 @@ async def _paginate_with_budget(
     *,
     start_page: int,
     max_pages: int | None,
+    on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
     """Fetch consecutive pages of REVE data, calling ``process_item`` per row.
 
     Returns ``(rows_processed, last_page_completed, exhausted)``. ``exhausted``
     is ``True`` when REVE returned a short page (< PAGE_SIZE), signalling no
     more data; the cursor in the caller can then stamp ``completed_at``.
+
+    ``on_page`` is awaited after each page with ``(page, exhausted)`` and is
+    where the caller commits. Progress has to be durable per page rather than
+    per tick: a 429 or 504 on page five propagates out of here, so anything the
+    caller meant to record afterwards is lost and the cycle restarts from the
+    top — which under a 5-call hourly budget means a long cycle never finishes.
     """
     rows = 0
     last_page_completed = start_page - 1
@@ -211,8 +218,10 @@ async def _paginate_with_budget(
             rows += 1
         last_page_completed = page
         pages_fetched += 1
-        if len(items) < PAGE_SIZE:
-            exhausted = True
+        exhausted = len(items) < PAGE_SIZE
+        if on_page is not None:
+            await on_page(page, exhausted)
+        if exhausted:
             break
         page += 1
 
@@ -450,6 +459,52 @@ async def _upsert_connector_tariff(
     return True
 
 
+async def seed_backlog_from_ledger(db: AsyncSession) -> int:
+    """Price the backlog rows whose connector now exists, and drop them.
+
+    Called after each `/locations` page. The ledger banked these tariffs because
+    the station they name was not in the mirror; a page that creates the station
+    is the moment the price can finally be attached, and the moment the row stops
+    being a record of something missing.
+
+    Both halves belong in one transaction. A sweep that deleted "rows whose
+    connector exists" separately would race this, dropping the payload a moment
+    before it was read and leaving the connector blank for the ~243 days until
+    its price next changes — the exact outcome the ledger exists to prevent.
+
+    Only rows whose connector has appeared are touched, not all of them: the
+    backlog runs to thousands and this runs once per page.
+    """
+    ready = (
+        select(ReveUnmirroredConnector, Connector.id)
+        .join(Evse, Evse.source_id == ReveUnmirroredConnector.evse_id)
+        .join(
+            Connector,
+            (Connector.evse_id == Evse.id)
+            & (Connector.source_id == ReveUnmirroredConnector.connector_id),
+        )
+    )
+    rows = (await db.execute(ready)).all()
+    if not rows:
+        return 0
+
+    refreshed_at = datetime.now(UTC)
+    rewritten: set[str] = set()
+    seeded = 0
+    for entry, _connector_pk in rows:
+        # The ledger stores the inner tariff object; the upsert takes the outer
+        # feed row, so the wrapper is rebuilt from the columns beside it.
+        raw = {
+            "evse_id": entry.evse_id,
+            "connector_id": entry.connector_id,
+            "tariffs": [entry.tariff_raw],
+        }
+        if await _upsert_connector_tariff(db, raw, refreshed_at, rewritten):
+            await db.delete(entry)
+            seeded += 1
+    return seeded
+
+
 async def import_cpos(
     client: ReveClient,
     db: AsyncSession,
@@ -458,6 +513,7 @@ async def import_cpos(
     date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
+    on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
     async def _process(raw: dict[str, Any]) -> None:
         await _upsert_cpo(db, raw)
@@ -469,6 +525,7 @@ async def import_cpos(
         _process,
         start_page=start_page,
         max_pages=max_pages,
+        on_page=on_page,
     )
     audit(
         "reve_etl_cpos",
@@ -489,6 +546,7 @@ async def import_locations(
     date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
+    on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
     async def _process(raw: dict[str, Any]) -> None:
         await _upsert_location(db, raw)
@@ -500,6 +558,7 @@ async def import_locations(
         _process,
         start_page=start_page,
         max_pages=max_pages,
+        on_page=on_page,
     )
     audit(
         "reve_etl_locations",
@@ -520,6 +579,7 @@ async def import_tariffs(
     date_to: datetime | None = None,
     start_page: int = 1,
     max_pages: int | None = None,
+    on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
     refreshed_at = datetime.now(UTC)
     changed = 0
@@ -540,6 +600,7 @@ async def import_tariffs(
         _process,
         start_page=start_page,
         max_pages=max_pages,
+        on_page=on_page,
     )
     audit(
         "reve_etl_tariffs",
