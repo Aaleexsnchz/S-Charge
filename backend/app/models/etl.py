@@ -27,6 +27,14 @@ class ReveEtlCursor(Base):
     refresh_cycle_end: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # The `date_from` of the last window REVE actually served. A watermark can
+    # become unservable while a wider window containing it stays fine, so the
+    # recovery ladder needs a value known to work rather than a guess. Not
+    # derivable from the watermark: a drained cycle advances that to `now`,
+    # leaving the last good window hours behind it.
+    last_good_date_from: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_attempted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

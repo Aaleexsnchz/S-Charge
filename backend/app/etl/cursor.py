@@ -51,6 +51,7 @@ async def record_refresh_progress(
     next_page: int,
     cycle_end: datetime,
     exhausted: bool,
+    window_start: datetime | None = None,
     attempted_at: datetime | None = None,
 ) -> None:
     """Persist progress of a post-seed incremental refresh cycle.
@@ -58,6 +59,11 @@ async def record_refresh_progress(
     While a cycle is mid-flight, ``refresh_cycle_end`` keeps its frozen upper
     bound so pagination stays stable across ticks. When the cycle drains
     (a short page), the watermark advances to that bound and paging resets.
+
+    Called after **every page**, not once per tick. A tick that dies partway —
+    rate-limited, timed out, container recreated — then keeps the pages it
+    already fetched instead of starting the cycle again, which is what made a
+    multi-page recovery impossible to finish inside a 5-call hour.
     """
     now = attempted_at or datetime.now(UTC)
     values: dict[str, object] = {
@@ -66,6 +72,8 @@ async def record_refresh_progress(
         "failing_since": None,
         "consecutive_failures": 0,
     }
+    if window_start is not None:
+        values["last_good_date_from"] = window_start
     if exhausted:
         values["refresh_watermark"] = cycle_end
         values["refresh_cycle_end"] = None
@@ -73,6 +81,13 @@ async def record_refresh_progress(
     else:
         values["refresh_cycle_end"] = cycle_end
         values["next_page"] = next_page
+        if window_start is not None:
+            # Mid-cycle the watermark *is* the window being paginated, so the
+            # next tick resumes against the same result set without needing to
+            # store the bound separately. Moving it backwards is lossless: it
+            # can only ever cause a re-fetch. The drain above then advances it
+            # to the cycle's upper bound as usual.
+            values["refresh_watermark"] = window_start
     await db.execute(
         update(ReveEtlCursor).where(ReveEtlCursor.endpoint == endpoint).values(**values)
     )
