@@ -3,4 +3,10 @@
 # On the hour, not past it: the tick also reprices every connector, and the
 # bands REVE publishes change at :00 (00:00-06:59 / 07:00-22:59).
 0 * * * * python -m scripts.refresh_reve
-0 9 * * * python -m scripts.fetch_pvpc
+# Hourly rather than at a chosen hour. PVPC is day-ahead, published for tomorrow
+# around 20:46 the evening before, so this catches the publication instead of
+# sampling and REE's release time can drift without anything to retune. Nearly
+# free: each run resumes from the last stored hour, costing one request once
+# tomorrow is in and two while REE still answers 502 for it. That resume is also
+# why a restatement of an older day is invisible here -- see operations.md.
+0 * * * * python -m scripts.fetch_pvpc

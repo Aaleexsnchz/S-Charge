@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from http import HTTPStatus
@@ -10,6 +11,20 @@ from app.utils.audit import audit
 
 PVPC_INDICATOR_ID = "1001"
 PRICES_PATH = "/es/datos/mercados/precios-mercados-tiempo-real"
+
+
+@dataclass(frozen=True, slots=True)
+class PvpcSeries:
+    """A day's curve and the moment REE last wrote it.
+
+    ``last_update`` is REE's, not ours. A day normally carries the evening
+    before it, but REE restates days after the fact -- 1-6 July 2026 were all
+    rewritten on 6 July -- so it is the only signal that a day already stored
+    has been superseded.
+    """
+
+    prices: list[tuple[datetime, Decimal]]
+    last_update: datetime | None
 
 
 class ReeClient:
@@ -32,11 +47,11 @@ class ReeClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def get_pvpc_prices(self, day: date) -> list[tuple[datetime, Decimal]]:
-        """Hourly PVPC prices for ``day`` as ``(hour_start, €/kWh)`` tuples.
+    async def get_pvpc_prices(self, day: date) -> PvpcSeries:
+        """Hourly PVPC prices for ``day``, in €/kWh, with REE's publication time.
 
-        Returns an empty list when REE has not published the day yet
-        (tomorrow's prices appear around 20:15 CET).
+        The series comes back empty when REE has not published the day yet;
+        measured, tomorrow appears around 20:46 CET the evening before.
         """
         params = {
             "start_date": f"{day.isoformat()}T00:00",
@@ -45,14 +60,14 @@ class ReeClient:
         }
         response = await self._client.get(PRICES_PATH, params=params)
         if response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
-            # REE answers 500 for days it has not published yet (e.g. tomorrow
-            # before ~20:15 CET) — treat as "no data", not as a hard failure.
+            # REE answers 5xx for days it has not published yet (measured: 502
+            # for tomorrow until ~20:46 CET) — "no data", not a hard failure.
             audit(
                 "ree_day_not_published",
                 day=day.isoformat(),
                 status=response.status_code,
             )
-            return []
+            return PvpcSeries(prices=[], last_update=None)
         if response.is_error:
             audit(
                 "ree_request_failed", day=day.isoformat(), status=response.status_code
@@ -63,14 +78,17 @@ class ReeClient:
         series = self._pvpc_series(body)
         if series is None:
             audit("ree_pvpc_series_missing", day=day.isoformat())
-            return []
+            return PvpcSeries(prices=[], last_update=None)
 
+        attributes = series.get("attributes", {})
         prices: list[tuple[datetime, Decimal]] = []
-        for value in series.get("attributes", {}).get("values", []):
+        for value in attributes.get("values", []):
             hour_start = datetime.fromisoformat(value["datetime"])
             price_per_kwh = Decimal(str(value["value"])) / 1000
             prices.append((hour_start, price_per_kwh))
-        return prices
+        return PvpcSeries(
+            prices=prices, last_update=_parse_dt(attributes.get("last-update"))
+        )
 
     @staticmethod
     def _pvpc_series(body: dict[str, Any]) -> dict[str, Any] | None:
@@ -80,4 +98,13 @@ class ReeClient:
             title = str(entry.get("attributes", {}).get("title", ""))
             if title.upper().startswith("PVPC"):
                 return entry
+        return None
+
+
+def _parse_dt(raw: object) -> datetime | None:
+    if not isinstance(raw, str):
+        return None
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
         return None

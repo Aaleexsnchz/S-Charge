@@ -108,7 +108,7 @@ SQL
 Both Dockerfiles are multi-stage, and every stage is a production stage — the dev stages were removed when development moved to the host:
 
 - **Backend `prod`** — runtime deps only (`--no-dev`), non-root `appuser`, no `uv` at runtime, `HEALTHCHECK` on `/api/health`. ~330 MB.
-- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. Gated behind its profile, as above, and not running yet. CI still builds it, via `docker build --target scheduler` rather than through Compose. ~356 MB.
+- **Backend `scheduler`** — `prod` plus [supercronic](https://github.com/aptible/supercronic) and [backend/crontab](../backend/crontab); owns the REVE/PVPC refresh ETLs in production, so there is no host crontab to provision ([infra-0001](decisions/infra-0001-deployment.md)). ETL logs ride the container log stream. An ordinary service on `restart: unless-stopped`, with no profile gating it. CI builds it via `docker build --target scheduler` rather than through Compose. ~356 MB.
 - **Frontend `prod`** — built `dist/` served by nginx ([frontend/nginx.conf](../frontend/nginx.conf)) with SPA fallback for client-side routing. ~80 MB. Static assets only; Caddy does the API routing.
 
 CI builds all three, so a broken Dockerfile fails there rather than on the server at deploy time.
@@ -156,6 +156,76 @@ Status codes separate the cases and are worth reading before theorising: `403` o
 **This invalidates the June 2026 diagnosis.** That incident was recorded as *"windows of an hour or more time out"*, inferred after it had healed and never probed while live. The measurements above contradict it, and the automatic watermark jump it justified is precisely what turned a transient failure into a 45-day hole.
 
 **Never run either ETL against production from a laptop.** The 5 req/hour cap is per API key, so a local run steals from the scheduler's budget and the two will fight over the same cursor — the advisory lock keeps them from corrupting it, but one of them simply loses its tick.
+
+## The PVPC fetch
+
+Hourly, from [backend/crontab](../backend/crontab). PVPC is a **day-ahead** market, so the schedule exists to catch a publication rather than to sample a moving value, and running hourly means REE's release time can drift without anything here needing to be retuned. `ree_day_not_published` at status 502 is REE's normal answer for a day it has not released — the script treats it as a state, not an error.
+
+It is nearly free. Each run resumes from the last stored hour, so it costs one request once tomorrow is in and two while REE is still answering 502 for it.
+
+**REE publishes the release time in the payload.** Every series in the JSON:API response carries `attributes["last-update"]` beside its `values`, so the publication moment is a fact the API states rather than something to infer from cron timing or row counts:
+
+```bash
+curl -s "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=$(date -I)T00:00&end_date=$(date -I)T23:59&time_trunc=hour" \
+  | python3 -c "import json,sys; [print(e['id'], e['attributes']['title'], e['attributes']['last-update']) for e in json.load(sys.stdin)['included']]"
+```
+
+Measured across a range of days, publication is strikingly regular: 20:45:48, 20:46:24, 20:46:35, 20:46:52 — always the evening before, within a minute. The spot series (id 600) lands early afternoon, being the day-ahead auction result; PVPC is derived from it later.
+
+**A published day is not final.** 1–6 July 2026 all carry `last-update` on 6 July, walking from 16:12 to 17:25, before 7 July resumes the normal evening rhythm — REE restated six days in about an hour. `last_update` is the only way to see that: prices change in place, and `fetched_at` cannot distinguish a restatement from a routine refetch.
+
+**Restatements of older days are currently invisible to us.** `_start_day` resumes from the last stored hour, so the hourly run only ever revisits the newest day or two. A day restated five days later is never re-read, and the superseded prices stay. Detecting it means comparing REE's `last-update` for a day against the stored `source_last_updated_at` and refetching on a mismatch — the column exists for that, but nothing consumes it yet. **There is a window every evening where tomorrow is unpublished**, and it coincides with when a driver plugs in for an overnight charge, so anything that plans across tomorrow needs a defined behaviour for the gap rather than assuming prices exist.
+
+`electricity_prices.fetched_at` answers none of this — it carries `onupdate`, so every refetch overwrites it and it records the last fetch rather than the first sighting, let alone REE's own release time.
+
+
+Holes and how far ahead the series reaches:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T db \
+  sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+SELECT (hour_start AT TIME ZONE 'Europe/Madrid')::date AS market_day, count(*) AS hours
+FROM electricity_prices
+WHERE hour_start >= now() - interval '60 days'
+GROUP BY 1 HAVING count(*) <> 24 ORDER BY 1;
+
+SELECT max(hour_start) AT TIME ZONE 'Europe/Madrid' AS latest_hour_madrid,
+       max(hour_start) > now()                      AS covers_the_future
+FROM electricity_prices;
+SQL
+```
+
+A day at 23 or 25 hours is a DST changeover, not a gap. `covers_the_future` is the one that matters: `f` means no run has caught tomorrow yet.
+
+## The unpriced census
+
+What the catalogue knows how to charge for, and what it does not. Re-run it after a `/locations` drain completes and compare against the previous figures — the point is the movement, not the absolute number.
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T db \
+  sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+SELECT
+    CASE
+        WHEN c.tariff_id IS NULL                           THEN '1 no tariff at all'
+        WHEN t.valid_to IS NOT NULL AND t.valid_to < now() THEN '2 tariff expired at source'
+        WHEN c.pricing_kind = 'unknown'                    THEN '3 live tariff, no band matches now'
+        WHEN c.pricing_kind = 'free'                       THEN '4 genuinely free'
+        ELSE                                    '5 priced (' || c.pricing_kind || ')'
+    END                                             AS bucket,
+    count(*)                                        AS connectors,
+    round(avg(c.current_price_per_kwh)::numeric, 4) AS avg_price_kwh
+FROM connectors c
+LEFT JOIN tariffs t ON t.id = c.tariff_id
+GROUP BY 1 ORDER BY 1;
+
+SELECT count(*)                                          AS connectors_total,
+       count(*) FILTER (WHERE pricing_kind = 'unknown')  AS unpriced,
+       (SELECT count(*) FROM reve_unmirrored_connectors) AS backlog
+FROM connectors;
+SQL
+```
+
+Bucket 1 is what the catalogue repair moves — connectors whose tariff the ledger was already holding. Bucket 2 is the source's own limit: those tariffs expired before the stall, so no `date_from` window returns them and an unfiltered drain would only re-fetch the same expired row. Do not join the ledger to `connectors` to see what is left to repair; the ledger holds exactly the connectors that have **no** row there, so the join can never match. The separate `backlog` count is the figure.
 
 ## Major Postgres upgrades
 

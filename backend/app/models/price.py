@@ -18,6 +18,12 @@ class ElectricityPrice(Base):
         DateTime(timezone=True), unique=True, nullable=False
     )
     price_per_kwh: Mapped[Decimal] = mapped_column(Numeric(8, 5), nullable=False)
+    # REE's own write time for the day this hour belongs to, not ours. It moves
+    # when REE restates a day already published, which `fetched_at` cannot show:
+    # that one carries `onupdate` and only ever holds the most recent refetch.
+    source_last_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

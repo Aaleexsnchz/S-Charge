@@ -15,23 +15,19 @@ DAY_URL = (
 )
 
 
-def _payload(price_mwh: float) -> dict:
-    return {
-        "included": [
+def _payload(price_mwh: float, last_update: str | None = None) -> dict:
+    attributes: dict = {
+        "title": "PVPC",
+        "values": [
             {
-                "id": "1001",
-                "attributes": {
-                    "title": "PVPC",
-                    "values": [
-                        {
-                            "value": price_mwh,
-                            "datetime": "2026-06-12T00:00:00.000+02:00",
-                        }
-                    ],
-                },
+                "value": price_mwh,
+                "datetime": "2026-06-12T00:00:00.000+02:00",
             }
-        ]
+        ],
     }
+    if last_update is not None:
+        attributes["last-update"] = last_update
+    return {"included": [{"id": "1001", "attributes": attributes}]}
 
 
 async def test_import_upserts_and_is_idempotent(
@@ -50,3 +46,31 @@ async def test_import_upserts_and_is_idempotent(
     assert count == 1
     row = (await db_session.execute(select(ElectricityPrice))).scalar_one()
     assert row.price_per_kwh == Decimal("0.09999")
+
+
+async def test_stores_and_advances_ree_publication_time(
+    db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """A restatement is only visible as REE's write time moving, so the stored
+    value has to follow it rather than being kept from the first sighting."""
+    httpx_mock.add_response(
+        url=DAY_URL, json=_payload(85.21, "2026-06-11T20:46:38.000+02:00")
+    )
+    httpx_mock.add_response(
+        url=DAY_URL, json=_payload(90.0, "2026-07-06T16:12:40.000+02:00")
+    )
+
+    async with ReeClient(BASE_URL) as client:
+        await import_pvpc_prices(client, db_session, date(2026, 6, 12))
+        await db_session.commit()
+        stored = (await db_session.execute(select(ElectricityPrice))).scalar_one()
+        assert stored.source_last_updated_at is not None
+        assert stored.source_last_updated_at.day == 11
+
+        await import_pvpc_prices(client, db_session, date(2026, 6, 12))
+        await db_session.commit()
+
+    await db_session.refresh(stored)
+    assert stored.price_per_kwh == Decimal("0.09000")
+    assert stored.source_last_updated_at is not None
+    assert stored.source_last_updated_at.month == 7
