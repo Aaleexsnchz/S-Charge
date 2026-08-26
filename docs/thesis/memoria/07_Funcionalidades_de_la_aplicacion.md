@@ -11,8 +11,9 @@ el estatus.
 El cliente se entrega como *Progressive Web App*: manifiesto de aplicación web y *service
 worker*, sin envoltorio nativo y sin tienda. La definición de MDN describe exactamente lo que se
 buscaba —una aplicación construida con tecnologías web que se instala en el dispositivo y ofrece
-una experiencia equiparable a la de una aplicación específica de plataforma [33]—, y los dos
-componentes que lo hacen posible son estándares del W3C [37][34]. En
+una experiencia equiparable a la de una aplicación específica de plataforma [42]—, y los dos
+componentes que lo hacen posible están especificados en abierto: el manifiesto de aplicación
+web [41] y el *service worker* [54]. En
 la práctica el usuario obtiene un icono en la pantalla de inicio, ventana propia sin cromo del
 navegador y una pantalla de arranque. Se ha probado en un iPhone y en un Android reales: en iOS
 mediante «Añadir a pantalla de inicio» de Safari y en Android con el aviso de instalación nativo
@@ -50,7 +51,7 @@ entero ya está en el navegador, las etiquetas de filtro (disponibilidad, conect
 CHAdeMO, y bandas de precio de 0,40 y 0,60 €/kWh) se compilan a expresiones de filtrado de
 MapLibre y refiltran la fuente sin una sola petición al servidor. Al abrir, el mapa se centra en la
 posición del usuario mediante el control de geolocalización del navegador, que exige permiso
-explícito por especificación [46]. Tocar un punto abre una hoja inferior con lo
+explícito por especificación [55]. Tocar un punto abre una hoja inferior con lo
 esencial, y desde la ficha completa el botón «Navegar» abre Google Maps con el destino: la
 aplicación no compite con un navegador GPS, delega en el que el usuario ya tiene.
 
@@ -218,7 +219,7 @@ y porque las preguntas que cada fase deberá cerrar son la mejor prueba de que n
 
 Es la aportación de plataforma y el primer dato del sistema que REVE no proporciona: un usuario da
 de alta su propio punto, decide si aparece o no en el mapa público, le pone precio y ve su uso. El
-modelo ya reserva la columna de propietario en la tabla de puntos, y nada más. La fase 8 contempla
+modelo ya reserva la columna de propietario en la tabla de puntos, y nada más. La fase 7 contempla
 el alta de extremo a extremo, un interruptor de visibilidad que gobierne la aparición en el mapa,
 y un precio del propietario expresado como PVPC más margen o como una cantidad fija por kWh —la
 primera forma indexa automáticamente el precio al mercado, la segunda es la que un particular
@@ -302,7 +303,7 @@ Un conductor llega a casa a las siete de la tarde, enchufa y vuelve a salir a la
 mañana. Necesita 30 kWh y su punto entrega 7,4 kW: unas cuatro horas de carga dentro de una ventana
 de doce. Las ocho restantes son holgura, y la holgura vale dinero, porque la electricidad no cuesta
 lo mismo a las diez de la noche que a las cuatro de la madrugada. Cuándo debe correr la carga, y
-cuánto se ahorra frente a enchufar y empezar, es lo que la fase 9 contempla responder en
+cuánto se ahorra frente a enchufar y empezar, es lo que la fase 8 contempla responder en
 `POST /api/recommend`. **Queda formulado, no implementado**; aquí no hay ninguna cifra medida.
 
 La funcionalidad se dirige a un punto que el usuario posee, y esa restricción es de sentido, no de
@@ -409,7 +410,7 @@ De ahí la conclusión honesta del capítulo: **la dificultad no está en la opt
 datos**. Los precios se guardan por instante de inicio de hora y se consultan en hora local de
 Madrid, de modo que los dos días del año en que cambia la hora tienen 23 o 25 franjas y no 24. Y un
 horizonte que cruza la medianoche necesita un día que puede no estar publicado: el precio del día
-siguiente no aparece antes de las 20:15 [47] y la API de REE devuelve un error del servidor
+siguiente no aparece antes de las 20:15 [56] y la API de REE devuelve un error del servidor
 para un día que aún no lo está. Las dos respuestas defendibles son truncar el horizonte en la
 última hora publicada y decirlo, o rechazar la petición.
 
@@ -436,17 +437,17 @@ proyección: si falta la curva del día, no hay recomendación que dar.
 
 La programación de recarga frente a una señal de precio es un problema estudiado y resuelto: hay
 revisiones canónicas de las estrategias de recarga inteligente en redes de distribución
-[48], formulaciones del *valley filling* como protocolo descentralizado sobre
-flotas que negocian su perfil con una señal común [49], marcos de coordinación de muchos
-vehículos bajo la restricción física de una infraestructura compartida [38][50] y
-variantes para los cargos por demanda en emplazamientos no residenciales [51].
+[57], formulaciones del *valley filling* como protocolo descentralizado sobre
+flotas que negocian su perfil con una señal común [58], marcos de coordinación de muchos
+vehículos bajo la restricción física de una infraestructura compartida [46][59] y
+variantes para los cargos por demanda en emplazamientos no residenciales [60].
 
 Ninguna de esas dificultades aparece aquí. Este problema tiene **un vehículo, un punto, ninguna
 restricción de red y un precio exógeno**, lo que lo reduce a un programa lineal de libro cuya
 solución voraz se conoce desde mucho antes que los vehículos eléctricos. La aportación no es
 algorítmica: es aplicar un resultado conocido a datos españoles reales. Un límite: si muchos
 usuarios optimizaran a la vez contra la misma curva el valle se desplazaría, y esa realimentación
-es lo que los protocolos descentralizados modelan [49] y este diseño no.
+es lo que los protocolos descentralizados modelan [58] y este diseño no.
 
 ### Cómo se evaluará
 
@@ -465,7 +466,7 @@ del PVPC almacenado desde el 1 de enero de 2026.
    solucionador lineal de referencia sobre instancias aleatorias: una prueba de propiedad barata y
    la forma honesta de sostener que la implementación calcula el óptimo.
 
-> **PENDIENTE:** ejecutar la evaluación descrita una vez implementada la fase 9 y rellenar aquí el
+> **PENDIENTE:** ejecutar la evaluación descrita una vez implementada la fase 8 y rellenar aquí el
 > ahorro medio y su distribución por perfil, la brecha entre ventana contigua y reparto partido, y
 > la fracción de días en que el ahorro es despreciable. Hasta entonces este capítulo no contiene
 > ninguna cifra de ahorro, ni debe contenerla.

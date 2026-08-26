@@ -16,9 +16,9 @@ y no se borran; estas son el texto que lee el tribunal.
 | 0 | [00_Resumen.md](00_Resumen.md) | Resumen, *abstract*, palabras clave |
 | 1 | [01_Introduccion.md](01_Introduccion.md) | Contexto, problema, motivación, objetivos y alcance |
 | 2 | [02_Estado_del_arte.md](02_Estado_del_arte.md) | REVE, apps de operador, agregadores, estándares y el hueco |
-| 3 | [03_Analisis_y_requisitos.md](03_Analisis_y_requisitos.md) | Roles, casos de uso, requisitos y metodología |
-| 4 | [04_Arquitectura_del_sistema.md](04_Arquitectura_del_sistema.md) | Visión de conjunto, capas, contrato de API y stack |
-| 5 | [05_Modelo_de_datos_y_fuentes.md](05_Modelo_de_datos_y_fuentes.md) | OCPI, espejo de REVE, siembra, precios y vehículos |
+| 3 | [03_Analisis_y_requisitos.md](03_Analisis_y_requisitos.md) | Actores, restricciones, casos de uso, requisitos, trazabilidad, metodología y riesgos |
+| 4 | [04_Arquitectura_del_sistema.md](04_Arquitectura_del_sistema.md) | Visión general, backend por capas, frontend, contrato de API y entorno |
+| 5 | [05_Modelo_de_datos_y_fuentes.md](05_Modelo_de_datos_y_fuentes.md) | OCPI, espejo de REVE, siembra, refresco y deriva del catálogo, precio por franjas y vehículos |
 | 6 | [06_Autenticacion_y_seguridad.md](06_Autenticacion_y_seguridad.md) | Identidad, sesión, OAuth, límites de tasa y modelo de amenazas |
 | 7 | [07_Funcionalidades_de_la_aplicacion.md](07_Funcionalidades_de_la_aplicacion.md) | Mapa, detalle, simulación, frontera de la simulación, funcionalidades de plataforma, **optimización de la carga** y **asistente de IA** |
 | 8 | [08_Despliegue_operacion_y_escalado.md](08_Despliegue_operacion_y_escalado.md) | Producción, cadena de entrega, escalado argumentado y costes |
@@ -28,28 +28,35 @@ y no se borran; estas son el texto que lee el tribunal.
 | 12 | [12_Uso_de_IA_generativa.md](12_Uso_de_IA_generativa.md) | Uso de IA generativa en la elaboración del trabajo |
 | 13 | [13_Conclusiones.md](13_Conclusiones.md) | Resultados, aprendizajes y trabajo futuro |
 | — | [90_Bibliografia.md](90_Bibliografia.md) | Referencias en formato IEEE |
-| — | [91_Anexos.md](91_Anexos.md) | Anexos |
+| — | [91_Anexos.md](91_Anexos.md) | Anexos; el A recoge las fichas de casos de uso |
 
 ## Convenciones
 
 - **Citas en IEEE numerado**, ya resueltas: `[1]`, `[2]`… en orden de primera aparición contra
-  [90_Bibliografia.md](90_Bibliografia.md), que tiene 60 entradas, todas citadas al menos una vez.
-  Si se añade una fuente nueva hay que renumerar desde su punto de inserción, y revisar los rangos
-  de la nota de verificación al final de la bibliografía.
+  [90_Bibliografia.md](90_Bibliografia.md), que tiene 69 entradas, todas citadas al menos una vez.
+  Las entradas `[1]`–`[45]` son las del documento del autor y no se renumeran; el resto se ordenó
+  por primera aparición a partir del capítulo 5. Si se añade una fuente nueva hay que renumerar
+  desde su punto de inserción, y revisar los rangos de la nota de verificación al final de la
+  bibliografía.
 - **Separador decimal coma, miles punto** — `0,22 €/kWh`, `13.700 puntos`.
 - **Figuras y capturas** aparecen como marcadores `> **[FIGURA N.M]**` con la instrucción de qué
   debe mostrar cada una y cómo obtenerla. Hay 29 y hay que sustituirlos por la imagen real antes
-  de entregar. Los cuatro de los capítulos 1 y 2 llevan solo el pie, porque la imagen ya existe
-  en el documento del autor.
+  de entregar. Los de los capítulos 1 a 4 llevan solo el pie, porque la imagen ya existe en el
+  documento del autor.
 - **`> **PENDIENTE:**`** marca lo que queda por rellenar: medidas aún no tomadas y afirmaciones
-  cuya fuente no se pudo verificar. Hay 21, contando los dos del guion de anexos. Buscar esa
+  cuya fuente no se pudo verificar. Hay 17, contando los dos del guion de anexos. Buscar esa
   palabra antes de dar la memoria por cerrada.
 
 ## Estado
 
-Borrador completo de los trece capítulos, escrito contra el estado real del proyecto a 5 de
-agosto de 2026: aplicación desplegada en `https://s-charge.app`, fases 1 a 5 terminadas y las
-restantes diseñadas pero no construidas. Los capítulos distinguen en todo momento lo implementado
-de lo diseñado; ninguno describe como funcionando algo que no lo está.
+Borrador completo de los trece capítulos, escrito contra el estado real del proyecto: aplicación
+desplegada en `https://s-charge.app`, **fases 1 a 6 terminadas** y las restantes diseñadas pero no
+construidas. Los capítulos distinguen en todo momento lo implementado de lo diseñado; ninguno
+describe como funcionando algo que no lo está.
 
-Pendiente de la revisión manual del autor, que es la que convierte el borrador en texto propio.
+**Los capítulos 1 a 4 y el anexo A son ya el texto revisado por el autor** y esta copia los espeja;
+cualquier cambio en ellos se hace primero en el documento del autor. Los capítulos 5 y 6 se
+reescribieron contra el cierre de la fase 6 —refresco sin salto de marca de agua, deriva del
+catálogo, precio por franjas, y la Content-Security-Policy sin la migración de *frontend* que la
+justificaba—. Los capítulos 7 a 13 siguen pendientes de esa revisión: conservan el pie de figura
+con instrucciones y su numeración de figuras arrastra la de una división anterior en capítulos.

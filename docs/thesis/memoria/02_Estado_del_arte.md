@@ -81,8 +81,8 @@ uno a uno.
 El modelo de *hub* concentra hoy a los mayores actores: Hubject se describe como la mayor red
 internacional de *eRoaming*, con más de 1,1 millones de puntos y más de 3.500 socios en más de 75
 países [17]; Gireve declaraba 695.000 puntos en febrero de 2026 y un millón de transacciones
-mensuales [18]. Con una sola cuenta se recarga en cientos de redes ajenas: el acceso a la red ya
-está resuelto, y a escala continental.
+mensuales [18]. Con una sola cuenta se recarga en cientos de redes ajenas, de modo que el acceso a
+la red ya está resuelto, y a escala continental.
 
 El precio, en cambio, no queda resuelto. Una misma recarga en un mismo poste tiene importes
 distintos según el medio con el que se inicie. Y no por falta de norma, porque AFIR ya obliga al
@@ -115,7 +115,7 @@ Electromaps, del grupo Wallbox, ordena su propuesta de la siguiente manera: enco
 activar sesiones y planificar viajes. Es el único de los tres productos revisados aquí que actúa
 también como eMSP. Declara más de 522.864 puntos públicos, ofrece un llavero RFID (Electropass) y
 añade comunidad —fotos y comentarios de otros conductores— [3]. Es, además, la fuente del barómetro
-citado en 2.1.
+citado más arriba.
 
 PlugShare es una comunidad de conductores con reseñas y fotografías que incluye cargadores
 domésticos compartidos [21]. A Better Routeplanner, de Iternio Planning AB, planifica la ruta con
@@ -148,15 +148,15 @@ ellas va más allá ni aporta otro tipo de funcionalidad.
 ## La recarga entre particulares
 
 Place to Plug es una plataforma española que conecta conductores con anfitriones —«particulares,
-empresas o instituciones»— que ofrecen un enchufe, y le propone al conductor «descubrir, reservar y
+empresas o instituciones»— que ofrecen un enchufe, y le propone al conductor «localizar, reservar y
 recargar» en miles de puntos [9]. Tiene aplicación móvil y un producto B2B para operadores. Cabe
 mencionar que también ofrece la recarga en puntos públicos.
 
 El precedente internacional es EVmatch, en Estados Unidos. El dueño de un cargador doméstico lo
 publica, otro conductor reserva una franja, recibe la dirección exacta después de reservar y activa
 la sesión desde la aplicación, con el precio que fija el anfitrión [23]. Ese detalle de dar la
-dirección solo tras la reserva no es cosmético: es la primera decisión de privacidad que impone el
-modelo, porque publicar puntos de particulares conlleva, por lo general, publicar domicilios.
+dirección solo tras la reserva no es cosmético, sino la primera decisión de privacidad que impone
+el modelo, porque publicar puntos de particulares conlleva, por lo general, publicar domicilios.
 
 EVDC Network sirve de contraste: vende sus propios cargadores y ofrece una aplicación que, además
 de esos equipos, localiza y cobra en redes de terceros —declara socios a Ionity, ChargePoint y
@@ -182,14 +182,12 @@ recarga». Cómo se traduce esa topología a tablas es asunto del capítulo 5.
 El estándar va por delante de la norma que lo adopta: OCPI 2.3.0 se publicó el 21 de febrero de
 2025 y la 3.0 está terminada a la espera de publicación [30], mientras que la resolución española,
 de abril de 2025, adopta una versión que llevaba mes y medio superada. El desfase importa poco
-aquí: 2.3.0 se construye sobre 2.2.1, la topología emplazamiento → EVSE → conector no cambia y el
-sistema español con el que se dialoga habla 2.2.1. De lo que añade —pago directo en el propio
+aquí, porque 2.3.0 se construye sobre 2.2.1, la topología emplazamiento → EVSE → conector no cambia
+y el sistema español con el que se dialoga habla 2.2.1. De lo que añade —pago directo en el propio
 poste, campos fiscales, extensibilidad y un módulo opcional de reservas— solo el último tiene algo
 que ver con este trabajo, ya que estandariza calendarios, reservas y penalizaciones por no
 comparecer. Tampoco se emplea porque usarlo exigiría un acuerdo con el operador del punto que este
-trabajo no tiene, y esa misma ausencia de contraparte es la que descarta reservar aquí: sin
-operador que la respete, lo que se registra sobre la réplica propia del catálogo es la sesión que
-el conductor dice haber hecho, no una plaza reservada (capítulo 7).
+trabajo no tiene; la reserva se resuelve, por tanto, sobre la réplica propia del catálogo.
 
 Conviene no confundir OCPI con OCPP (*Open Charge Point Protocol*), de la Open Charge Alliance,
 porque actúan en niveles distintos. OCPP conecta cada estación de recarga con el sistema de gestión
@@ -198,18 +196,20 @@ plataformas. Este trabajo no usa OCPP, ya que quien no opera postes no tiene con
 Por debajo están los estándares físicos que aparecen en los datos. La norma IEC 62196-1:2025 fija
 los requisitos generales de clavijas, bases, conectores y tomas para la recarga conductiva [32].
 
-> **[FIGURA 2.2]** — *Dónde habla cada estándar.*
+> **[FIGURA 2.2]** — *Estándares de recarga por capa: física (IEC), poste–backend (OCPP) e
+> interplataforma (OCPI).*
 
 Lo que sí está fijado normativamente es que el tipo de conector es un dato obligatorio: el artículo
 20 del Reglamento AFIR obliga a los operadores, desde el 14 de abril de 2025, a poner a disposición
-sin coste los datos estáticos —tipo de conector y de corriente, potencia máxima, ubicación— y los
-dinámicos —estado operativo, disponibilidad, precio por operación— por una API de acceso libre y no
-restringido [15]. Que este sistema no consuma esos datos dinámicos tiene una explicación de
-alcance: la obligación recae sobre cada operador por separado, de modo que aprovecharla exigiría
-integrarse operador a operador. Conviene añadir que no se ha podido verificar que los principales
-operadores españoles publiquen esa interfaz, puesto que no se ha localizado documentación pública
-de API conformes al artículo 20. La única vía agregada y documentada que se ha encontrado es el
-punto de acceso nacional, y es su API la que limita a cinco peticiones por hora.
+pública y gratuita los datos estáticos —tipo de conector y de corriente, potencia máxima,
+ubicación— y los dinámicos —estado operativo, disponibilidad, precio por operación— por una API de
+acceso libre y no restringido [15]. Que este sistema no consuma esos datos dinámicos tiene una
+explicación de alcance, ya que la obligación recae sobre cada operador por separado, de modo que
+aprovecharla exigiría integrarse operador a operador. Conviene añadir que no se ha podido verificar
+que los principales operadores españoles publiquen esa interfaz, puesto que no se ha localizado
+documentación pública de API conformes al artículo 20. La única vía agregada y documentada que se
+ha encontrado es el punto de acceso nacional, y es su API la que limita a cinco peticiones por
+hora.
 
 ## El hueco detectado
 
@@ -231,11 +231,11 @@ sencilla.
 | REVE | Sí | Sí | No | No | No | No |
 | Electromaps | Sí | Solo guía al punto elegido | Solo la tarifa del punto | No | Gestión de cargadores privados para organizaciones | Inicio de sesión |
 | Chargemap | Sí | Sí | Sí | No | No | Inicio de sesión |
-| Zunder | Sí | Solo indica estaciones de camino como parada | No | No | No, opera su propia red | Inicio de sesión en su red y socios |
+| Zunder | Sí | Solo indica estaciones de camino como parada | No | No | No | Inicio de sesión en su red y socios |
 | Gridio | No | No | No | Sí | No | Programa carga |
 | Place to Plug | Sí | No | Solo la tarifa del punto | No | Sí | Sí |
 
-**Tabla 2.1.** Comparación de capacidades entre aplicaciones.
+**Tabla 2.1.** Comparación de capacidades entre aplicaciones existentes.
 
 S-Charge apunta precisamente a esa completitud, y desde los dos lados del problema: quien conduce
 resuelve en una sola aplicación dónde cargar, a qué hora sale más barato y cuánto le costará,

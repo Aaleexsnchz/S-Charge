@@ -1,300 +1,215 @@
 # 4. Arquitectura del sistema
 
-## Visión de conjunto
+Este capítulo describe cómo está construido el sistema y por qué está construido así. Recorre
+primero las piezas en ejecución y la decisión de publicarlas todas bajo un mismo origen; después el
+servidor y el cliente por dentro, cada uno con su *stack* y las decisiones que lo justifican,
+además del contrato que los une. Termina con las comprobaciones automáticas y el entorno en que se
+construye.
 
-El sistema en ejecución son tres piezas y un proceso que trabaja aparte. En el navegador del
-móvil corre la PWA: una aplicación de página única servida como ficheros estáticos, con su
-manifiesto y su *service worker*. Bajo un único dominio, un proxy inverso reparte por ruta —lo
-que empieza por `/api/` va al backend FastAPI, el resto se sirve como fichero de la aplicación—.
-El backend habla con una sola base de datos PostgreSQL mediante un controlador asíncrono. Y
-fuera del camino de la petición, un conjunto de procesos ETL escribe en esa misma base de datos
-por su cuenta: el espejo del catálogo de REVE y la ingesta diaria de la curva de precios.
+## Visión general
 
-Que los ETL queden fuera de ese camino no es una preferencia estética. La API de REVE admite
-5 peticiones/hora, y ese techo descarta cualquier arquitectura en la que abrir el mapa provoque
-una llamada a REVE: el catálogo se copia una vez y se mantiene desde entonces. La restricción
-es, con diferencia, la que más forma da al sistema, y el capítulo 5 la argumenta en detalle. Hoy
-el contenedor que dispara esos procesos está desplegado pero deliberadamente detenido, por
-motivos que corresponden al capítulo 8.
+El sistema sigue una arquitectura cliente-servidor [38] y está compuesto de tres piezas en el
+camino de la petición y varios procesos que trabajan aparte. En el navegador del móvil corre la
+PWA: una aplicación de página única (SPA) servida como ficheros estáticos, con su manifiesto y su
+*service worker*. Bajo un único dominio, un proxy inverso reparte por ruta: lo que empieza por
+`/api/` va al *backend* y el resto se sirve como fichero de la aplicación. El *backend* habla con
+una sola base de datos PostgreSQL mediante un controlador asíncrono.
 
-**La propiedad que ordena el resto del diseño es el mismo origen.** La aplicación y su API se
-publican bajo un solo dominio: el navegador descarga la SPA de `https://s-charge.app` y todas
-sus llamadas salen contra `https://s-charge.app/api/*`. Para el navegador, la API no es un
-tercero, sino la misma aplicación. De ahí se siguen dos consecuencias que atraviesan el trabajo
-entero. La primera es que la sesión puede vivir en una cookie `HttpOnly` de origen propio, que
-el código JavaScript no puede leer y que el navegador adjunta sin que el cliente la manipule
-—el capítulo 6 desarrolla la sesión, sus atributos y su modelo de amenazas—. La segunda es que
-no hay superficie CORS: ni *preflight*, ni lista de orígenes autorizados, ni una configuración
-que mantener sincronizada entre dos despliegues distintos. Lo que no existe no se puede
-configurar mal.
+El *stack* utilizado para el desarrollo del sistema es FastAPI y PostgreSQL en el servidor y React
+sobre Vite en el cliente. Esta es una combinación habitual hoy en día en el desarrollo web, con
+documentación abundante y un ecosistema maduro. En mi caso, es además la combinación usada
+habitualmente en el ámbito profesional. En un proyecto de fin de máster, en el que participa un
+solo desarrollador y hay un plazo fijo, eso pesa más que una comparativa entre alternativas, ya que
+el tiempo que no se gasta aprendiendo herramientas nuevas se emplea en el problema.
 
-El entorno de desarrollo conserva la propiedad en lugar de simularla: el servidor de desarrollo
-de Vite hace de proxy de `/api/*` hacia el backend nativo, de modo que la cookie también es de
-origen propio mientras se programa. Un fallo de cookies entre orígenes no puede aparecer solo en
-producción, porque en desarrollo tampoco hay dos orígenes.
+Las dos mitades viven en un único repositorio, lo que facilita el trabajo de desarrollo. Separarlas
+sería conveniente solo si hubiera personas o equipos independientes para cada pieza. Fuera del
+camino de la petición, tres procesos ETL escriben en esa misma base de datos por su cuenta: la
+siembra del catálogo de REVE, el refresco incremental de los puntos —que relevó a la siembra al
+terminar la primera copia— y la ingesta diaria de la curva de precios.
 
-> **[FIGURA 4.1]** — *Arquitectura de ejecución.* Diagrama de cajas y flechas, la figura
-> principal del capítulo. Arriba, caja **Navegador (móvil)** con la PWA —React + Vite—, el
-> *service worker* y el manifiesto. De ella sale una flecha rotulada **HTTPS · cookie
-> `HttpOnly` de origen propio** hacia la caja **Caddy — proxy inverso, un solo dominio**. De
-> Caddy salen dos flechas etiquetadas por ruta: `/api/*` → caja **FastAPI**, y `/*` → caja
-> **nginx (ficheros estáticos de `dist/`)**. Dentro de la caja de FastAPI, escrito en tres
-> niveles, `routers → services → models`. De FastAPI sale una flecha rotulada **asyncpg
-> (asíncrono)** hacia la caja **PostgreSQL 18**, con las diez tablas listadas dentro. A un lado,
-> desconectada del camino anterior, la caja **Procesos ETL (cron en el contenedor
-> `scheduler`)**, con dos flechas salientes hacia dos cajas externas —**API de REVE** (rotulada
-> «5 peticiones/hora») y **API de REE `apidatos`**— y una flecha entrante a PostgreSQL rotulada
-> **escrituras periódicas (`upsert`)**. Un marco discontinuo debe englobar Caddy, nginx,
-> FastAPI, PostgreSQL y el `scheduler`, con la etiqueta «un único servidor, Docker Compose
-> (capítulo 8)». Lo que la figura tiene que dejar ver de un vistazo: que el navegador solo
-> conoce un origen, y que la ruta de datos externa no atraviesa la API.
-> **Cómo obtenerla:** diagrama a dibujar en draw.io o Mermaid.
+Que los ETL queden fuera de ese camino es consecuencia directa del límite de 5 peticiones/hora de la API de REVE. Ninguna arquitectura en la que abrir el mapa provoque una llamada a la fuente es viable con esa restricción, así que el catálogo se copia una vez y desde entonces el refresco reparte su presupuesto por orden de prioridad: primero las tarifas, que son lo único que se mueve con frecuencia, y solo con lo que sobre el catálogo físico. Ese mismo script de refresco es además el que descubre los puntos que REVE ha publicado después de la siembra inicial, ya que al llegar la tarifa de un conector que la base de datos no conoce sus identificadores quedan anotados en una tabla hasta que una llamada al catálogo trae la estación entera. El capítulo 5 lo desarrolla.
 
-## El backend por capas
+La siguiente figura recoge la estructura del repositorio en su primer nivel y, dentro de cada
+mitad, la organización de sus carpetas, que los dos apartados siguientes explican:
 
-El backend se organiza en tres capas —`routers → services → models`— sostenidas por una regla
-que se puede comprobar leyendo un fichero: **los routers son finos y la lógica de negocio no
-importa FastAPI**. Un router valida la entrada, llama a un servicio y devuelve lo que recibe;
-todo lo que decide algo vive en `app/services/`, donde no aparece ninguna importación del
-*framework*.
+> **[FIGURA 4.1]** — *Estructura del repositorio: primer nivel, backend y frontend.*
 
-Lo que compra esa regla no es orden visual, sino una propiedad de las pruebas. Un servicio que
-no conoce FastAPI se ejerce como una función corriente: la simulación de recarga y la cascada de
-precios se prueban con entradas y salidas, sin cliente HTTP que levantar, sin inyección de
-dependencias que resolver y, en su mayor parte, sin base de datos. La consecuencia práctica es
-que la parte del sistema donde vive el criterio —la que puede estar mal de una forma que no se
-ve— es también la más barata de comprobar.
+La propiedad que ordena el resto del diseño es el mismo origen. La aplicación y su API se publican
+bajo un solo dominio: el navegador descarga la SPA de `https://s-charge.app` y todas sus llamadas
+salen contra `https://s-charge.app/api/*`. Para el navegador, la API no es un tercero, sino la
+misma aplicación, porque coinciden esquema, *host* y puerto, que son los tres componentes con los
+que la política del mismo origen decide qué puede acceder a qué [39]. De ahí se siguen dos
+consecuencias que atraviesan el trabajo entero. La primera es que la sesión puede vivir en una
+cookie `HttpOnly` de origen propio, que el código JavaScript no puede leer y que el navegador
+adjunta sin que el cliente la manipule; el capítulo 6 la desarrolla. La segunda es que no hay
+superficie CORS que configurar, y eso importa por seguridad y no por comodidad. CORS no protege:
+relaja la política del mismo origen, y una relajación excesiva no rompe nada, así que puede pasar
+inadvertida. Bajo un mismo origen esa clase de fallo no se mitiga, no existe.
 
-El resto de la estructura completa el reparto. En `app/schemas/` están los modelos Pydantic de
-petición y respuesta, que son a la vez la validación de entrada y la fuente del esquema OpenAPI
-del siguiente apartado. En `app/models/`, un fichero por agregado con las tablas SQLAlchemy. En
-`app/integrations/`, los clientes HTTP de las dos APIs externas, aislados para que el resto del
-código no sepa cómo pagina REVE ni cómo responde REE. Y en `app/etl/`, la lógica de los procesos
-periódicos, que reutiliza esos clientes y esos modelos pero no pasa por la API.
+> **[FIGURA 4.2]** — *Diagrama de contenedores de S-Charge* (modelo C4 [33], nivel 2).
 
-```text
-backend/app/
-  routers/       auth · points · prices · simulate · users · vehicles
-  services/      points · pricing · prices · simulation · email · user_manager
-  models/        user · cpo · charging_point · tariff · vehicle · price · etl
-  schemas/       auth · point · price · simulation · vehicle · health
-  integrations/  reve · ree
-  etl/           reve · pvpc · cursor
-  utils/         audit · auth_backend · rate_limit · security
-```
+## El backend
 
-Son ~3.157 líneas de Python sobre 10 tablas y 9 migraciones de Alembic. La autenticación se
-aplica en el punto de montaje de los routers y no ruta a ruta, de forma que un *endpoint* nuevo
-dentro de uno de ellos nace protegido; el capítulo 6 lo desarrolla.
+Sobre FastAPI y PostgreSQL 18 se apoyan tres piezas más: SQLAlchemy 2.0 en modo asíncrono para el
+acceso a los datos, Alembic para versionar los cambios del esquema y Pydantic para validar lo que
+entra y sale de la API. Un solo motor asíncrono atiende tanto las peticiones como los procesos ETL.
+Al margen de la aplicación, el trabajo diario se sostiene en uv para las dependencias y el entorno
+virtual, Ruff para el formato y las reglas de estilo, basedpyright para los tipos y pytest para las
+pruebas. El inventario completo de bibliotecas y versiones se encuentra en el anexo.
+
+El *backend* se organiza en tres capas —*routers* → *services* → *models*— según el patrón de
+arquitectura en capas, cuya frontera principal está aquí entre las dos primeras: los *routers* se
+ocupan del protocolo y los servicios, del dominio. Un *router* valida la entrada, llama a un
+servicio y devuelve lo que recibe; las decisiones viven en `app/services/`; y la tercera capa,
+`app/models/`, declara las tablas como clases de SQLAlchemy —un fichero por agregado— y es la única
+que conoce el esquema de la base de datos. La separación permite probar el dominio sin levantar la
+aplicación, ya que una prueba puede llamar directamente al servicio, pasarle unos datos y comprobar
+lo que devuelve, sin necesidad de un servidor que atienda la petición. No hay entre los servicios y
+los modelos una cuarta capa de repositorios porque no es necesaria: SQLAlchemy ya abstrae el acceso
+a los datos [40], de modo que envolverlo añadiría una indirección sin aislar nada que no esté
+aislado.
+
+El resto de la estructura, que la figura 4.1 recoge, completa el reparto. En `app/schemas/` están
+los modelos Pydantic de petición y respuesta, que son a la vez la validación de entrada y la fuente
+del esquema OpenAPI del siguiente apartado. En `app/integrations/`, los clientes HTTP de las dos
+APIs externas de datos, se encuentran aislados para que el resto del código no dependa de cómo
+pagina o responde cada una; el envío de correo, que se apoya en Resend, se resuelve en su propio
+servicio. En `app/etl/`, se encuentra la lógica de los procesos periódicos, que reutiliza esos
+clientes, esos modelos y los servicios pero no pasa por la API; sus puntos de entrada viven en
+`backend/scripts/`, fuera de `app/`, y son los que el capítulo 5 detalla. Que los procesos ETL
+escriban directamente en la base de datos y no contra sus propios *endpoints* es deliberado, ya que
+hacerlo por HTTP obligaría a publicar una superficie de escritura masiva que ninguna funcionalidad
+del producto necesita y que habría que autenticar y proteger. Esto encarecería cada registro y
+ataría la ingesta a que el *backend* esté levantado. El riesgo de esa vía directa sería que la API
+y los procesos acabaran con definiciones distintas de las mismas tablas, y lo evita que ambos
+importen los modelos de `app/models/`.
 
 ## El frontend
 
-El frontend se organiza **por funcionalidad**: un fichero vive con la funcionalidad que lo
-posee. La página del mapa, sus filtros, su hoja inferior de detalle y el *hook* que trae los
-puntos están juntos en `features/map/`, y no repartidos entre una carpeta de páginas, otra de
-componentes y otra de *hooks*. `components/` y `lib/` guardan únicamente lo que de verdad
-comparten varias funcionalidades —el cliente de la API generado, el guardián de rutas
-protegidas—; un componente que solo usa una funcionalidad no llega ahí. Cada funcionalidad se
-mantiene plana hasta que crece: la subcarpeta aparece cuando el primer fichero la necesita, no
-antes.
+Sobre React y Vite, el cliente se escribe en TypeScript, gestiona sus dependencias con pnpm y
+confía a Biome el formato y las reglas de estilo; el tipado lo comprueba el propio compilador de
+TypeScript.
 
-Dos reglas más pequeñas sostienen el conjunto, y ambas existen por el mismo motivo. No hay
-ficheros barril —ningún `index.ts` por funcionalidad— y los iconos se importan por ruta
-completa, nunca desde el paquete raíz. Un solo `import { Foo } from '@mui/icons-material'`
-arrastra el manifiesto entero de iconos al *chunk* y anula el *tree-shaking* en silencio, que es
-la peor clase de regresión de rendimiento: no falla nada, simplemente se descargan cientos de
-kilobytes de más. Por eso la regla no se confía a la disciplina, sino que la vigila el *linter*
-con una restricción de importaciones que rompe la construcción. Son ~4.732 líneas de TS, TSX y
-CSS.
+El *frontend* se organiza por funcionalidad: un fichero vive con la funcionalidad que lo posee. La
+página del mapa, sus filtros, su hoja inferior de detalle y el *hook* que trae los puntos están
+juntos en `features/map/`, y no repartidos entre una carpeta de páginas, otra de componentes y otra
+de *hooks*. Las carpetas `components/` y `lib/` guardan únicamente lo que de verdad comparten
+varias funcionalidades —el cliente de la API generado, el guardián de rutas protegidas—; un
+componente que solo usa una funcionalidad no llega ahí. Cada funcionalidad se mantiene plana hasta
+que crece, y la subcarpeta aparece cuando el primer fichero la necesita, no antes. El contraste con
+la organización por capas del servidor se aprecia en la figura 4.1.
 
-## El contrato entre las dos mitades
+El enrutado lo resuelve React Router, del que depende la carga de datos por ruta y, con ella, el
+arranque de la sesión que describe el capítulo 6. El estado de servidor se delega en una biblioteca
+que resuelva de una sola vez la caché, la deduplicación de peticiones simultáneas y los estados de
+carga y error, que de otra manera habría que reimplementar en cada página; el caso principal en el
+que se usa es el mapa, cuya carga de puntos se solicita una vez y se comparte entre visitas de la
+misma sesión. La biblioteca utilizada en este caso es TanStack Query, entre otras bibliotecas
+equivalentes, porque no impone cliente de *fetch* propio y se acopla sin fricción al cliente tipado
+que se genera desde el esquema OpenAPI; RTK Query habría obligado a introducir Redux, que el
+proyecto no necesita para nada más. Por último, la interfaz se apoya también en una biblioteca de
+componentes ya resueltos en accesibilidad —controles de formulario, diálogos, hojas inferiores y
+avisos, con anillos de foco visibles y atributos ARIA correctos—. Aquí se ha recurrido a MUI por la
+cobertura de ese catálogo y por experiencia previa con él, pero se podría haber optado por alguna
+otra opción similar, como shadcn/ui.
 
-Los tipos con los que el frontend habla con la API no se escriben: **se generan**. FastAPI
-deriva el esquema OpenAPI de los modelos Pydantic, una tarea del repositorio lo exporta a un
-`openapi.json` versionado y de ese fichero se regenera el tipado del cliente. Ambos ficheros
-—el esquema y los tipos— se guardan en el repositorio, de modo que un cambio de contrato aparece
-en el *diff* de la revisión y no en la consola del navegador.
+El mapa se dibuja con MapLibre GL JS sobre teselas de OpenFreeMap. Los cerca de 13.700 puntos del
+catálogo descartan de entrada las bibliotecas que dibujan un marcador por elemento y obligan a
+escoger una que renderice por WebGL y agrupe de forma nativa, que es además la manera en que el
+*backend* sirve el conjunto. Eso deja tres candidatas equivalentes en lo técnico —MapLibre GL JS,
+Mapbox GL JS y Google Maps— y la decisión se traslada al coste, porque las dos últimas facturan por
+carga de mapa a partir de cierto umbral y exigen dar de alta un medio de pago, mientras que
+MapLibre es de código abierto y OpenFreeMap entrega teselas vectoriales sin registro, sin clave y
+sin cuota de uso.
 
-La consecuencia es la que importa. Como el esquema está en el repositorio, la integración
-continua puede regenerarlo desde el código y comparar: si difiere, falla. **Un cambio de
-contrato rompe la integración continua en lugar de romper el frontend en ejecución.** Antes de
-versionar el esquema esto no era posible, porque generar los tipos exigía tener el backend
-levantado, algo que ninguna comprobación automática hacía. El principio es el mismo que ordena
-el último apartado de este capítulo: mover una verificación de una persona a una herramienta.
+La aplicación se distribuye como PWA instalable, lo que exige un manifiesto de aplicación web que
+declare nombre, iconos, ámbito y modo de presentación [41], y un *service worker* que se encargue
+del arranque de la carcasa —el armazón de la aplicación, o *app shell*, que consiste en el
+documento HTML, los estilos, el paquete de JavaScript y los iconos, es decir, todo lo que no son
+datos—. Es la vía por la que una aplicación construida con tecnologías web se instala en el
+dispositivo y se comporta como una nativa [42], sin el coste de mantener una aplicación nativa para
+Android y otra para iOS, cada una con su cadena de construcción y su revisión de tienda. Esta
+decisión enlaza además con el mismo origen que describe el apartado 4.1, porque las interfaces del
+*service worker* solo están disponibles en contexto seguro [34], de modo que HTTPS no es una buena
+práctica añadida sino un requisito de instalabilidad.
 
-> **[FIGURA 4.2]** — *Cómo se genera el contrato.* Cadena de cajas de izquierda a derecha:
-> **modelos Pydantic + routers** → **esquema OpenAPI** (`app.openapi()`) → **`openapi.json`
-> versionado en el repositorio** → **`openapi-typescript`** → **`schema.d.ts`** → **cliente
-> tipado (`openapi-fetch`) usado por los *hooks* de TanStack Query**. Debajo, una caja
-> **Integración continua** con una flecha que entra en la cadena, regenera el esquema desde el
-> código y lo compara con el fichero versionado; salida etiquetada «difiere → falla la
-> construcción». Marcar con un icono los dos ficheros que se guardan en el repositorio.
-> **Cómo obtenerla:** diagrama a dibujar en draw.io o Mermaid.
+Tener un *service worker* obliga además a decidir qué se sirve desde una caché, y el criterio a
+seguir no es la frecuencia con que cambia cada tipo de recurso, sino el daño que hace servirlo
+caducado. Por ejemplo, la carcasa se precachea entera porque un *build* es inmutable, mientras que
+los datos no. El catálogo de puntos se actualiza por lotes, con una cadencia de días, no de horas,
+así que servirlo con *stale-while-revalidate* [43] cambia unas horas de desfase por un mapa
+inmediato que se refresca por detrás; los precios siguen al PVPC hora a hora, y ahí una caché
+serviría un dato caducado como si fuera el actual, de modo que se piden siempre a la red.
 
-## El stack y sus razones
+## El contrato entre las dos mitades y la cadena de comprobaciones
 
-El inventario completo de bibliotecas y versiones es un anexo; aquí interesa el razonamiento de
-las piezas que sostienen la arquitectura descrita.
+Los tipos con los que el *frontend* habla con la API no se escriben a mano, sino que se generan.
+FastAPI deriva el esquema OpenAPI [44] de los modelos Pydantic, un *script* de `backend/scripts/`
+lo exporta a un `openapi.json` versionado y de ese fichero se regenera el tipado del cliente. Ambos
+ficheros —el esquema y los tipos— se guardan en el repositorio.
 
-En el cliente, **React sobre Vite y TypeScript**. Sobre esa base, el estado de servidor se
-gestiona con **TanStack Query**, y conviene decir qué problema resuelve porque no es evidente:
-una aplicación que crece en *endpoints* de lectura acaba reimplementando en cada página, con
-`useEffect`, la misma caché, la misma deduplicación de peticiones simultáneas, la misma política
-de reintento y los mismos estados de carga y error. TanStack Query los define una vez. El caso
-que lo justifica aquí es el mapa: su carga de puntos se pide una vez y se comparte entre visitas
-dentro de la misma sesión, en lugar de volver a descargarse cada vez que el usuario vuelve a la
-pestaña.
+Eso permite comprobar automáticamente los dos eslabones de la cadena. Por un lado, se regenera el
+esquema desde el código para contrastarlo con el fichero guardado; por otro, se regenera el tipado
+del cliente a partir de ese esquema, para comprobar que tampoco se ha quedado atrás. En cualquiera
+de los dos casos, la construcción se detiene. Un contrato desincronizado falla así en el equipo de
+quien lo ha cambiado, y no en el navegador de quien usa la aplicación. La alternativa habitual,
+generar el tipado contra un servidor levantado, dejaría ese paso en manos de quien se acuerde de
+ejecutarlo, sin rastro en el repositorio con el que contrastarlo.
 
-El mapa se dibuja con **MapLibre GL JS sobre teselas de OpenFreeMap**. Tres restricciones
-deciden: unos 13.700 puntos sobre un móvil de gama media, presupuesto cero y un repositorio
-público donde no puede vivir una clave de API. MapLibre renderiza por WebGL y agrupa los puntos
-de forma nativa, que es exactamente la forma en que el backend sirve el conjunto; OpenFreeMap
-entrega teselas vectoriales sin registro, sin clave y sin cuota de uso. Las alternativas con
-mejor documentación —Mapbox GL JS, Google Maps— exigen todas un identificador facturable que
-acabaría empaquetado en el *bundle* de un repositorio abierto.
+El contrato escrito en el repositorio sirve además a quien no ha escrito el servidor, ya se trate
+de otra persona o de un asistente de programación, como Codex o Claude Code. La forma de cada
+respuesta no hay que deducirla leyendo los *routers*, porque está declarada, y el compilador
+rechaza cualquier llamada que no se ajuste a ella.
 
-La aplicación se distribuye como **PWA instalable**: manifiesto de aplicación web, que declara
-nombre, iconos, ámbito y modo de presentación [37], y *service worker* para el
-arranque de la carcasa. Es la vía por la que una aplicación construida con tecnologías web se
-instala en el dispositivo y se comporta como una nativa [33], sin dos cadenas de
-construcción ni dos revisiones de tienda para un solo desarrollador. Tiene además una atadura
-con el apartado anterior: las interfaces del *service worker* solo están disponibles en contexto
-seguro [34], de modo que HTTPS no es una buena práctica añadida sino un
-requisito de instalabilidad.
+> **[FIGURA 4.3]** — *Generación y verificación del contrato de la API.*
 
-Tener un *service worker* obliga a decidir algo que la literatura de PWA suele dar por resuelto:
-qué se puede servir desde una caché. La carcasa se precachea entera, porque un *build* es
-inmutable por construcción y su versión la fija el propio artefacto. Los datos no, y el criterio
-que los separa no es cuánto ocupan sino **cuánta caducidad toleran**. El catálogo de puntos solo
-se mueve cuando se ejecuta la siembra, así que servirlo con *stale-while-revalidate* cambia un
-dato de horas por un mapa que aparece de inmediato y se refresca por detrás. Los precios siguen
-al PVPC hora a hora, y ahí una caché sería una mentira silenciosa: un fallo de red se ve —la
-pantalla no pinta— y el usuario sabe que no debe fiarse, mientras que un precio caducado
-presentado como actual es indistinguible de uno correcto. La aplicación prefiere fallar de forma
-visible a acertar de forma dudosa, que es la misma premisa por la que una sesión vale el
-presupuesto que aceptó y no el precio del instante en que se consulta. El monedero y el
-histórico quedan fuera por esa razón y por una segunda: son datos de un usuario concreto, y una
-caché del dispositivo los sobreviviría al cierre de sesión.
+Generar el contrato y comprobarlo automáticamente responde a un principio que ordena también otras
+decisiones del capítulo, y es que la regla que no se puede comprobar de forma automática acaba
+incumpliéndose. De ahí que las propiedades que el sistema debe mantener no se confíen a una guía de
+estilo, sino a comprobaciones que rompen la construcción cuando se violan. Trasladar así la
+verificación de una persona a una herramienta es una decisión de arquitectura y no de proceso,
+porque determina qué propiedades del sistema pueden darse por ciertas sin revisarlas a mano.
 
-Conviene entonces no exagerar qué significa aquí «funciona sin conexión». Sin red la aplicación
-arranca y pinta su interfaz, pero no tiene datos que mostrar, y el mapa —que es la pantalla
-principal— tampoco se dibuja, porque su cartografía base se descarga de un tercero. La casilla
-que la instalabilidad parece prometer está deliberadamente medio marcada, y decirlo es más útil
-que dar por hecho que un *service worker* equivale a una aplicación sin conexión.
+Esas comprobaciones actúan en tres momentos. Antes de cada *commit* se ejecuta lo que depende solo
+de los ficheros preparados —formato, reglas de estilo y búsqueda de secretos—; antes de cada envío,
+lo que exige mirar el proyecto entero, desde el tipado y las pruebas hasta la coincidencia del
+contrato con el código; y la integración continua lo repite todo sobre la rama protegida, donde
+ningún cambio entra sin tenerlo en verde. La duplicidad es deliberada, porque el *hook* local se
+puede omitir y la comprobación remota no. Solo dos trabajos quedan exclusivamente en el lado
+remoto, porque tardan demasiado para ejecutarlos en cada envío: la construcción de las imágenes de
+contenedor y el rastreo de secretos sobre todo el historial, que en local se limita a lo que está a
+punto de entrar.
 
-En el servidor, **FastAPI** con **SQLAlchemy 2.0 en modo asíncrono**, **Alembic** para las
-migraciones y **Pydantic** para el contrato; un solo motor asíncrono sirve tanto a la API como a
-los procesos ETL. Los datos viven en **PostgreSQL 18**, elegido por tener restricciones de
-verdad —una integridad que un código defectuoso no puede saltarse— y por dos novedades concretas
-de esa versión mayor, que se argumentan a continuación.
+Ese reparto responde a un principio conocido como desplazamiento a la izquierda [45], según el cual
+cuanto más tarde se detecta un defecto más cuesta corregirlo. De ahí que cada comprobación se sitúe
+en el momento más temprano en que puede ejecutarse con sentido, y que la detección de secretos
+ocupe el extremo de esa escala, porque una clave que llega al repositorio queda en el historial,
+aunque después se borre del código.
 
-## Decisiones revisadas a mitad de proyecto
+## Entorno de desarrollo
 
-Varias decisiones tomadas al principio se han sustituido, y una de ellas está argumentada pero
-aún no ejecutada. Interesan menos por su resultado técnico que por el criterio común que las
-ordena, que apareció al plantearlas y resultó más útil que la pregunta habitual de cuánto código
-hay que tocar: **si la migración la verifica una herramienta o la verifica una persona.**
+Las herramientas específicas de cada mitad se han nombrado en los dos apartados anteriores,
+mientras que las que se aprecian en la siguiente tabla son transversales.
 
-Subir de versión el intérprete de Python, cambiar de versión mayor la base de datos o generar
-los tipos del cliente desde el esquema son cambios que el comprobador de tipos, la batería de
-pruebas y la construcción confirman o rechazan; el número de ficheros afectados es casi
-irrelevante, porque si la integración continua pasa, la migración es correcta. Reescribir una
-decena de pantallas no lo verifica ninguna herramienta: el compilador confirma que el código
-compila, pero que la aplicación se siga viendo bien en un móvil de 360 px solo lo confirma
-alguien mirándola. Ese es el coste real, y es el que decide cuáles se hacen sin apenas
-deliberación y cuál exige una fase propia.
+| Herramienta | Uso en el proyecto | Descripción |
+| --- | --- | --- |
+| Zed | Escritura de código en las dos mitades | Editor de código |
+| Claude | Asistencia en la escritura y revisión de código | Agente de código |
+| Git | Control de versiones e historial del trabajo | Sistema de control de versiones distribuido |
+| GitHub | Alojamiento del repositorio, revisión por *pull request* e integración continua con Actions | Plataforma de alojamiento y automatización |
+| just | Ejecución de las tareas repetidas del proyecto | Ejecutor de comandos declarados en un fichero |
+| lefthook | Ejecución de las comprobaciones antes de cada *commit* | Gestor de *hooks* de Git |
+| DBeaver | Consulta e inspección de la base de datos | Cliente gráfico de bases de datos |
+| Docker Compose | Levantado de PostgreSQL en desarrollo y del *stack* completo en producción | Orquestador de contenedores declarado en un fichero |
 
-### De MUI a Tailwind + shadcn/ui
+**Tabla 4.1.** Herramientas transversales del entorno de desarrollo.
 
-El frontend se construyó sobre MUI con Emotion, y ahí sigue: se llegó a diseñar una migración a
-Tailwind con shadcn/ui, y **se descartó**. La decisión original fue correcta y conviene decirlo sin
-ambigüedad, porque un solo desarrollador con calendario fijo necesitaba controles de formulario,
-diálogos, navegación y, sobre todo, anillos de foco accesibles y atributos ARIA correctos sin
-escribirlos. Esa decisión permitió tener las pantallas de autenticación, el mapa y la ficha de
-punto funcionando en semanas. MUI no falló; lo que cambió es el peso relativo de los criterios.
-
-Cuatro cosas la hacen caducar. Emotion serializa e inyecta estilos en tiempo de ejecución, en
-cada renderizado, mientras que Tailwind resuelve lo mismo al compilar y no deja motor de estilos
-en el paquete —la auditoría Lighthouse de la fase 2 dio 31 en rendimiento en `/map` bajo
-*throttling* móvil; el motor de mapas domina esa cifra, pero el coste del CSS en tiempo de
-ejecución es aditivo y evitable—. shadcn/ui no es una dependencia sino código copiado al
-repositorio, de forma que adaptar el sistema de diseño pasa de sobrescribir estilos ajenos desde
-fuera a editar ficheros propios; los más de cien usos de la prop `sx` acumulados son la señal
-habitual de que el sistema de diseño y la librería tiran en direcciones distintas. TanStack
-Router valida en tiempo de compilación los parámetros de ruta y de búsqueda, convirtiendo en
-error de construcción una familia de fallos que hoy solo aparece en ejecución. Y falta una capa
-de formularios que la aplicación nunca ha tenido: el alta de puntos privados será el primer
-formulario real, y un único esquema Zod validaría en cliente lo mismo que Pydantic valida en
-servidor.
-
-**El argumento decisivo no es ninguno de los anteriores: es el momento.** El coste de migrar
-crece con cada fase. Hoy son una decena de pantallas; después de puntos privados, optimizador,
-reservas y monedero serían del orden de dieciocho, y construir ocho pantallas nuevas sobre una
-base que se pretende abandonar es el desperdicio real, no la migración. La decisión es binaria:
-o ahora, o nunca.
-
-Las alternativas se pesaron y perdieron. *No migrar* tiene coste cero, y equivale a decidir no
-migrar nunca. *Seguir en MUI con un motor de estilos sin tiempo de ejecución* —Pigment CSS—
-resolvería el primer punto conservando la API de componentes, pero la propia documentación de
-MUI lo describe como alfa temprana, y no toca la propiedad de los componentes, el tipado de
-rutas ni los formularios: apostar la interfaz de un trabajo con entrega fija a una API en alfa
-es un mal cambio. *Migrar solo los estilos* ahorra menos de lo que parece, porque los ficheros de
-enrutado se tocan igualmente al reescribir cada pantalla. Y la *migración incremental, pantalla
-a pantalla*, es la aparentemente prudente y la peor: obliga a mantener dos sistemas de estilos
-durante semanas, con dos maneras de hacer cada cosa y el doble de superficie de revisión.
-
-> **PENDIENTE:** medida posterior a la migración —Lighthouse en `/map` y en una pantalla de
-> formulario, y tamaño del *bundle*, con el mismo método de la auditoría de la fase 2— para
-> contrastarla con la medida previa. El resultado se publica sea cual sea; una mejora marginal
-> también es un hallazgo.
-
-### PostgreSQL 17 → 18
-
-Aquí no se sustituye una herramienta, se sube de versión mayor la misma, y lo que lo justifica
-son novedades concretas. La primera son las **claves primarias temporales `WITHOUT OVERLAPS`**.
-La fase de reservas debe garantizar que dos reservas no solapen sobre el mismo conector, y
-comprobarlo en la aplicación —consultar si hay solape y después insertar— arrastra una condición
-de carrera clásica: entre la consulta y la inserción, otra transacción puede insertar una reserva
-que solape. Declarar el rango temporal como parte de la clave primaria convierte la detección de
-conflictos en una invariante del esquema, imposible de saltarse por concurrencia o por un camino
-de código que olvide comprobarla. Para una funcionalidad cuyo valor depende de que la reserva
-signifique algo, la diferencia no es de comodidad sino de corrección. El diseño de esa tabla
-corresponde a la fase 10 y no está construido.
-
-La segunda es `uuidv7()`, **evaluada y descartada**. Las claves primarias del proyecto son UUID
-versión 4, aleatorios, de modo que cada inserción cae en una hoja arbitraria del índice; UUIDv7
-antepone una marca de tiempo y las claves nuevas se insertan de forma aproximadamente ordenada.
-Sobre el papel es atractiva. No se adopta porque **su beneficio es de localidad en la inserción y
-este sistema apenas inserta**: la tabla mayor ronda las 47.000 filas y se sembró una vez, y el
-flujo permanente son veinticuatro precios al día y *upserts* dispersos del refresco de tarifas. A
-esa escala la diferencia no es pequeña, es inmedible. El argumento que decide es el mismo
-criterio de este apartado: **un cambio cuyo beneficio no puede medirse no se defiende, se cree**.
-Adoptarlo obligaría a escribir que «mejora la localidad del índice» sin un número detrás, que es
-exactamente la clase de afirmación que este trabajo intenta no hacer. Queda como camino no
-tomado, con la puerta abierta donde tendría sentido: las tablas de sesiones y reservas serán las
-primeras con un ritmo de inserción real.
-
-El coste operativo, en cambio, es real y no se disimula. Un salto de versión mayor no es cambiar
-la etiqueta de la imagen: el formato del directorio de datos cambia, un volumen de la 17 bajo una
-imagen 18 se niega a arrancar, y desde la 18 cambia además el punto de montaje. El procedimiento
-es volcar con la imagen antigua, destruir el volumen, arrancar la nueva y restaurar. Como la base
-de datos contiene una siembra que costó ~12 días de ticks bajo el límite de 5 peticiones/hora,
-ese es el punto exacto donde el cambio podría costar datos irrecuperables, y por eso se
-documenta como procedimiento y no como nota al pie.
-
-### El entorno de desarrollo
-
-El proyecto ejecutaba en contenedores las tres piezas, con recarga en caliente por *bind mounts*.
-Hoy solo PostgreSQL corre en contenedor durante el desarrollo; backend y frontend se ejecutan de
-forma nativa. El argumento decisivo no es la velocidad, aunque mejore: es que **ya existía una
-cadena de herramientas nativa y era la autoritativa**. Los *hooks* de git, el comprobador de
-tipos, el *linter* y las pruebas corren en el host, y son los que deciden si un *commit* entra y
-si la integración continua pasa. El contenedor de desarrollo era un segundo entorno paralelo al
-que realmente gobierna el proyecto, con su clase de fallo asociada: funciona en el contenedor,
-falla en el *hook*. Colapsar los dos en uno elimina esa categoría entera.
-
-La paridad con producción, que era el argumento a favor de los contenedores en desarrollo, se
-conserva donde importa: producción sigue ejecutando el stack completo en contenedores, ese mismo
-stack se levanta en local para una prueba de humo y la integración continua construye las
-imágenes de producción en cada *pull request*. La paridad, además, nunca fue total: las imágenes
-de desarrollo usaban etapas de construcción distintas de las de producción.
+En desarrollo solo PostgreSQL corre en contenedor y el resto se ejecuta de forma nativa, por dos
+razones. La primera es práctica: con el código dentro del contenedor, cada dependencia que se añade
+obliga a reconstruir la imagen para que el intérprete la vea, y en un proyecto que empieza eso
+ocurre a diario. La segunda es que se crearía un segundo entorno paralelo al de referencia, que es
+donde actúa la cadena de comprobaciones del apartado anterior, y ambos podrían divergir justamente
+en las dependencias instaladas. El servidor de Vite hace de proxy de `/api/*` hacia el *backend*,
+de modo que el mismo origen se conserva mientras se programa en lugar de simularse y un fallo de
+cookies entre orígenes no puede aparecer solo en producción.

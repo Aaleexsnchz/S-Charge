@@ -106,6 +106,29 @@ async def test_import_cpos_initial_bootstrap(
     assert cpo.raw_data["id"] == "cpo-1"
 
 
+async def test_import_cpos_accepts_a_cpo_with_no_descriptive_fields(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """REVE publishes less about some operators, and a refresh that rejects one
+    stalls every target below it in the tick."""
+    sparse = {
+        "id": "cpo-2",
+        "party_id": "ES*XYZ",
+        "last_updated": "2026-04-01T00:00:00Z",
+    }
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[sparse])
+
+    async with reve_client as client:
+        rows, _, exhausted = await import_cpos(client, db_session)
+
+    assert rows == 1
+    assert exhausted is True
+    cpo = (await db_session.execute(select(Cpo))).scalar_one()
+    assert cpo.party_id == "ES*XYZ"
+    assert cpo.city_code is None
+    assert cpo.name is None
+
+
 async def test_import_cpos_idempotent(
     reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
 ) -> None:

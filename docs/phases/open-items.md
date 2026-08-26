@@ -21,6 +21,7 @@ Items scheduled into a *later* phase are not carry-over either: those live in [p
 | 5 · 15 | Browser click-through after login — the one claim resting on argument rather than a run | — | [phase-5](phase-5.md#slice-15--authenticate-the-read-endpoints-x) |
 | 6 | `CONGESTION_TIME` bands are never priced — 218 rows carry a component type absent from REVE's enum | a reason to care | [features/points.md](../features/points.md) |
 | 6 | `price` is ex-VAT per OCPI and the app does not say so | a decision on what the driver is shown | [features/points.md](../features/points.md) |
+| 6 | A failing REVE target stalls the ones below it silently — nothing alerts, only `--status` shows it | a way to notice without looking | [operations.md](../operations.md) |
 
 ## Open decisions
 

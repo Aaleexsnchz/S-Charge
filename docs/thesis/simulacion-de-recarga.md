@@ -73,3 +73,45 @@ Es una predicción **basada en especificaciones**, no una medida. No modela
 temperatura, degradación, pérdidas de conversión ni el perfil real de taper de cada
 modelo (que el fabricante rara vez publica). Sirve para orientar la decisión previa a
 la carga; se presenta como estimación, no como garantía.
+
+**El sesgo tiene signo conocido, y es el signo favorable.** Las dos aproximaciones
+que afectan al coste lo desvían siempre en la misma dirección: la factura real queda
+*por encima* de la estimación, nunca por debajo. La energía que se calcula es la que
+entra en la batería (`batería · ΔSoC`), mientras que el poste factura la que
+entrega por el cable —entre un 5 % y un 10 % más en DC, entre un 10 % y un 15 % en
+AC—; y el IVA que la fuente publica en cada componente de tarifa no se aplica. Que un
+error de modelado tenga signo conocido no lo convierte en correcto, pero sí decide
+cuál de los dos errores posibles se comete: un conductor que acepta un importe nunca
+se encuentra con uno mayor por culpa del modelo.
+
+**El IVA es además una ambigüedad de la fuente, no una decisión propia.** OCPI define
+`price` como importe sin IVA y añade el porcentaje en un campo aparte, que aquí se
+almacena pero no se aplica; la práctica de los operadores españoles es publicar
+directamente el precio de venta al público. Los datos no distinguen ambos casos —una
+tarifa de 0,45 €/kWh es plausible como precio final y como base imponible— y ninguna
+consulta sobre el propio catálogo puede resolverlo: hace falta contrastar con un poste
+cuyo cartel de precios sea visible. Se documenta como pendiente en lugar de elegir una
+interpretación, porque elegir mal desplaza *todas* las estimaciones un 21 %.
+
+## Lo que la simulación revela sin proponérselo
+
+La estimación produce con frecuencia importes superiores a **10 €** por sesión, y esa
+cifra sorprende a quien asocia el vehículo eléctrico al ahorro. No es un defecto del
+cálculo: sobre las medianas del propio catálogo —0,322 €/kWh en AC y 0,447 €/kWh en DC
+sobre 38 552 conectores con precio— una batería de 60 kWh cargada del 20 % al 80 %
+cuesta 11,60 € en AC y 16,09 € en DC. Son los precios reales de la recarga pública
+española.
+
+Traducido a coste por distancia, con un consumo realista de unos 17,5 kWh/100 km, la
+recarga rápida en DC sale a unos **7,8 €/100 km** frente a los **10 €/100 km** de un
+gasolina equivalente: un ahorro estrecho, y prácticamente nulo frente a un diésel. La
+misma energía tomada en casa a precio PVPC ronda los **2 €/100 km**. **El ahorro del
+vehículo eléctrico vive en la recarga doméstica, no en la pública**, y la brecha entre
+ambas es de un factor cercano a cuatro.
+
+Este es un resultado que la aplicación expone por construcción y que el conductor
+suele descubrir solo al final de la sesión, delante del poste. Sostener aquí la
+decisión de no inventar precios (la casilla vacía del apartado anterior) tiene por
+tanto una consecuencia que va más allá del rigor: la señal de precio que la aplicación
+muestra antes de enchufar es exactamente la información que hace falta para elegir
+entre cargar ahora y esperar a llegar a casa.

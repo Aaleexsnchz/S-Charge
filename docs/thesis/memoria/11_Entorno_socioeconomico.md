@@ -139,7 +139,7 @@ El coste del proyecto es, con más de un 99 % del presupuesto, tiempo de una per
 
 De adoptarse, el efecto más directo es de **utilización, no de despliegue**: la literatura de
 planificación de infraestructura de recarga se ocupa de cuántos puntos hacen falta y dónde
-situarlos [58][59]; poner en circulación los que ya están instalados actúa sobre
+situarlos [67][68]; poner en circulación los que ya están instalados actúa sobre
 el mismo problema por el lado del aprovechamiento, y es la palanca más barata de las dos. En un
 país donde casi una cuarta parte del parque instalado se reporta como no operativo, mejorar el
 rendimiento de lo existente no es una idea menor [1].

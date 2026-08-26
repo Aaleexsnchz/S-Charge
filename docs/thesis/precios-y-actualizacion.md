@@ -41,12 +41,15 @@ punto: sirve siempre desde Postgres, con su fecha de actualización. La cuota se
 gasta solo en la ingesta de fondo, nunca en el tráfico de usuario.
 
 **2. Refresco incremental tras la siembra** ([refresh_reve.py](../../backend/scripts/refresh_reve.py)).
-Una vez completada la siembra inicial, cada tick refresca **solo
-`/connectors/tariffs`**: el precio es el único campo que cambia con la frecuencia
-suficiente para importar. El catálogo físico (`/cpos`, `/locations`) se congela en
-la instantánea de la siembra —no contiene precios, varía rara vez y refrescarlo
-solo robaría presupuesto a las tarifas; el coste asumido es que las estaciones
-añadidas a REVE tras la siembra no aparecerán. El endpoint solo acepta `date_from`
+Una vez completada la siembra inicial, cada tick refresca en primer lugar
+`/connectors/tariffs`: el precio es el único campo que cambia con la frecuencia
+suficiente para importar. El diseño inicial congelaba el catálogo físico
+(`/cpos`, `/locations`) en la instantánea de la siembra —no contiene precios y
+varía rara vez—, asumiendo como coste que las estaciones añadidas a REVE tras la
+siembra no aparecerían; ese coste resultó ser medible y demasiado alto, así que
+ambos volvieron al refresco **detrás** de las tarifas, con el presupuesto
+repartido por prioridad (véase «El catálogo congelado no se queda quieto» más
+abajo). El endpoint de tarifas solo acepta `date_from`
 (más `page`/`limit`): **no existe `date_to`**, y devuelve todos los conectores cuya
 tarifa cambió desde ese instante. Cada tick fija `date_from` en la marca de agua,
 pagina el resultado (entre ticks bajo presupuesto) y, al drenarlo, avanza la marca
@@ -331,12 +334,22 @@ ordinario destruyó las 262 líneas acumuladas: no hizo falta ni una rotación d
 logs. La medición existe cuando está en una tabla, no cuando está en la salida
 estándar de un proceso.
 
-**4. Estimación de respaldo.** Para un conector sin tarifa, el precio se estima
-como `PVPC(hora) + margen[tipo]` (AC +0.22 / DC +0.32 €/kWh) y se etiqueta como
-*estimado*. Dos constantes calibradas con el mercado real cubren también los
-puntos privados de usuario, que no tienen CPO. Este margen es solo el valor
-**recomendado**: en la aplicación, el propietario de un punto fija el precio o el
-margen que quiera (PVPC + margen, o precio fijo).
+**4. La estimación de respaldo, retirada de la pantalla.** Hubo una cascada: si el
+conector no tenía tarifa almacenada, el precio se estimaba como
+`PVPC(hora) + margen[tipo]` (AC +0.22 / DC +0.32 €/kWh) y viajaba etiquetado como
+*estimado*, confiando en que el usuario leyera la etiqueta. **Se retiró en la Fase
+6.** Un número verosímil colocado donde el usuario espera un precio se lee como un
+precio —la cifra ocupa el lugar destacado y la procedencia es letra pequeña—, y
+aquí, además, se atribuía una estimación propia a la tarifa de un tercero. Hoy
+**un conector sin tarifa no tiene precio ni coste**, y la casilla se queda vacía
+([be-0003](../decisions/be-0003-price-on-the-connector.md)).
+
+Las dos constantes siguen siendo un resultado válido y sobreviven cambiadas de
+sitio: son el valor **recomendado** que se ofrece al propietario de un punto
+privado cuando fija su propio precio (Fase 7), donde sugerir un número es el
+objetivo y no una afirmación sobre el poste de nadie. Ahí el propietario elige el
+precio o el margen que quiera (PVPC + margen, o precio fijo). El código vive en
+`backend/app/services/price_suggestion.py`, sin llamador hasta entonces.
 
 **5. Estado operativo frente a disponibilidad.** Son cosas distintas. El *estado
 operativo* (funciona / averiado) se asume siempre operativo y no se modela: se

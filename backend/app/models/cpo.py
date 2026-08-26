@@ -16,17 +16,21 @@ class Cpo(Base):
     __tablename__ = "cpos"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    # Only the key, the foreign-key target and the watermark are required. The
+    # rest is what REVE happens to publish about an operator, and it publishes
+    # less for some than for others -- a mirror that demands a descriptive field
+    # rejects the row and stalls the refresh behind it.
     source_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     party_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    cif: Mapped[str] = mapped_column(Text, nullable=False)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    address: Mapped[str] = mapped_column(Text, nullable=False)
-    city: Mapped[str] = mapped_column(Text, nullable=False)
-    city_code: Mapped[str] = mapped_column(Text, nullable=False)
-    postal_code: Mapped[str] = mapped_column(Text, nullable=False)
+    cif: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     region: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str | None] = mapped_column(Text, nullable=True)
-    country: Mapped[str] = mapped_column(Text, nullable=False)
+    country: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     website: Mapped[str | None] = mapped_column(Text, nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(

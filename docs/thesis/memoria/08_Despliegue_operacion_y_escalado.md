@@ -250,7 +250,7 @@ pero comprobar el tamaño no es restaurar, y una copia que nadie ha restaurado e
 agrupación semanal y sin fusión automática —porque etiquetar despliega— está diseñado y aún no
 configurado; y estar al día no es saber si alguna dependencia es vulnerable hoy, siendo la cadena
 de suministro de software una de las categorías de riesgo de la edición vigente del OWASP Top 10
-[42].
+[50].
 
 Ninguna de estas ausencias es un descuido: son decisiones proporcionadas a un servidor, una
 persona y un puñado de usuarios. Lo que las convierte en decisiones y no en olvidos es que están

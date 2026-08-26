@@ -44,7 +44,7 @@ capa de traducción sobre una jerarquía fijada desde el BOE.
 El Real Decreto 216/2014 sigue siendo la norma base del Precio Voluntario para el Pequeño
 Consumidor (PVPC) y el Real Decreto 446/2023 lo **modifica**, no lo sustituye: reescribe el
 término de ajuste como $TaE = (A - 1)\cdot P_{mah} + B\cdot F_t$, indexando parte del precio a
-una cesta de futuros para reducir su volatilidad [47][52]. Los coeficientes
+una cesta de futuros para reducir su volatilidad [56][61]. Los coeficientes
 $A = 0,45$ y $B = 0,55$ rigen desde 2026, tras un transitorio en 2024 y 2025 con más peso del
 mercado diario, y la norma obliga al operador del sistema a publicar los términos del coste de
 producción antes de las 20:15 del día anterior al del suministro. De esa hora sale la ventana de
@@ -72,7 +72,7 @@ Correo, nombre e identidad de proveedor son los datos sin los cuales no hay cuen
 para prestar el servicio que el usuario solicita al registrarse. La IP exige más argumentación.
 *Breyer* no declara que toda IP dinámica sea dato personal en abstracto: condiciona la
 calificación a que el responsable disponga de medios legales para identificar al interesado con
-datos adicionales del proveedor de acceso [45]. En un servicio abierto al público
+datos adicionales del proveedor de acceso [53]. En un servicio abierto al público
 en España esa condición se cumple con normalidad, así que se trata como dato personal. La base
 jurídica es el interés legítimo del artículo 6.1.f, y el considerando 49 declara legítimo el
 tratamiento «estrictamente necesario y proporcionado para garantizar la seguridad de la red y de
@@ -103,9 +103,9 @@ legítimo; no haberlo pensado no lo sería.
 
 El artículo 22.2 de la LSSI exceptúa el almacenamiento «en la medida que resulte estrictamente
 necesario, para la prestación de un servicio de la sociedad de la información expresamente
-solicitado por el destinatario» [53]. La guía de la AEPD desarrolla la excepción
+solicitado por el destinatario» [62]. La guía de la AEPD desarrolla la excepción
 con una lista cerrada de finalidades y, en lo que aquí importa, la enuncia así: cookies «de
-autenticación o identificación de usuario (**únicamente de sesión**)» [54].
+autenticación o identificación de usuario (**únicamente de sesión**)» [63].
 
 El sistema instala una sola cookie, y su contenido es un JWT firmado con 14 días de vida. La
 tentación es darla por exenta. El análisis honesto es menos cómodo: por finalidad encaja de
@@ -129,7 +129,7 @@ cualquier otro título. Si el catálogo atrae el derecho *sui generis* sobre bas
 Directiva 96/9/CE lo concede a quien acredite una inversión sustancial en la obtención,
 verificación o presentación del contenido y le permite impedir la extracción o reutilización de
 una parte sustancial, con un plazo que una base actualizada de forma continua puede renovar
-[55]; un registro nacional mantenido de forma permanente encaja en ese perfil, y el
+[64]; un registro nacional mantenido de forma permanente encaja en ese perfil, y el
 derecho opera **al margen** del derecho de autor. Y la atribución: si se debe, con qué texto y
 dónde. Que el dato se sirva solo a usuarios autenticados ayuda menos de lo que parece: reduce
 exposición y volumen, no convierte la reutilización en otra cosa.
@@ -151,12 +151,13 @@ menor riesgo por tratarse de una API abierta sin autenticación [10].
 
 La Directiva (UE) 2016/2102 impone requisitos de accesibilidad a los sitios y aplicaciones de
 **los organismos del sector público**, de modo que una aplicación privada queda fuera de su
-ámbito [56]. La que sí podría alcanzarla es la Directiva (UE) 2019/882, aplicable
+ámbito [65]. La que sí podría alcanzarla es la Directiva (UE) 2019/882, aplicable
 desde el 28 de junio de 2025, que cubre servicios de consumo entre los que figura el comercio
-electrónico y exime del lado de los servicios a las microempresas [57]. Ambas se
+electrónico y exime del lado de los servicios a las microempresas [66]. Ambas se
 conocen aquí por fuentes secundarias, así que el encaje se plantea como hipótesis: un servicio
 que hoy solo consulta información probablemente no presta un servicio de comercio electrónico,
-pero el monedero y las sesiones de pago de las fases 11 y 12 cambiarían esa conversación.
+pero las reservas, el monedero y las sesiones de pago de las fases 9 y 10 cambiarían esa
+conversación.
 
 La referencia técnica es WCAG 2.2 [36], y lo hecho es modesto: el analizador estático del
 frontend aplica el conjunto de reglas de accesibilidad y rompe la compilación cuando se

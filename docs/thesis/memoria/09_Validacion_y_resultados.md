@@ -73,26 +73,28 @@ con *stale-while-revalidate*, de modo que la tabla anterior describe una visita 
 segunda visita se ahorra esos 503 KB.
 La mejora no aparece en una auditoría corriente, porque Lighthouse limpia el almacenamiento entre
 ejecuciones y mide siempre una primera visita; cuantificarla exige conservarlo, y esa medición
-está pendiente. Siguen sin aplicar la carga por *viewport* con un `bbox` en lugar de España
-entera y la migración del frontend, que elimina el CSS que hoy se inyecta en cada render.
+está pendiente. Sigue sin aplicar la carga por *viewport*, es decir, pedir con un `bbox` solo los
+puntos visibles en lugar de España entera, que es la palanca con más recorrido de las que quedan.
 
-Esta medición es **deliberadamente la línea base** contra la que se comparará esa migración, y por
-eso se registró antes de tocar nada. El compromiso adquirido es que el resultado se publique sea
-cual sea: si la mejora resulta marginal, ese también es un hallazgo.
+La otra que figuraba en un borrador anterior ya no existe: la migración del *frontend* que habría
+retirado el CSS inyectado en cada render se evaluó y **se canceló** (capítulo 4), de modo que esa
+comparación no va a producirse. Lo que sí sigue en pie es el compromiso: esta medición es
+**deliberadamente la línea base**, se registró antes de tocar nada, y el resultado de la siguiente
+se publicará sea cual sea; si la mejora resulta marginal, ese también es un hallazgo.
 
 > **[FIGURA 11.1]** — *Línea base de rendimiento y su comparación pendiente.* Gráfico de barras
 > agrupadas con las cuatro categorías de Lighthouse en el eje horizontal y la puntuación 0-100 en
 > el vertical. Dos series por categoría: `/login` y `/map`, con los valores de la tabla 11.1. A la
-> derecha, un bloque de barras vacías con contorno discontinuo rotulado **«tras la migración del
-> frontend — pendiente de medir»**, para que la figura muestre que la comparación está
+> derecha, un bloque de barras vacías con contorno discontinuo rotulado **«tras la carga por
+> viewport — pendiente de medir»**, para que la figura muestre que la comparación está
 > comprometida y aún no cerrada.
 > **Cómo obtenerla:** diagrama a dibujar a partir de la tabla 11.1; la mitad derecha se rellena
 > con la segunda auditoría cuando exista.
 
 > **PENDIENTE:** repetir la auditoría Lighthouse (mismo método: *build* de producción, preset
-> móvil, `/map` y una pantalla de formulario) al terminar la migración del frontend, y sustituir
-> la mitad derecha de la figura 11.1 y el texto de este apartado por la comparación real, incluido
-> el tamaño del *bundle* antes y después.
+> móvil, `/map` y una pantalla de formulario) tras aplicar la carga por *viewport* en la fase 13, y
+> sustituir la mitad derecha de la figura 11.1 y el texto de este apartado por la comparación real,
+> incluido el tamaño del *bundle* antes y después.
 
 ## Validación funcional en dispositivo real
 
@@ -101,8 +103,8 @@ geolocalización se probaron en un iPhone y un Android físicos, no en un emulad
 pesa aquí porque el usuario está de pie junto a un poste de recarga, con una mano y con la
 cobertura que haya. Un emulador no reproduce el diálogo de permisos que el navegador del sistema
 presenta para la geolocalización —un permiso que la especificación exige de forma expresa y
-recomienda limitar a una sola sesión [46]—, ni el criterio con que cada plataforma
-decide ofrecer la instalación [33], ni el coste del primer pintado WebGL sobre una GPU
+recomienda limitar a una sola sesión [55]—, ni el criterio con que cada plataforma
+decide ofrecer la instalación [42], ni el coste del primer pintado WebGL sobre una GPU
 móvil. Lo que un emulador valida es el diseño responsivo.
 
 > **[FIGURA 11.2]** — *La aplicación instalada en un teléfono real.* Dos capturas juntas tomadas
@@ -130,7 +132,7 @@ móvil. Lo que un emulador valida es el diseño responsivo.
 **Tabla 11.2.** Comprobaciones ejecutadas contra el servidor de producción real. La política de
 contenido incompleta es una carencia conocida, no un descuido: el motor de estilos actual inyecta
 etiquetas `<style>` en línea, y una política estricta obligaría a permitirlas hasta anularse a sí
-misma [42].
+misma [50].
 
 ## Resultados del sistema como producto
 

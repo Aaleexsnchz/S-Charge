@@ -12,6 +12,26 @@ Before plugging in, a driver picks their car model and a connector and gets the 
 - **A connector with no published price has no cost.** Duration and energy still come back. The `PVPC + margen` estimate that used to fill the gap presented a guess as the operator's price — it survives in `services/price_suggestion.py` as the suggestion an owner gets for their own point ([Phase 7](../plan.md)), with no caller until then.
 - **Frontend** — `features/simulate`: the "Simular carga" dialog on point detail (vehicle picker, connector context, SoC range, result metrics).
 
+## Known limitations of the cost
+
+Both push the real bill **above** the quote, never below, so a driver is never
+surprised by a number larger than the one they accepted.
+
+- **Charging losses are not modelled.** The simulation computes energy *into the
+  battery* (`battery_kwh × ΔSoC`); the charger bills what it *delivers* through
+  the cable, which is 5-10% more on DC and 10-15% more on AC. The quote undershoots
+  the meter by roughly that margin.
+- **VAT handling is unresolved.** `tariff_elements.vat` is parsed and stored (1,780
+  ENERGY components carry `21.00`) but never applied to the cost. Under a strict OCPI
+  reading `price` excludes VAT, which would make every quote 21% low; in practice
+  Spanish CPOs tend to publish the retail price. The data cannot settle it — it needs
+  one manual comparison against a charger whose real tariff is visible on site.
+
+Neither is a defect in the arithmetic. At the catalogue's own medians (0,322 €/kWh
+AC, 0,447 €/kWh DC across 38,552 priced connectors) a 60 kWh car charging 20% to 80%
+costs 11,60 € on AC and 16,09 € on DC, which is what Spanish public charging
+actually costs. A quote above 10 € is the expected result, not a sign of a bug.
+
 ## Related
 
 Algorithm chapter: [thesis/simulacion-de-recarga.md](../thesis/simulacion-de-recarga.md).

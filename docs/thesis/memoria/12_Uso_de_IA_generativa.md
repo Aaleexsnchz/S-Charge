@@ -10,7 +10,7 @@ dónde están sus límites.
 
 La Universidad Carlos III de Madrid admite el uso de IA generativa en los trabajos de fin de
 máster siempre que se declare, y exige cumplimentar el formulario de declaración correspondiente
-e incluirlo como anexo [60]. Su guía distingue entre usos aceptables —procesamiento de
+e incluirlo como anexo [69]. Su guía distingue entre usos aceptables —procesamiento de
 datos con las debidas cautelas, refinamiento de texto previamente propio, apoyo al pensamiento
 crítico— y usos que comprometen las competencias que el título debe acreditar, entre los que
 sitúa expresamente la generación de texto y la estructuración de contenidos. También advierte
