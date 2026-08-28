@@ -88,6 +88,12 @@
       "semanticCommitScope": "infra"
     },
     {
+      "description": "The runtime major is chosen with the image, not proposed by a bot",
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "Node is pinned in frontend/Dockerfile, in .nvmrc and in the type definitions",
       "matchPackageNames": ["node", "@types/node"],
       "groupName": "node",
