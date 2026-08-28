@@ -28,7 +28,7 @@ x-logging: &logging
 services:
   db:
     <<: *logging
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     restart: unless-stopped
     env_file:
       - ./.env
@@ -99,7 +99,7 @@ services:
 
   caddy:
     <<: *logging
-    image: caddy:2.11-alpine
+    image: caddy:2.11-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     ports:
       - "80:80"

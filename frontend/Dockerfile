@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 
 ARG NODE_VERSION=24
 
@@ -18,7 +18,7 @@ COPY . .
 RUN pnpm build
 
 # ---------- prod: serve built assets via nginx (opt-in via --target prod) ----------
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
+FROM nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0 AS prod
 ARG APP_VERSION
 LABEL org.opencontainers.image.version=${APP_VERSION}
 COPY nginx.conf /etc/nginx/conf.d/default.conf
