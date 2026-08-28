@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG PYTHON_VERSION=3.13
-
 # Shared base: pinned uv binary + build env.
-FROM python:${PYTHON_VERSION}-slim AS base
+FROM python:3.13-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -18,7 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # ---------- prod: lean, non-root runtime (no uv, no dev deps) ----------
-FROM python:${PYTHON_VERSION}-slim AS prod
+FROM python:3.13-slim AS prod
 # Set by CD from the git tag. Deliberately without a default: an unstamped
 # build arrives as an empty string, and app/config.py owns the one fallback.
 ARG APP_VERSION

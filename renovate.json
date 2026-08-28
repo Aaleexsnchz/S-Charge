@@ -1,0 +1,111 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:pinDigests",
+    ":semanticCommits",
+    ":automergeDisabled"
+  ],
+  "timezone": "Europe/Madrid",
+  "schedule": ["* 0-5 * * 1"],
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": true,
+  "configMigration": true,
+  "prConcurrentLimit": 5,
+  "minimumReleaseAge": "3 days",
+  "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 0-5 1 * *"],
+    "semanticCommitType": "build",
+    "semanticCommitScope": "root"
+  },
+  "customManagers": [
+    {
+      "description": "Tool versions written as plain strings in workflow files, marked with a `# renovate:` annotation on the line above",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?(?:\\s+#[^\\n]*)*\\s+[A-Za-z0-9_.-]+:\\s*['\"]?(?<currentValue>[^'\"\\s@]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?['\"]?"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}docker{{/if}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The Python floor is chosen with the runtime, not raised by a bot",
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["pep621"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "backend"
+    },
+    {
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "backend dependencies"
+    },
+    {
+      "matchManagers": ["npm"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "frontend"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend dependencies"
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "infra"
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "container images"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "infra"
+    },
+    {
+      "description": "uv is pinned twice — the CI action input and the binary copied into the backend image — so both move in one PR",
+      "matchPackageNames": ["ghcr.io/astral-sh/uv"],
+      "groupName": "uv",
+      "semanticCommitType": "build",
+      "semanticCommitScope": "infra"
+    },
+    {
+      "description": "Python is pinned in backend/Dockerfile and again as the CI interpreter",
+      "matchPackageNames": ["python"],
+      "groupName": "python",
+      "semanticCommitType": "build",
+      "semanticCommitScope": "infra"
+    },
+    {
+      "description": "Node is pinned in frontend/Dockerfile, in .nvmrc and in the type definitions",
+      "matchPackageNames": ["node", "@types/node"],
+      "groupName": "node",
+      "semanticCommitType": "build",
+      "semanticCommitScope": "frontend"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/betterleaks/betterleaks"],
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "infra"
+    },
+    {
+      "description": "A digest bump carries no changelog to read, so they travel together and monthly",
+      "matchUpdateTypes": ["digest", "pin"],
+      "groupName": "image digests",
+      "schedule": ["* 0-5 1 * *"],
+      "semanticCommitType": "build",
+      "semanticCommitScope": "infra"
+    }
+  ]
+}

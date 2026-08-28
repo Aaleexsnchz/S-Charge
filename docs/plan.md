@@ -187,7 +187,7 @@ Deployment comes before the remaining feature work so there is a secure, phone-a
 
 **Running `v0.1.0`.** Getting the ETLs onto the server was originally a criterion here; it is [Phase 6](#phase-6--etl-reactivation--price-model--in-progress)'s, because the stack ships with `scheduler` deliberately stopped and turning it on is a decision about a frozen watermark rather than a step of a deploy.
 
-**Done means done for the thesis, not exhausted.** The application is deployed, reachable and released, and the pipeline that keeps it that way is proven — which is everything this phase owes the thesis. [phases/phase-5.md](phases/phase-5.md) still carries open slices that are genuine improvements rather than blockers: the security gate and backup cutover, external services on the prod origin, Renovate, and verifying the auth hardening on the host. They belong to this phase and can land whenever there is room; nothing downstream waits on them. The security-gate box below stays unticked because it is not done, not because it is scheduled.
+**Done means done for the thesis, not exhausted.** The application is deployed, reachable and released, and the pipeline that keeps it that way is proven — which is everything this phase owes the thesis. [phases/phase-5.md](phases/phase-5.md) still carries open slices that are genuine improvements rather than blockers: the security gate and backup cutover, external services on the prod origin, and verifying the auth hardening on the host. They belong to this phase and can land whenever there is room; nothing downstream waits on them. The security-gate box below stays unticked because it is not done, not because it is scheduled.
 
 **Done when:**
 

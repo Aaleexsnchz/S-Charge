@@ -14,7 +14,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete
 | 8 | External services on the prod origin | Not started | host work |
 | 9 | Close the CI/CD loop | Done | #27, #30 |
 | 10 | Security gate, cutover, first release | Not started | host work |
-| 11 | Renovate | Not started | — |
+| 11 | Renovate | Done | #63 |
 | 12 | REVE tariff backfill | Moved to [Phase 6](phase-6.md) | — |
 | 13 | Auth surface hardening | Done, verify on the host | #19 |
 | 14 | Environment configuration | Done | #15 |
@@ -23,7 +23,7 @@ Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete
 
 **The application is deployed and publicly reachable at <https://s-charge.app>**, running **`v0.1.0`** (first deployed 2026-08-04; CD proven and tagged 2026-08-21). `main` is PR-protected behind four required checks, a tag push deploys and cuts a GitHub Release, and merging deploys nothing.
 
-**The phase is Done in [plan.md](../plan.md)** on that basis: deployed, released, pipeline proven. The slices still open — 7's two operator checks, 8, 10, 11 and 13's host re-check — are real work that belongs here, but nothing downstream waits on them. `v0.1.0` was therefore tagged when CD was proven, **ahead of Slice 10's gate** rather than after it: the release marks the pipeline working, not the gate passing.
+**The phase is Done in [plan.md](../plan.md)** on that basis: deployed, released, pipeline proven. The slices still open — 7's two operator checks, 8, 10 and 13's host re-check — are real work that belongs here, but nothing downstream waits on them. `v0.1.0` was therefore tagged when CD was proven, **ahead of Slice 10's gate** rather than after it: the release marks the pipeline working, not the gate passing.
 
 Closed slices are summarised first; what outlives this phase has been migrated to the document that owns it. The open ones keep their detail, at the end.
 
@@ -51,7 +51,7 @@ Why a full CI gate is affordable in a hook — the parallelism measurement — i
 
 `APP_VERSION` reaches both images as a **build argument**, so it is not runtime configuration and a deploy that forgets to export it reports `dev` until the next rebuild. CI builds the three production image targets. CD dumps the database before `alembic upgrade head`, keeping the last five, and carries `permissions: {}`. `release.yml` turns a tag into a GitHub Release. An image review ran alongside: the frontend gained the `HEALTHCHECK` it lacked, `python:*-slim` was single-sourced to an `ARG`, and nginx moved to the unprivileged image on 8080.
 
-Policy is [infra-0002](../decisions/infra-0002-manual-release-tagging.md); the image stages and their sizes are in [operations.md](../operations.md); rollback and the migration window — the half git cannot undo — are in [setup/deployment.md](../setup/deployment.md). Digest pinning deferred to [Slice 11](#slice-11--renovate).
+Policy is [infra-0002](../decisions/infra-0002-manual-release-tagging.md); the image stages and their sizes are in [operations.md](../operations.md); rollback and the migration window — the half git cannot undo — are in [setup/deployment.md](../setup/deployment.md). Base images are pinned by digest since [Slice 11](#slice-11--renovate).
 
 ## Slice 6 — Runtime versions + API contract [x]
 
@@ -64,6 +64,14 @@ Python 3.13 everywhere, including `backend/.python-version`, which decides the i
 Repo secrets set, and a branch-protection ruleset active on `main`: PR required, four required checks, no force-push, no deletion. **Zero approvals** — a solo developer cannot approve their own PR, and any higher number locks the repository. Verified end to end **both ways**: merging deploys nothing, a tag push deploys and reports that tag at `/api/health`.
 
 Two pipeline defects were found doing it, both fixed and both commented where they bite in `cd.yml`: the remote script exited 0 without deploying because `compose exec -T` consumed the heredoc that `bash -s` was reading, and an HTTPS remote on the host cannot fetch a private repository unattended.
+
+## Slice 11 — Renovate [x]
+
+Renovate opens grouped dependency PRs on Monday mornings — one per area, majors on their own — gated by the same four checks as any other change, and nothing merges automatically. Base images are pinned by digest, and the versions this repository pins twice (uv and Python in CI and in the backend image, Node across `.nvmrc`, the frontend image and its type definitions) move in a single PR through `# renovate:` annotations that custom managers read. Security updates skip both the schedule and the approval gate.
+
+The dashboard approval gate is on while the thesis is being delivered: everything pending is listed on one issue and a checkbox releases each PR. Removing that one line makes the bot autonomous.
+
+Why Renovate rather than Dependabot, and what the third-party app costs: [infra-0004](../decisions/infra-0004-renovate-over-dependabot.md).
 
 ## Slice 12 — REVE tariff backfill → moved to [Phase 6](phase-6.md)
 
@@ -127,19 +135,6 @@ Live on the host since 2026-08-04. Runbook: [setup/deployment.md](../setup/deplo
 - [ ] `backup_db_cron.sh` moved to the server crontab (needs `rclone` + B2 config on the VPS), and **`backup_db.sh` pointed at the right compose project**: `COMPOSE_FILE=docker-compose.prod.yml` in the crontab entry is the whole fix, and the production database credentials have to come with it or the dump names a database that is not there. Run it once by hand before trusting the schedule
 - [x] **`v0.1.0` tagged** (2026-08-21)
 - [ ] infra-0001 flipped to `accepted`. **The B2 bucket moved to `S-Charge` on 2026-08-23** with a *keep only the last version* lifecycle rule and a bucket-scoped key for the server; `tfm-db-backups` is superseded
-
-## Slice 11 — Renovate
-
-**Acceptance:** Renovate opens grouped dependency PRs on a weekly schedule, gated by the same CI as any other PR.
-
-Unblocked — Slice 9 is done, so the first automated PRs arrive against a pipeline already proven end to end. Everything this phase found by hand (a deprecated Node runtime twice, pnpm 10 vs 11 drift, uv pinned differently in CI and the Dockerfile, nginx four minors stale) is a PR Renovate would have opened instead.
-
-- [ ] Renovate GitHub App installed on the repository
-- [ ] `renovate.json`: weekly schedule, non-majors grouped into one PR, dev dependencies grouped, majors one at a time, dependency dashboard, `:semanticCommits` so PR titles match the Conventional Commits rule
-- [ ] Scope includes `github-actions` and the Docker base images, not just `uv`/`pnpm` manifests
-- [ ] **Pin base images by digest** once Renovate is maintaining them. Every `FROM` is on a floating tag today, so a rebuild can silently change the patch version — pinning by hand before a bot maintains the digests trades one drift for a worse one
-- [ ] `vulnerabilityAlerts` unscheduled, so security updates are not held for the weekly window
-- [ ] No automerge — every dependency PR merges by hand and reaches production with the next tag ([infra-0003](../decisions/infra-0003-deploy-on-tag.md))
 
 ## Slice 13 — Auth surface hardening
 

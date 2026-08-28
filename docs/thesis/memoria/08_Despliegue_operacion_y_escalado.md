@@ -246,11 +246,12 @@ un artefacto que no se cree —conserva el estado de salida y comprueba el tama�
 volcado de 0 bytes llegó al bucket externo el 13 de julio de 2026 sin que nadie lo advirtiera;
 pero comprobar el tamaño no es restaurar, y una copia que nadie ha restaurado es una hipótesis.
 
-**No hay observabilidad ni análisis automático de dependencias.** Un bot de actualización con
-agrupación semanal y sin fusión automática —porque etiquetar despliega— está diseñado y aún no
-configurado; y estar al día no es saber si alguna dependencia es vulnerable hoy, siendo la cadena
-de suministro de software una de las categorías de riesgo de la edición vigente del OWASP Top 10
-[50].
+**No hay observabilidad ni análisis de las imágenes ni del código.** El bot de actualización sí
+está configurado —agrupación semanal y sin fusión automática, porque etiquetar despliega— y las
+alertas de dependencias de GitHub lo alimentan, de modo que una dependencia con vulnerabilidad
+conocida abre una pull request fuera del calendario; pero eso cubre los manifiestos, no las
+imágenes construidas a partir de ellos ni el código propio, siendo la cadena de suministro de
+software una de las categorías de riesgo de la edición vigente del OWASP Top 10 [50].
 
 Ninguna de estas ausencias es un descuido: son decisiones proporcionadas a un servidor, una
 persona y un puñado de usuarios. Lo que las convierte en decisiones y no en olvidos es que están

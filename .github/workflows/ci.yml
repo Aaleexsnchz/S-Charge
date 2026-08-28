@@ -45,9 +45,12 @@ jobs:
         # tags after v7, so `@v10` does not resolve.
         uses: astral-sh/setup-uv@v10.0.1
         with:
-          # Keep in lockstep with the uv pinned in backend/Dockerfile, so CI
-          # resolves uv.lock with the same uv that builds the images.
+          # Both are pinned again in backend/Dockerfile, so CI resolves uv.lock
+          # with the same uv and the same interpreter that build the images. The
+          # `renovate:` annotations are what keep the two files in lockstep.
+          # renovate: datasource=docker depName=ghcr.io/astral-sh/uv
           version: '0.11.32'
+          # renovate: datasource=docker depName=python
           python-version: '3.13'
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -150,8 +153,14 @@ jobs:
           # The scan is over the whole history, not the diff.
           fetch-depth: 0
       - name: Scan the full history
+        env:
+          # renovate: datasource=docker depName=ghcr.io/betterleaks/betterleaks
+          # A custom manager keeps a digest that is already there but cannot add
+          # a missing one, so the first pin is by hand and Renovate maintains it.
+          BETTERLEAKS_VERSION: v1.7.3@sha256:4522fe41a2d22f9bf9b4100c20488b79a5af5c37abc8f3d0cdccdcc47dac3523
         # --user: git refuses to read a repository owned by another uid, and the
         # image runs as root while the workspace belongs to the runner.
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" \
-            ghcr.io/betterleaks/betterleaks:v1.7.3 git /repo --no-banner --redact
+            "ghcr.io/betterleaks/betterleaks:$BETTERLEAKS_VERSION" \
+            git /repo --no-banner --redact

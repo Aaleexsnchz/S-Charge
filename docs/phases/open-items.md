@@ -16,7 +16,6 @@ Items scheduled into a *later* phase are not carry-over either: those live in [p
 | 5 · 7 | Verify on a phone: the site loads and the PWA installs | a phone | [phase-5](phase-5.md#slice-7--first-deploy) |
 | 5 · 8 | Google OAuth + Resend against the production origin, for users other than the owner | host, Google + Resend consoles | [phase-5](phase-5.md#slice-8--external-services-on-the-prod-origin) |
 | 5 · 10 | Security gate, laptop cutover, backup cron on the server | host | [phase-5](phase-5.md#slice-10--security-gate-cutover-first-release) |
-| 5 · 11 | Renovate | repo | [phase-5](phase-5.md#slice-11--renovate) |
 | 5 · 13 | Re-check the auth rate limits on the deployed instance, against a real public IP | host | [phase-5](phase-5.md#slice-13--auth-surface-hardening) |
 | 5 · 15 | Browser click-through after login — the one claim resting on argument rather than a run | — | [phase-5](phase-5.md#slice-15--authenticate-the-read-endpoints-x) |
 | 6 | `CONGESTION_TIME` bands are never priced — 218 rows carry a component type absent from REVE's enum | a reason to care | [features/points.md](../features/points.md) |

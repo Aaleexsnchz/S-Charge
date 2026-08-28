@@ -58,7 +58,7 @@ The foundation is better than the absence suggests: the backend already emits st
 
 **Rate limiting is in-process.** Once implemented ([phases/phase-5.md](phases/phase-5.md) Slice 13), the limiter's default storage is per-process memory. With N replicas that grants N times the intended limit, so the protection *weakens as you scale* — the opposite of the desired property. Production backs it with Redis.
 
-**No automated dependency or container scanning**, no SAST/DAST in CI, and no penetration testing. Renovate ([phases/phase-5.md](phases/phase-5.md) Slice 11) keeps dependencies current, which is not the same as knowing whether any of them is vulnerable today.
+**Nothing scans the built images or the code**, no SAST/DAST in CI, and no penetration testing. Renovate keeps dependencies current ([infra-0004](decisions/infra-0004-renovate-over-dependabot.md)) and GitHub's dependency alerts feed it, so a known-vulnerable package opens a PR out of schedule — but that covers the manifests, not the images built from them nor the code written here.
 
 ## Landmines specific to this codebase
 
