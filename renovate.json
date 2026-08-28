@@ -107,6 +107,11 @@
       "semanticCommitScope": "infra"
     },
     {
+      "description": "A workflow input is a version string, not an image reference. Renovate can maintain a digest already written into one but cannot introduce it, and the failed attempt aborts the whole branch.",
+      "matchFileNames": [".github/workflows/**"],
+      "pinDigests": false
+    },
+    {
       "description": "A digest bump carries no changelog to read, so they travel together and monthly",
       "matchUpdateTypes": ["digest", "pin"],
       "groupName": "image digests",
