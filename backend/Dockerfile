@@ -2,7 +2,7 @@
 
 # The single upstream reference: every stage below derives from it, so the tag
 # and its digest are written once and cannot drift apart between stages.
-FROM python:3.13-slim AS python-base
+FROM python:3.13-slim@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS python-base
 
 # Shared base: pinned uv binary + build env.
 FROM python-base AS base
