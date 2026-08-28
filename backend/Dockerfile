@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 
+# The single upstream reference: every stage below derives from it, so the tag
+# and its digest are written once and cannot drift apart between stages.
+FROM python:3.13-slim AS python-base
+
 # Shared base: pinned uv binary + build env.
-FROM python:3.13-slim AS base
+FROM python-base AS base
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -16,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
 # ---------- prod: lean, non-root runtime (no uv, no dev deps) ----------
-FROM python:3.13-slim AS prod
+FROM python-base AS prod
 # Set by CD from the git tag. Deliberately without a default: an unstamped
 # build arrives as an empty string, and app/config.py owns the one fallback.
 ARG APP_VERSION
