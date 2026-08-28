@@ -9,6 +9,7 @@ from app.models.etl import ReveEtlCursor
 from pytest_httpx import HTTPXMock
 from scripts.refresh_reve import (
     REFRESH_PRIORITY,
+    _recovery_windows,
     _run_tick,
     _too_soon,
     main,
@@ -338,3 +339,56 @@ async def test_an_in_flight_cycle_is_never_left_alone(db_session: AsyncSession) 
     target = next(t for t in REFRESH_PRIORITY if t.endpoint == "/cpos")
 
     assert _too_soon(target, cursor, now) is False
+
+
+async def test_widening_reaches_back_when_the_remembered_window_also_fails(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """Measured 2026-08-26: REVE's filtered path degraded and every recent window
+    timed out, the remembered one included — it is recent by construction. Only
+    reaching much further back answered, so the schedule has to escalate rather
+    than recall."""
+    watermark = datetime(2026, 8, 26, 8, 0, 3, tzinfo=UTC)
+    last_good = watermark - timedelta(hours=1)
+    await _seed_tariff_cursor(db_session, watermark)
+    await db_session.execute(
+        update(ReveEtlCursor)
+        .where(ReveEtlCursor.endpoint == "/connectors/tariffs")
+        .values(last_good_date_from=last_good)
+    )
+    await db_session.commit()
+
+    # watermark, the remembered window, -1d and -7d all refused; -30d answers.
+    for _ in range(4):
+        httpx_mock.add_response(status_code=504)
+    httpx_mock.add_response(json=[_tariff_row()])
+
+    async with reve_client as client:
+        assert await _run_tick(db_session, client, budget=5) == 0
+
+    served = httpx_mock.get_requests()[-1].url.params["date_from"]
+    assert datetime.fromisoformat(served) == watermark - timedelta(days=30)
+
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    assert cursor.last_error is None
+
+
+async def test_a_standing_failure_stops_rebuying_known_bad_rungs(
+    db_session: AsyncSession,
+) -> None:
+    """A rung that failed last tick fails this tick too. Re-paying a call an hour
+    to rediscover that is how the ladder spent 21 attempts going nowhere."""
+    watermark = datetime(2026, 8, 26, 8, 0, 3, tzinfo=UTC)
+    await _seed_tariff_cursor(db_session, watermark)
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    cursor.last_good_date_from = watermark - timedelta(hours=1)
+
+    cursor.consecutive_failures = 0
+    assert _recovery_windows(watermark, cursor)[0] == watermark
+
+    cursor.consecutive_failures = 2
+    assert _recovery_windows(watermark, cursor)[0] == watermark - timedelta(days=1)
+
+    # However long it has been failing, one rung always survives.
+    cursor.consecutive_failures = 99
+    assert len(_recovery_windows(watermark, cursor)) == 1

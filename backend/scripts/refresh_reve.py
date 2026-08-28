@@ -64,6 +64,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_BUDGET_PER_RUN = settings.reve_budget_per_run
 
+# How much further back each failed attempt reaches. Geometric because the
+# cost of a filtered window falls off with its width, so small increments buy
+# nothing: 36 hours and 7 days fail alike when 30 days is what answers.
+WIDENING_STEPS = (
+    timedelta(days=1),
+    timedelta(days=7),
+    timedelta(days=30),
+    timedelta(days=90),
+)
+
 TARIFFS_ENDPOINT = "/connectors/tariffs"
 CPOS_ENDPOINT = "/cpos"
 LOCATIONS_ENDPOINT = "/locations"
@@ -172,11 +182,19 @@ def _recovery_windows(
     watermark past an unserved gap, which loses the gap permanently and is why
     the automatic jump was removed in Slice 2.
 
-    Only two rungs, and the second is the last window REVE actually served -
-    which in ordinary running *is* the watermark minus one tick, because a
-    drained cycle sets the watermark to its own start. It stops being that only
-    after a recovery has moved the watermark forward, which is exactly when a
-    guessed offset would be wrong and a remembered one is not.
+    Widening reaches further back on a fixed schedule rather than recalling a
+    window that once worked. Measured during the 26 August outage, REVE's
+    filtered path degrades as the window narrows -- 36 hours back timed out,
+    26 days answered in 16s, 87 days in 2.7s, and no filter at all in 2.5s --
+    because a scan has to travel further to fill a page of 100 when fewer rows
+    match. Under that failure a remembered window is worth nothing: it is a
+    fact about REVE when it was healthy, and it is recent by construction,
+    which is the shape that fails hardest. It stays as a cheap second rung for
+    an ordinary blip, but the schedule is what actually recovers.
+
+    A standing failure also starts further down the ladder, so a rung already
+    known bad is not re-bought at a call an hour. The last rung is never
+    dropped -- that would leave none.
 
     There is deliberately no unfiltered rung. A full drain is 469 pages and four
     days, too big to start unattended on a failure nobody has looked at; the
@@ -187,13 +205,20 @@ def _recovery_windows(
         windows.append(watermark)
     if not recover:
         return windows
+
     good = cursor.last_good_date_from
     if good is not None and good not in windows:
         windows.append(good)
 
-    # A standing failure means the watermark is known bad; stop paying a call an
-    # hour to rediscover that. Never drop the last rung - that would leave none.
-    return windows[1:] if cursor.consecutive_failures and len(windows) > 1 else windows
+    anchor = watermark or good
+    if anchor is not None:
+        for step in WIDENING_STEPS:
+            wider = anchor - step
+            if wider not in windows:
+                windows.append(wider)
+
+    skip = min(cursor.consecutive_failures, len(windows) - 1)
+    return windows[skip:]
 
 
 async def _drain(

@@ -133,27 +133,51 @@ That makes no REVE call, so it is free to run as often as you like. A healthy dr
 
 ### What a `504` on the tariff refresh means
 
-**It means REVE could not serve *that window*, not that the data is gone, and not that the window is too wide.** Measured on 2026-08-24, while the refresh was stuck:
+**It means REVE's filtered query path could not serve *that window* in time.** The endpoint is not down, the key is not blocked, and the data is not gone. Measured on 2026-08-26, mid-outage, on the same key and host within minutes of each other:
 
-| `date_from` | Attempts | Result |
+| `date_from` | How far back | Result |
 | --- | --- | --- |
-| `2026-08-24T09:00:04Z` | **27** | every one a `504`, at ~29 s |
-| `2026-08-24T08:00:05Z` | **2** | both `200`, in 14.8 s and 15 s |
+| `2026-08-26T08:00Z` | 14 hours | `504` |
+| `2026-08-25T08:00Z` | 36 hours | `504` |
+| `2026-08-01T00:00Z` | 26 days | `200`, **16.0 s** |
+| `2026-06-01T00:00Z` | 87 days | `200`, **2.7 s** |
+| *no `date_from` at all* | — | `200`, **2.5 s** |
 
-The second window is an hour **wider** and strictly contains the first. At even odds, 27 consecutive failures on one value while its superset never fails is about one in 134 million — so this is a property of the specific window, not load or luck.
+**The narrower the window, the more expensive it is.** That inverts the intuition, and it is the single most useful fact here. A page is 100 rows; recent changes are sparse, so a recent `date_from` forces their database to scan far to find 100 matches, while a wide one fills the page immediately. Removing the filter entirely is the *fastest* request there is.
 
-Two more probes from the same hour, which rule out the obvious explanations:
+Two variables, not one. **REVE's condition changes** — the 2026-08-26 outage began at 09:01 with no change on our side, after the 08:00 tick had drained a one-hour window without trouble. **Given a degraded condition, cost then varies with the window**, which is the gradient above. That also explains the 2026-08-24 measurement, where `09:00:04Z` failed 27 times while `08:00:05Z` — an hour wider, strictly containing it — succeeded twice: not a cursed timestamp, just the wider window being the cheaper one.
 
-- **no `date_from` at all** — `200` in 1.7 s. The endpoint is healthy.
-- **`/cpos` and `/locations`** — `200` in 1.2 s and 3.9 s on the same key and host. Neither the key nor the IP is blocked.
+**The direction is not stable between incidents, so probe before assuming.** In June 2026 the gradient ran the other way: controlled back-to-back tests had `now−3h` returning 200 while `now−20h` and `now−100h` timed out. Wide failed, narrow worked — the reverse of August. Two months apart, REVE's schema, indexes or query plan can differ, and no single theory covers both. What survives across both incidents is narrower and more useful: **a `504` is a property of their filtered path under its current condition, and the only reliable way to find a servable window is to measure one**, with the probe below.
 
 Status codes separate the cases and are worth reading before theorising: `403` or a refused connection is a block, `401` a bad key, `429` the 5/hour cap, and `504` means the request authenticated and *their* backend then timed out.
 
-**The failure did not start because the window was wide.** The first failure asked for **sixty minutes** — the ticks either side of it were routine. The width is a consequence: the watermark only advances on success, so a stuck refresh widens its own window by an hour every hour. That ratchet is what turns one bad hour at REVE into a gap that cannot be closed.
+**A stuck refresh widens its own window by an hour every hour**, since the watermark only advances on success. Under this failure mode that ratchet eventually helps rather than hurts — but far too slowly, since the threshold sits weeks back, not hours.
 
-**So the recovery is to widen deliberately, never to skip.** `refresh_reve` retries a `504` against the last window REVE actually served (`reve_etl_cursor.last_good_date_from`). A wider window returns everything the narrower one would, so nothing is lost — unlike advancing the watermark past an unserved gap, which loses it for good and is why that behaviour was removed. If the remembered window fails too, the tick stops and says so rather than escalating: the only wider option is the unfiltered drain, 469 pages and about four days, which is too large to start unattended.
+**Recovery widens on a schedule, and never skips.** `refresh_reve` reaches further back in fixed steps — 1, 7, 30 then 90 days behind the watermark — taking the first that answers. It only ever widens, because a wider window is a superset and can lose nothing, whereas narrowing would skip data permanently. That means a June-shaped failure, where the wide end is the broken one, will exhaust the ladder and stop rather than recover on its own — which is the intended behaviour for a failure nobody has looked at yet. A wider window returns everything the narrower one would, so nothing is lost, unlike advancing the watermark past an unserved gap, which loses it for good and is why that behaviour was removed. A standing failure starts further down the ladder rather than re-buying rungs already known bad at a call an hour.
 
-**This invalidates the June 2026 diagnosis.** That incident was recorded as *"windows of an hour or more time out"*, inferred after it had healed and never probed while live. The measurements above contradict it, and the automatic watermark jump it justified is precisely what turned a transient failure into a 45-day hole.
+`last_good_date_from` is still recorded and still tried as a cheap second rung, but it is **not** what recovers a degraded REVE: it is a fact about REVE when it was healthy, and it is recent by construction, which is the shape that fails hardest. The 2026-08-26 outage ran 21 consecutive failures against it before anyone intervened.
+
+There is deliberately no unfiltered rung, despite it being the fastest request available. A full drain is 469 pages and about four days of the entire budget, too large to start unattended.
+
+**To probe REVE directly, without the script's ladder in the way:**
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T backend python - <<'SH'
+import time, httpx
+from app.config import settings
+
+t = time.time()
+r = httpx.get(
+    f"{settings.reve_api_base_url}/connectors/tariffs",
+    params={"page": 1, "limit": 100},   # add "date_from" to test a window
+    headers={"x-api-key": settings.reve_api_key},
+    timeout=120,
+)
+print(f"status={r.status_code}  {time.time() - t:.1f}s")
+SH
+```
+
+The key comes from settings inside the container, so it is never typed or echoed. Each probe spends one call from the same 5/hour budget as the scheduler.
 
 **Never run either ETL against production from a laptop.** The 5 req/hour cap is per API key, so a local run steals from the scheduler's budget and the two will fight over the same cursor — the advisory lock keeps them from corrupting it, but one of them simply loses its tick.
 
