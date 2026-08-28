@@ -13,6 +13,7 @@
   "configMigration": true,
   "prConcurrentLimit": 5,
   "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
@@ -88,9 +89,9 @@
       "semanticCommitScope": "infra"
     },
     {
-      "description": "The runtime major is chosen with the image, not proposed by a bot",
+      "description": "A Python feature release is a minor bump in docker versioning. The runtime is chosen with the image, the interpreter and the suite together, not proposed by a bot; digests still flow.",
       "matchPackageNames": ["python"],
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     },
     {
