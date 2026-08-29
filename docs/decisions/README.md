@@ -64,7 +64,7 @@ Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 
 Decided in principle, but cheaper to write when the work forces the detail. Don't let these ship without a record:
 
-- **`be-0004` — booking overlap as a database constraint.** PostgreSQL 18's temporal `PRIMARY KEY … WITHOUT OVERLAPS` moves conflict detection out of application code and removes a check-then-insert race; verified working on 18.4. Write it when Phase 9 designs the bookings schema. (Earmarked as `be-0003` until the price-band record took that number.)
+- **A booking-overlap record.** PostgreSQL 18's temporal `PRIMARY KEY … WITHOUT OVERLAPS` moves conflict detection out of application code and removes a check-then-insert race; verified working on 18.4. Nothing is due while bookings stay a parked idea ([ideas-backlog.md](../ideas-backlog.md)); it becomes due if one is ever built. (Earmarked first as `be-0003` and then as `be-0004`, each time until a written record took the number.)
 - **`infra-0005` — native development environment.** Only Postgres is containerised, so one toolchain gates commits, CI and the app. Rationale currently lives in [operations.md](../operations.md) and the migration chapter; promote it if it starts being re-litigated. (Earmarked first as `infra-0003`, then as `infra-0004`, each time until a written record took the number; numbers are never reused, so the earmark moves rather than the record.)
 - **A wallet/ledger record** when Phase 10 chooses between signed single-entry rows and paired double-entry movements — expensive to reverse once money-shaped data exists.
 

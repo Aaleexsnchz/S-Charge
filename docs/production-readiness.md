@@ -8,7 +8,7 @@ This is a master's thesis prototype deployed for one demo instance. Its architec
 
 Read it as the answer to *"why didn't you do X?"* — the honest answer is usually "because at one user on one box it costs more than it returns", and that reasoning is recorded per item so a reader can distinguish engineering judgement from oversight.
 
-Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan.md) Phase 14 and to be written as `thesis/despliegue-y-escalado.md`.
+Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan.md) Phase 7 and to be written as `thesis/despliegue-y-escalado.md`.
 
 ---
 
@@ -26,7 +26,7 @@ Where an item is already argued in depth elsewhere, this file links out rather t
 
 **Backups are nightly logical dumps.** `pg_dump` to Backblaze B2 ([operations.md](operations.md)) gives an RPO of up to 24 hours — a bad afternoon loses a day. Production wants continuous WAL archiving and point-in-time recovery, so the recovery target is minutes.
 
-**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan.md) Phase 13.*
+**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan.md) Phase 14.*
 
 **Postgres is self-managed.** Failover, minor-version patching, and connection pooling are all manual or absent. A managed instance moves those to the provider; at scale you would also want a read replica, since the catalogue queries (~13.7k charging points) are read-dominated.
 
@@ -52,7 +52,7 @@ The foundation is better than the absence suggests: the backend already emits st
 
 ## Application security
 
-**The Content-Security-Policy is incomplete.** Caddy ships the OWASP header set — HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` — and a CSP carrying only `frame-ancestors 'none'`; `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src` are missing. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. The blocked directive is `style-src`: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate much of the benefit. Shipping the directives that do not depend on it, and recording why the remaining one is held back, is the honest interim. *Scheduled: [plan.md](plan.md) Phase 13.*
+**The Content-Security-Policy is incomplete.** Caddy ships the OWASP header set — HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` — and a CSP carrying only `frame-ancestors 'none'`; `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src` are missing. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. The blocked directive is `style-src`: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate much of the benefit. Shipping the directives that do not depend on it, and recording why the remaining one is held back, is the honest interim. *Scheduled: [plan.md](plan.md) Phase 14.*
 
 **Sessions cannot be revoked.** The session is a stateless JWT ([auth-0002](decisions/auth-0002-cookie-session.md)): a stolen token stays valid until it expires, and there is no logout-everywhere, no per-session audit, and no way to eject an attacker. Production backs sessions with a database table carrying `revoked_at`. Argued at length in [auth-0002](decisions/auth-0002-cookie-session.md) and [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md); the same reasoning covers verification and password-reset tokens ([auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md)).
 
@@ -75,7 +75,7 @@ Four routes exist today, none of them taken. The first two are **access rights**
 3. **Contract a roaming hub** (Hubject, Gireve). One agreement, hundreds of CPOs, over OCPI — which is already the schema. The industry's normal path, and the only one that also unlocks reservations via OCPI's `Commands` module (`RESERVE_NOW` / `CANCEL_RESERVATION`). Commercial and paid.
 4. **Push for dynamic publication at the National Access Point.** This does not rest on interpreting AFIR: the Resolución de 2 de abril de 2025 states that the information sent to the SGV *"será publicada en el Punto de Acceso Nacional de Información de Tráfico"* — will be published, not may be. Spain currently serves only the static half: the DGT publishes `EnergyInfrastructureTablePublication` (verified 2026-08-06 — 85.5 MB, 12,337 sites, 36,972 refill points, 44,105 connectors, CC-BY, no API key) while the predictable `EnergyInfrastructureStatusPublication` paths return `404`. Slowest route, and the only one that would benefit any third party rather than just this application.
 
-**The NAP is not a drop-in replacement for the seed source.** Measured on the full file: it carries **no price field at all**, so it cannot feed the price cascade that the cost simulation rests on. It would solve the licence question and the 5 req/hr cap, and nothing else. Reasoning in [thesis/memoria/05_Modelo_de_datos_y_fuentes.md](thesis/memoria/05_Modelo_de_datos_y_fuentes.md) and [10_Marco_regulador.md](thesis/memoria/10_Marco_regulador.md).
+**The NAP is not a drop-in replacement for the seed source.** Measured on the full file: it carries **no price field at all**, so it cannot feed the price cascade that the cost simulation rests on. It would solve the licence question and the 5 req/hr cap, and nothing else. Reasoning in the memoria's data-sources and regulatory chapters.
 
 ## Legal and compliance
 
@@ -83,9 +83,9 @@ Four routes exist today, none of them taken. The first two are **access rights**
 
 None of this exists, and the erasure path is not merely a missing endpoint — deleting a user has to reckon with what happens to their sessions, bookings and ledger rows.
 
-*Scheduled as thesis content: [plan.md](plan.md) Phase 14, alongside the business chapter.*
+*Scheduled as thesis content: [plan.md](plan.md) Phase 7, alongside the business chapter.*
 
-**The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — see [thesis/memoria/10_Marco_regulador.md](thesis/memoria/10_Marco_regulador.md).
+**The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — the memoria's regulatory chapter states it as an open question, and [plan.md](plan.md) makes answering it a condition of opening the app to the public.
 
 **The position improved materially when the read endpoints were closed.** Every `/api/*` route except `/api/health` and the auth surface now requires a session, so the catalogue reaches authenticated users of this application rather than the public. Serving a mirrored dataset to one's own users is a far easier thing to defend than publishing it, and it narrows the question the thesis has to answer. It does not settle it.
 
@@ -97,6 +97,6 @@ There is a documented way out if this ever blocks anything: the DGT's National A
 
 **One developer, no review.** Every change is written and approved by the same person. Branch protection ([phases/phase-5.md](phases/phase-5.md) Slice 9) enforces that changes arrive through a pull request with green CI, which catches mechanical errors but not design ones.
 
-**No load testing.** No measurement exists of where this stack saturates — concurrent connections, map-viewport query cost, or the RAM contention between a Vite build and Postgres during a deploy. The Phase 14 chapter argues where the box breaks first; nothing has measured it.
+**No load testing.** No measurement exists of where this stack saturates — concurrent connections, map-viewport query cost, or the RAM contention between a Vite build and Postgres during a deploy. The Phase 7 chapter argues where the box breaks first; nothing has measured it.
 
-**Test coverage is not enforced.** Phase 13 targets ≥70% on `services/`; CI does not gate on coverage today.
+**Test coverage is not enforced.** Phase 14 targets ≥70% on `services/`; CI does not gate on coverage today.

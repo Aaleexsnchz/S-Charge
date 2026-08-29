@@ -10,7 +10,7 @@ encode zstd gzip
 #     tiles, which are cross-origin and send no CORP header.
 #   - Permissions-Policy geolocation=() would kill the "where am I" button;
 #     it is allowed for this origin only.
-# The full Content-Security-Policy stays a Phase 12 item, because MUI and
+# The full Content-Security-Policy stays a Phase 14 item, because MUI and
 # Emotion inject inline <style> tags and would force style-src 'unsafe-inline'.
 # frame-ancestors ships now regardless: it takes no default-src fallback, so it
 # constrains framing without restricting scripts or styles.

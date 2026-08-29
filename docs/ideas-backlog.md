@@ -5,10 +5,10 @@ Pull from this list when a phase has slack or when deciding the AI layer's depth
 idea is promoted, move it into [plan.md](plan.md) (a phase + acceptance criteria) and
 remove it here.
 
-## AI / agent features (Phase 12 — pick from here)
+## AI / agent features (Phase 13 — pick from here)
 
-AI is a committed **Phase 12** (planned), but the **specific features are not yet decided** —
-this is the menu to choose from. All call the app's own APIs (points, simulate, recommend,
+**Phase 13 is cut** ([plan.md](plan.md) → Build order) and the **specific features were never decided** —
+this is the menu it would have been chosen from, kept because the choice is thesis material. All call the app's own APIs (points, simulate, recommend,
 sessions, prices) as tools — no new data sources. Depth scales to remaining hours.
 
 - **NL charging/trip assistant** — a tool-calling agent that plans a charge or trip
@@ -70,7 +70,7 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
 
 ## Reserving a point ahead
 
-Booking a point for a future window, which [Phase 10](plan.md) deliberately leaves out: on the REVE
+Booking a point for a future window, which [Phase 11](plan.md) deliberately leaves out: on the REVE
 catalogue a reservation is a promise no operator has agreed to keep. It becomes defensible only for
 a point whose owner controls it, and only once owners exist — so it is an idea for after
 [owner points](features/owner-points.md), not committed scope.

@@ -36,7 +36,7 @@ Read before proposing architectural or scope changes:
 
 ## Releases
 
-Semantic versioning, tagged **manually**; a minor marks a phase shipping and **`v1.0.0` is the build presented for the thesis**. **The version comes from the git tag** — never hand-edit version strings in `backend/pyproject.toml` or `frontend/package.json`, they are not the source of truth. Bump rules, the tagging commands and the rationale: [docs/decisions/infra-0002](docs/decisions/infra-0002-manual-release-tagging.md).
+Semantic versioning, tagged **manually**; a minor marks a phase shipping. **`v1.0.0` is not a thesis milestone** — it is the release that opens the application to the public, and the release line simply continues across the defence at `0.x`. **The version comes from the git tag** — never hand-edit version strings in `backend/pyproject.toml` or `frontend/package.json`, they are not the source of truth. Bump rules, the tagging commands and the rationale: [docs/decisions/infra-0002](docs/decisions/infra-0002-manual-release-tagging.md).
 
 ## Backend conventions
 

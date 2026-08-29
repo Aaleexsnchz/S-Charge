@@ -1,6 +1,6 @@
 # Charging sessions
 
-**Status:** 🟡 Mock UI · **Real in** [Phase 10](../plan.md)
+**Status:** 🟡 Mock UI · **Real in** [Phase 11](../plan.md)
 
 One flow, from the quote a driver accepts to the money that settles when the charge ends: pick a connector, configure the charge, see what it will cost, confirm, and the session runs until it completes or the driver stops it early.
 
@@ -9,7 +9,7 @@ One flow, from the quote a driver accepts to the money that settles when the cha
 - **Backend** — nothing. There is no charging-session model.
 - **Frontend** — `features/sessions` renders `sessions.mock.ts`, badged "datos de ejemplo".
 
-## The flow (Phase 10)
+## The flow (Phase 11)
 
 1. **Configure.** At a point, the driver picks a connector, their vehicle and the SoC window — the inputs the [simulation](simulation.md) already takes.
 2. **Quote.** The simulation returns duration, energy and cost, priced across the bands the charge will span.

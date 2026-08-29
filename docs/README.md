@@ -59,9 +59,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 
 ### The thesis document
 
-| Where | What |
-| --- | --- |
-| [thesis/memoria/](thesis/memoria/) | **The memoria itself** — the thirteen chapters that get submitted and defended, in Spanish, plus the IEEE bibliography and the appendix outline. Start at its [README](thesis/memoria/README.md). |
+**The memoria is written in Word, outside this repository, and that copy is the only one.** A Markdown mirror of the chapters lived here and was deleted: keeping two copies in step cost more than it returned, and the one that fell behind was always this one. Nothing in `docs/` may claim to be the submitted text.
 
 ### Thesis chapters
 
@@ -69,7 +67,7 @@ Concept-level write-ups (in Spanish) that feed the memoria; each links out to th
 
 | Chapter | Covers |
 | --- | --- |
-| [thesis/indice.md](thesis/indice.md) | The outline the memoria was written from. Superseded by [thesis/memoria/](thesis/memoria/) as the authoritative structure. |
+| [thesis/indice.md](thesis/indice.md) | The outline the memoria was written from. The structure that ships is the Word document's, not this one. |
 | [thesis/autenticacion.md](thesis/autenticacion.md) | Identity, password storage, session, OAuth, verification, audit, rate limiting. |
 | [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
 | [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |

@@ -1,6 +1,6 @@
 # Phase 5 — Deployment + CI/CD + releases
 
-Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete CI/CD pipeline, and semantic-version releases toward **`v1.0.0` = the build presented for evaluation**. The refresh ETLs ship to the always-on server here but are **not started** — that is [Phase 6](phase-6.md). Architecture and rejected alternatives: [infra-0001](../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../setup/deployment.md).
+Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete CI/CD pipeline, and semantic-version releases. The refresh ETLs ship to the always-on server here but are **not started** — that is [Phase 6](phase-6.md). Architecture and rejected alternatives: [infra-0001](../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../setup/deployment.md).
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
@@ -93,7 +93,7 @@ The regression guard reads `app.openapi()["paths"]` rather than a hand-written l
 
 ## Slice 16 — Pre-deploy hardening [x]
 
-The OWASP header set on every Caddy response, **minus two deliberate omissions**: `Cross-Origin-Embedder-Policy: require-corp` would block the OpenFreeMap tiles, and `geolocation=()` would kill `useGeolocation`. The CSP carries only `frame-ancestors 'none'`; the rest is [Phase 13](../plan.md), blocked on MUI and Emotion injecting inline styles. `cryptography` bumped for [CVE-2026-69247](https://advisories.gitlab.com/pypi/cryptography/CVE-2026-69247/); `pip-audit` clean afterwards. Interactive docs disabled under `ENVIRONMENT=production` — defence in depth, since Caddy forwards only `/api/*` and they were never reachable.
+The OWASP header set on every Caddy response, **minus two deliberate omissions**: `Cross-Origin-Embedder-Policy: require-corp` would block the OpenFreeMap tiles, and `geolocation=()` would kill `useGeolocation`. The CSP carries only `frame-ancestors 'none'`; the rest is [Phase 14](../plan.md), blocked on MUI and Emotion injecting inline styles. `cryptography` bumped for [CVE-2026-69247](https://advisories.gitlab.com/pypi/cryptography/CVE-2026-69247/); `pip-audit` clean afterwards. Interactive docs disabled under `ENVIRONMENT=production` — defence in depth, since Caddy forwards only `/api/*` and they were never reachable.
 
 Two backup defects fixed: the cron script hardcoded the laptop's `$HOME` for `rclone` and its config, and the dump had no size check — the 0-byte dump that reached the offsite bucket on 2026-07-13 is [recorded in operations.md](../operations.md).
 

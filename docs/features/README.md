@@ -12,14 +12,14 @@ One document per feature: what it does, what exists today, and what is still mis
 | [Vehicle catalogue](vehicles.md) | ✅ | [3](../phases/phase-3.md) | simulation picker |
 | [Electricity prices (PVPC)](prices.md) | ✅ | [3](../phases/phase-3.md) | simulation, optimiser |
 | [Pre-charge simulation](simulation.md) | ✅ | [3](../phases/phase-3.md) | dialog on `/points/:id` |
-| [Dashboard](dashboard.md) | 🟡 | 10 | `/` |
-| [Owner points](owner-points.md) | 🟡 | 8 | `/my-points` |
-| [Smart home charging](smart-charging.md) | ⬜ | 9 | owned point |
-| [Charging sessions](sessions.md) | 🟡 | [10](../plan.md) | `/sessions` |
-| [Wallet](wallet.md) | ⬜ | [9](../plan.md) | profile / sessions |
-| [AI assistant](ai-assistant.md) | ⬜ | 12 | to be decided |
+| [Dashboard](dashboard.md) | 🟡 | [11](../plan.md) | `/` |
+| [Owner points](owner-points.md) | 🟡 | [8](../plan.md) | `/my-points` |
+| [Smart home charging](smart-charging.md) | ⬜ | [9](../plan.md) | owned point |
+| [Charging sessions](sessions.md) | 🟡 | [11](../plan.md) | `/sessions` |
+| [Wallet](wallet.md) | ⬜ | [10](../plan.md) | profile / sessions |
+| [AI assistant](ai-assistant.md) | ⬜ | 13 — cut | to be decided |
 
-Phases 10–12 are **optional** — see the cut order in [plan.md](../plan.md). The **Phase** column is the phase where the feature reaches ✅ — for the mock ones, the phase that replaces the fixture with real data.
+**Phase 13 is cut and phases 10 and 11 are conditional** — the build order and what governs it are in [plan.md](../plan.md). A cut feature keeps its ⬜ and its mock stays badged. The **Phase** column is the phase where the feature reaches ✅ — for the mock ones, the phase that replaces the fixture with real data.
 
 ## Mock fixtures still in the tree
 
@@ -27,6 +27,6 @@ Each of these is a promise to delete something:
 
 | Fixture | Feeds | Removed in |
 | --- | --- | --- |
-| `dashboard.mock.ts` | dashboard stats + active session | Phase 10 |
-| `myPoints.mock.ts` | `/my-points` list + stats | Phase 7 |
-| `sessions.mock.ts` | `/sessions` history | Phase 9 |
+| `dashboard.mock.ts` | dashboard stats + active session | Phase 11 |
+| `myPoints.mock.ts` | `/my-points` list + stats | Phase 8 |
+| `sessions.mock.ts` | `/sessions` history | Phase 11 |
