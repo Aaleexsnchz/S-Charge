@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -680,3 +681,162 @@ async def test_the_backlog_keeps_rows_whose_station_never_arrives(
         select(func.count()).select_from(ReveUnmirroredConnector)
     )
     assert remaining == 1
+
+
+async def test_import_cpos_skips_a_cpo_with_no_party_id(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """`party_id` is what `charging_points.party_id` points at, not a
+    description: a CPO arriving without one cannot be keyed."""
+    orphan = _cpo(id="cpo-2")
+    orphan.pop("party_id")
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/cpos?page=1&limit=100", json=[orphan, _cpo()]
+    )
+
+    async with reve_client as client:
+        rows, _, exhausted = await import_cpos(client, db_session)
+
+    assert (rows, exhausted) == (2, True)
+    cpo = (await db_session.execute(select(Cpo))).scalar_one()
+    assert cpo.source_id == "cpo-1"
+
+
+async def test_import_locations_skips_a_location_with_no_id(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """REVE publishes records its own spec marks complete, and raising on one
+    costs far more than the record: the page rolls back, the cursor never gets
+    past it, and the endpoint refetches the same page every tick for ever."""
+    anonymous = _location()
+    anonymous.pop("id")
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[anonymous, _location()]
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        rows, _, exhausted = await import_locations(client, db_session)
+
+    assert (rows, exhausted) == (2, True)
+    cp = (await db_session.execute(select(ChargingPoint))).scalar_one()
+    assert cp.source_id == "loc-1"
+
+
+async def test_import_locations_skips_an_evse_with_no_id(
+    reve_client: ReveClient,
+    db_session: AsyncSession,
+    httpx_mock: HTTPXMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The station is still worth mirroring; only the EVSE is unkeyable.
+
+    The line has to name the location: the field REVE dropped is the one that
+    would have identified the EVSE, so the parent is the only handle on it.
+    """
+    location = _location()
+    location["evses"][0].pop("id")
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[location]
+    )
+
+    with caplog.at_level(logging.WARNING):
+        async with reve_client as client:
+            await import_cpos(client, db_session)
+            await import_locations(client, db_session)
+
+    cp = (await db_session.execute(select(ChargingPoint))).scalar_one()
+    assert cp.source_id == "loc-1"
+    assert (await db_session.execute(select(Evse))).scalars().all() == []
+    assert "reve_evse_skipped location=loc-1 source_id=None missing=id" in caplog.text
+
+
+async def test_import_locations_skips_a_connector_missing_a_not_null_field(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """`id` is not the only field with no default to fall back on."""
+    location = _location()
+    location["evses"][0]["connectors"][0].pop("max_voltage")
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[location]
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+
+    evse = (await db_session.execute(select(Evse))).scalar_one()
+    assert evse.source_id == "evse-1"
+    assert (await db_session.execute(select(Connector))).scalars().all() == []
+
+
+async def test_import_tariffs_skips_a_tariff_with_no_id(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """A price with no source id has nothing to upsert on, and it is not a
+    catalogue gap either: banking it would put a permanently unusable row in
+    the ledger whose size is supposed to mean something."""
+    payload = _tariff_payload(0.37)
+    payload[0]["tariffs"][0].pop("id")
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/connectors/tariffs?page=1&limit=100", json=payload
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+        rows, _, exhausted = await import_tariffs(client, db_session)
+
+    assert (rows, exhausted) == (1, True)
+    assert (await db_session.execute(select(Tariff))).scalars().all() == []
+    connector = (await db_session.execute(select(Connector))).scalar_one()
+    assert connector.tariff_id is None
+    banked = await db_session.scalar(
+        select(func.count()).select_from(ReveUnmirroredConnector)
+    )
+    assert banked == 0
+
+
+async def test_the_backlog_keeps_a_banked_tariff_it_cannot_store(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """Seeding runs after every `/locations` page, so raising on one bad banked
+    row would stop the whole catalogue drain rather than the row. It is not
+    deleted as seeded either: it never reached a connector, and a backlog that
+    stops falling is the only thing that says so.
+    """
+    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[_cpo()])
+    httpx_mock.add_response(
+        url=f"{BASE_URL}/locations?page=1&limit=100", json=[_location()]
+    )
+
+    async with reve_client as client:
+        await import_cpos(client, db_session)
+        await import_locations(client, db_session)
+
+    db_session.add(
+        ReveUnmirroredConnector(
+            evse_id="evse-1",
+            connector_id="conn-1",
+            tariff_raw={
+                "currency": "EUR",
+                "last_tariff_updated": "2026-04-20T12:00:00Z",
+            },
+        )
+    )
+    await db_session.flush()
+
+    assert await seed_backlog_from_ledger(db_session) == 0
+    remaining = await db_session.scalar(
+        select(func.count()).select_from(ReveUnmirroredConnector)
+    )
+    assert remaining == 1
+    connector = (await db_session.execute(select(Connector))).scalar_one()
+    assert connector.tariff_id is None

@@ -125,7 +125,15 @@ docker compose -f docker-compose.prod.yml exec -T backend python -m scripts.refr
 
 That makes no REVE call, so it is free to run as often as you like. A healthy drain shows `next page` climbing by 5 an hour, `cycle end` **frozen** (it is the cycle's upper bound and must not move mid-flight), `watermark` unchanged until the cycle drains, and `failing since` empty. The first line is the catalogue backlog — connectors REVE serves tariffs for that the mirror does not hold; see [be-0003](decisions/be-0003-price-on-the-connector.md) and the [prices chapter](thesis/precios-y-actualizacion.md).
 
-**A failing target starves every target below it, so read `failing since` per endpoint, not just the first one.** The tick walks `/connectors/tariffs` → `/cpos` → `/locations` in dependency order and stops on the first error, because a CPO the mirror lacks is a foreign-key violation waiting to happen on the next location. The cost is that one unparseable row from REVE halts the catalogue indefinitely while prices keep updating perfectly — the state looks healthy at a glance, and only that endpoint's `failing since` and its `last attempt` standing still give it away. Seen in production: a CPO published without `city_code` raised a `KeyError` every hour for seven hours, and `/locations` never ran once in that time.
+**A failing target starves every target below it, so read `failing since` per endpoint, not just the first one.** The tick walks `/connectors/tariffs` → `/cpos` → `/locations` in dependency order and stops on the first error, because a CPO the mirror lacks is a foreign-key violation waiting to happen on the next location. A stalled catalogue is invisible at a glance — prices keep updating perfectly, and only that endpoint's `failing since` and its `last attempt` standing still give it away.
+
+**A record REVE publishes incomplete is skipped, not raised on.** Its own spec marks `id`, `standard`, `country_code` and the rest required, and it serves records without them anyway. Such a record is dropped, logged with its ids and the fields it was missing, and counted in the tick's `skipped`; everything else on the page still lands. Raising instead costs the endpoint rather than the record — the page rolls back, the cursor never advances past it, and every tick refetches the same page for ever, which is how one CPO published without `city_code` stalled `/cpos` for seven hours and starved `/locations` behind it. To see what was dropped:
+
+```bash
+docker compose -f docker-compose.prod.yml logs scheduler | grep _skipped
+```
+
+**`last error` names the page** — `page 68: KeyError: 'id'`. It is read back from the cursor rather than from where the tick started, so a tick that drains three pages and dies on the fourth blames the fourth.
 
 **`--restart-cycle` rewinds an in-flight cycle to page 1 without moving its window.** It exists because pages already drained are otherwise unreachable: the endpoint has no `date_to`, and a completed cycle advances the watermark past them permanently. Use it when a fix ships mid-drain and the pages that passed before it need re-reading — rewinding costs one page of budget per page re-read, and each recovers roughly 26 connectors that would otherwise wait ~243 days for their next repricing.
 

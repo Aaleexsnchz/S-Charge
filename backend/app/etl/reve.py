@@ -1,3 +1,4 @@
+import enum
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
@@ -25,6 +26,50 @@ from app.utils.audit import audit
 logger = logging.getLogger(__name__)
 
 PAGE_SIZE = 100
+
+# What each record has to carry before the mirror can hold it: `id` is the
+# upsert key, and the rest back NOT NULL columns. REVE's own spec marks every
+# one of them required and publishes records without them anyway, so a record
+# that arrives incomplete is dropped rather than raised on. A raise loses far
+# more than the record: the page rolls back, the cursor never advances past it,
+# and the endpoint refetches the same page every tick until someone ships a fix.
+CPO_REQUIRED = ("id", "party_id", "last_updated")
+# `address` and `city` sit here rather than being read as optional: their
+# columns are NOT NULL and `PointRead` publishes them as required, so a station
+# without one cannot be mirrored without changing the API contract and every
+# screen that renders it.
+LOCATION_REQUIRED = ("id", "country_code", "address", "city", "last_updated")
+COORDINATES_REQUIRED = ("latitude", "longitude")
+EVSE_REQUIRED = ("id", "last_static_updated")
+CONNECTOR_REQUIRED = (
+    "id",
+    "standard",
+    "format",
+    "power_type",
+    "max_voltage",
+    "max_amperage",
+    "last_static_updated",
+)
+TARIFF_ROW_REQUIRED = ("evse_id", "connector_id")
+TARIFF_REQUIRED = ("id", "currency", "last_tariff_updated")
+
+
+class TariffOutcome(enum.StrEnum):
+    """Why a tariff row did or did not reach a connector.
+
+    The two failures are not interchangeable: an unmirrored connector is a
+    catalogue gap the ledger repairs later, while a malformed row is a price
+    that can never be stored, and the ledger must not bank the second as if it
+    were the first.
+    """
+
+    STORED = "stored"
+    UNMIRRORED = "unmirrored"
+    MALFORMED = "malformed"
+
+
+def _missing_fields(raw: dict[str, Any], required: tuple[str, ...]) -> list[str]:
+    return [key for key in required if raw.get(key) is None]
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -228,7 +273,17 @@ async def _paginate_with_budget(
     return rows, last_page_completed, exhausted
 
 
-async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> None:
+async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> bool:
+    missing = _missing_fields(raw, CPO_REQUIRED)
+    if missing:
+        logger.warning(
+            "reve_cpo_skipped source_id=%s party_id=%s missing=%s",
+            raw.get("id"),
+            raw.get("party_id"),
+            ",".join(missing),
+        )
+        return False
+
     payload: dict[str, Any] = {
         "id": uuid.uuid4(),
         "source_id": raw["id"],
@@ -254,13 +309,28 @@ async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> None:
         set_={k: stmt.excluded[k] for k in payload if k not in ("id", "source_id")},
     )
     await db.execute(stmt)
+    return True
 
 
 async def _upsert_connector(
     db: AsyncSession,
     evse_pk: uuid.UUID,
     raw: dict[str, Any],
+    evse_source_id: str,
 ) -> None:
+    missing = _missing_fields(raw, CONNECTOR_REQUIRED)
+    if missing:
+        # The parent's id, because the field most likely to be missing is the
+        # one that would have identified the record: `source_id=None` names
+        # nothing, and REVE has been seen to drop it from every child at once.
+        logger.warning(
+            "reve_connector_skipped evse=%s source_id=%s missing=%s",
+            evse_source_id,
+            raw.get("id"),
+            ",".join(missing),
+        )
+        return
+
     payload: dict[str, Any] = {
         "id": uuid.uuid4(),
         "evse_id": evse_pk,
@@ -289,7 +359,18 @@ async def _upsert_evse(
     db: AsyncSession,
     charging_point_id: uuid.UUID,
     raw: dict[str, Any],
+    location_source_id: str,
 ) -> None:
+    missing = _missing_fields(raw, EVSE_REQUIRED)
+    if missing:
+        logger.warning(
+            "reve_evse_skipped location=%s source_id=%s missing=%s",
+            location_source_id,
+            raw.get("id"),
+            ",".join(missing),
+        )
+        return
+
     payload: dict[str, Any] = {
         "id": uuid.uuid4(),
         "charging_point_id": charging_point_id,
@@ -313,11 +394,23 @@ async def _upsert_evse(
     evse_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     for raw_conn in _ensure_list(raw.get("connectors")):
-        await _upsert_connector(db, evse_pk, raw_conn)
+        await _upsert_connector(db, evse_pk, raw_conn, raw["id"])
 
 
-async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
-    coords = raw["coordinates"]
+async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> bool:
+    coords = raw.get("coordinates") or {}
+    missing = _missing_fields(raw, LOCATION_REQUIRED) + _missing_fields(
+        coords, COORDINATES_REQUIRED
+    )
+    if missing:
+        logger.warning(
+            "reve_location_skipped source_id=%s party_id=%s missing=%s",
+            raw.get("id"),
+            raw.get("party_id"),
+            ",".join(missing),
+        )
+        return False
+
     opening_times = raw.get("opening_times") or {}
 
     payload: dict[str, Any] = {
@@ -325,8 +418,8 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
         "source": ChargingPointSource.REVE_SEED,
         "source_id": raw["id"],
         "name": raw.get("name"),
-        "cpo_name": raw["cpo_name"],
-        "party_id": raw["party_id"],
+        "cpo_name": raw.get("cpo_name"),
+        "party_id": raw.get("party_id"),
         "version": raw.get("version"),
         "address": raw.get("address"),
         "city": raw.get("city"),
@@ -359,7 +452,8 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> None:
     cp_id: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     for raw_evse in _ensure_list(raw.get("evses")):
-        await _upsert_evse(db, cp_id, raw_evse)
+        await _upsert_evse(db, cp_id, raw_evse, raw["id"])
+    return True
 
 
 async def _record_unmirrored(
@@ -395,11 +489,34 @@ async def _upsert_connector_tariff(
     raw: dict[str, Any],
     refreshed_at: datetime,
     rewritten_tariffs: set[str],
-) -> bool:
-    """Returns False when the connector is not in the catalogue."""
+) -> TariffOutcome:
+    """Attach REVE's price to the connector it names.
+
+    A row carrying no tariff object counts as ``STORED``: nothing to write and
+    nothing left owing, which is the distinction the ledger acts on.
+    """
+    missing = _missing_fields(raw, TARIFF_ROW_REQUIRED)
+    if missing:
+        logger.warning(
+            "reve_tariff_row_skipped connector_id=%s missing=%s",
+            raw.get("connector_id"),
+            ",".join(missing),
+        )
+        return TariffOutcome.MALFORMED
+
     raw_tariff = _first_tariff(raw)
     if raw_tariff is None:
-        return True
+        return TariffOutcome.STORED
+
+    missing = _missing_fields(raw_tariff, TARIFF_REQUIRED)
+    if missing:
+        logger.warning(
+            "reve_tariff_skipped source_id=%s connector_id=%s missing=%s",
+            raw_tariff.get("id"),
+            raw["connector_id"],
+            ",".join(missing),
+        )
+        return TariffOutcome.MALFORMED
 
     connector_lookup = (
         select(Connector.id)
@@ -415,7 +532,7 @@ async def _upsert_connector_tariff(
             raw["evse_id"],
             raw["connector_id"],
         )
-        return False
+        return TariffOutcome.UNMIRRORED
 
     tariff_payload: dict[str, Any] = {
         "id": uuid.uuid4(),
@@ -456,7 +573,7 @@ async def _upsert_connector_tariff(
         .where(Connector.id == connector_pk)
         .values(tariff_id=tariff_pk)
     )
-    return True
+    return TariffOutcome.STORED
 
 
 async def seed_backlog_from_ledger(db: AsyncSession) -> int:
@@ -499,7 +616,13 @@ async def seed_backlog_from_ledger(db: AsyncSession) -> int:
             "connector_id": entry.connector_id,
             "tariffs": [entry.tariff_raw],
         }
-        if await _upsert_connector_tariff(db, raw, refreshed_at, rewritten):
+        # A malformed banked tariff keeps its row rather than being dropped as
+        # seeded: it can never be stored, and the backlog that stops falling is
+        # the only thing that says so.
+        if (
+            await _upsert_connector_tariff(db, raw, refreshed_at, rewritten)
+            is TariffOutcome.STORED
+        ):
             await db.delete(entry)
             seeded += 1
     return seeded
@@ -515,8 +638,12 @@ async def import_cpos(
     max_pages: int | None = None,
     on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
+    skipped = 0
+
     async def _process(raw: dict[str, Any]) -> None:
-        await _upsert_cpo(db, raw)
+        nonlocal skipped
+        if not await _upsert_cpo(db, raw):
+            skipped += 1
 
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
@@ -530,6 +657,7 @@ async def import_cpos(
     audit(
         "reve_etl_cpos",
         rows=rows,
+        skipped=skipped,
         last_page=last_page,
         exhausted=exhausted,
         start_page=start_page,
@@ -548,8 +676,12 @@ async def import_locations(
     max_pages: int | None = None,
     on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
+    skipped = 0
+
     async def _process(raw: dict[str, Any]) -> None:
-        await _upsert_location(db, raw)
+        nonlocal skipped
+        if not await _upsert_location(db, raw):
+            skipped += 1
 
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
@@ -563,6 +695,7 @@ async def import_locations(
     audit(
         "reve_etl_locations",
         rows=rows,
+        skipped=skipped,
         last_page=last_page,
         exhausted=exhausted,
         start_page=start_page,
@@ -584,14 +717,20 @@ async def import_tariffs(
     refreshed_at = datetime.now(UTC)
     changed = 0
     unmirrored = 0
+    skipped = 0
     rewritten_tariffs: set[str] = set()
 
     async def _process(raw: dict[str, Any]) -> None:
-        nonlocal changed, unmirrored
+        nonlocal changed, unmirrored, skipped
         if _tariff_changed_in_window(raw, date_from, date_to):
             changed += 1
-        if not await _upsert_connector_tariff(db, raw, refreshed_at, rewritten_tariffs):
+        outcome = await _upsert_connector_tariff(
+            db, raw, refreshed_at, rewritten_tariffs
+        )
+        if outcome is TariffOutcome.UNMIRRORED:
             unmirrored += 1
+        elif outcome is TariffOutcome.MALFORMED:
+            skipped += 1
 
     rows, last_page, exhausted = await _paginate_with_budget(
         client,
@@ -607,6 +746,7 @@ async def import_tariffs(
         rows=rows,
         changed=changed,
         unmirrored=unmirrored,
+        skipped=skipped,
         last_page=last_page,
         exhausted=exhausted,
         start_page=start_page,

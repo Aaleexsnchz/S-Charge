@@ -295,17 +295,18 @@ async def _restart_cycle(db: AsyncSession) -> int:
     return 0
 
 
-async def _handle_server_error(db: AsyncSession, endpoint: str, exc: Exception) -> None:
+async def _handle_server_error(db: AsyncSession, endpoint: str, detail: str) -> None:
     """A 504/timeout: record it and leave the watermark exactly where it is.
 
     Advancing past a window REVE would not serve discards that window for good,
     because the endpoint has no ``date_to`` to come back with. Stalling is
     recoverable; skipping is not.
     """
-    await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")
+    await record_error(db, endpoint, detail)
     await db.commit()
     print(
-        f"server error on {endpoint}; watermark left in place, retry next tick: {exc}",
+        f"server error on {endpoint}; watermark left in place, "
+        f"retry next tick: {detail}",
         file=sys.stderr,
     )
 
@@ -387,12 +388,18 @@ async def _run_tick(
                 print(f"rate-limited on {endpoint}; resume next tick")
                 return 0
             await db.rollback()
+            # Read back rather than reuse `start_page`: progress commits per
+            # page, so the cursor is the only thing that knows which page of a
+            # multi-page tick actually died - and that page is what the next
+            # tick will retry.
+            failed_page = (await read_cursor(db, endpoint)).next_page
+            detail = f"page {failed_page}: {type(exc).__name__}: {exc}"
             if is_server_error(exc):
-                await _handle_server_error(db, endpoint, exc)
+                await _handle_server_error(db, endpoint, detail)
                 return 0
-            await record_error(db, endpoint, f"{type(exc).__name__}: {exc}")
+            await record_error(db, endpoint, detail)
             await db.commit()
-            print(f"error on {endpoint}: {exc}", file=sys.stderr)
+            print(f"error on {endpoint} {detail}", file=sys.stderr)
             return 1
 
         calls_used += last_page - start_page + 1 + failed

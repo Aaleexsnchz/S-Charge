@@ -392,3 +392,28 @@ async def test_a_standing_failure_stops_rebuying_known_bad_rungs(
     # However long it has been failing, one rung always survives.
     cursor.consecutive_failures = 99
     assert len(_recovery_windows(watermark, cursor)) == 1
+
+
+async def test_the_recorded_error_names_the_page_that_failed(
+    reve_client: ReveClient, db_session: AsyncSession, httpx_mock: HTTPXMock
+) -> None:
+    """The page is what turns a bare `KeyError: 'id'` into something findable.
+
+    It has to be read back from the cursor rather than taken from where the
+    tick started: progress commits per page, so a tick that drains one page and
+    dies on the next would otherwise blame the first.
+    """
+    watermark = datetime.now(UTC) - timedelta(minutes=90)
+    await _seed_tariff_cursor(db_session, watermark)
+    httpx_mock.add_response(
+        json=[{"evse_id": "evse-1", "connector_id": f"conn-{i}"} for i in range(100)]
+    )
+    httpx_mock.add_response(status_code=500)
+
+    async with reve_client as client:
+        exit_code = await _run_tick(db_session, client, budget=5)
+
+    assert exit_code == 1
+    cursor = await read_cursor(db_session, "/connectors/tariffs")
+    assert cursor.last_error is not None
+    assert cursor.last_error.startswith("page 2: ")

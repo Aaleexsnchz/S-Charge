@@ -361,6 +361,28 @@ razonamiento completo, en [modelo-de-datos.md](modelo-de-datos.md)—. El EVSE
 conserva la columna `status` (valor OCPI, p. ej. `AVAILABLE`) y el mapa la sigue
 agregando a *disponible* / *ocupado* / *desconocido*, lista para una fuente real.
 
+**6. Un registro incompleto se descarta; no detiene la fuente.** La especificación
+de REVE marca `id`, `standard`, `country_code` y otros campos como obligatorios, y
+el feed publica registros sin ellos. Un ETL estricto convierte ese registro en una
+parada indefinida, y no por severidad mal calibrada sino por la forma del cursor:
+la página se deshace, la posición no avanza y cada ejecución vuelve a pedir la
+misma página con el mismo resultado. Lo observado en producción: un CPO sin
+`city_code` detuvo `/cpos` durante siete horas y dejó sin cuota a `/locations`
+detrás, mientras los precios seguían actualizándose con normalidad —el síntoma más
+caro es el que no se ve—.
+
+La distinción que decide el remedio no es entre campo presente y ausente, sino
+entre **campo descriptivo y campo estructural**. Un nombre o una dirección que
+faltan se guardan como nulos; `id` es la clave del *upsert* y no admite sustituto,
+de modo que el registro no se puede almacenar de ninguna manera. Descartarlo cuesta
+una estación hasta que REVE la vuelva a publicar; conservar la excepción costaba el
+catálogo entero.
+
+El ledger de conectores no reflejados añade un tercer caso. Una tarifa mal formada
+guardada allí no se podrá aplicar nunca, y borrarla como *aplicada* falsearía la
+única medida que tenemos de lo que falta: se queda, y el contador que deja de bajar
+es lo que lo dice.
+
 ## Operación
 
 El cron sigue lanzando `seed_reve` hasta que las tres fuentes del catálogo
