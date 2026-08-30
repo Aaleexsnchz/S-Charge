@@ -1,7 +1,12 @@
+import asyncio
+import hashlib
+import json
+import time
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypeGuard
 
 from sqlalchemy import Select, case, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +16,72 @@ from app.models.charging_point import ChargingPoint, Connector, Evse, PricingKin
 
 Bbox = tuple[Decimal, Decimal, Decimal, Decimal]
 """(min_lng, min_lat, max_lng, max_lat) — GeoJSON bbox axis order."""
+
+MAP_CACHE_TTL_SECONDS = 600
+"""Bounded staleness for the map payload.
+
+The catalogue moves at the REVE refresh's hourly cadence and prices at the
+recompute tick's, so ten minutes is well inside one cycle. It is the map's
+"from" price that ages here, never the authoritative one: the point detail
+reads live.
+"""
+
+
+@dataclass(frozen=True)
+class _CachedMap:
+    body: bytes
+    etag: str
+    built_at: float
+
+
+_map_cache: _CachedMap | None = None
+_map_cache_lock = asyncio.Lock()
+
+
+def reset_map_cache() -> None:
+    """Drop the memoised payload. For tests, which change the catalogue between
+    requests and would otherwise be served the previous test's answer."""
+    global _map_cache
+    _map_cache = None
+
+
+def _is_fresh(cached: _CachedMap | None) -> TypeGuard[_CachedMap]:
+    return (
+        cached is not None
+        and time.monotonic() - cached.built_at < MAP_CACHE_TTL_SECONDS
+    )
+
+
+async def cached_map_payload(db: AsyncSession) -> tuple[bytes, str]:
+    """The serialised FeatureCollection and its ETag, built at most once per TTL.
+
+    Two costs are being avoided, not one: the aggregate over every unarchived
+    point, and serialising ~3.4 MB of JSON. Both used to run on every request
+    for a payload identical to the one served a moment earlier.
+    """
+    global _map_cache
+    cached = _map_cache
+    if _is_fresh(cached):
+        return cached.body, cached.etag
+
+    async with _map_cache_lock:
+        # Re-checked under the lock: without this, every request that arrived
+        # while the first was building would rebuild it again on acquiring.
+        cached = _map_cache
+        if _is_fresh(cached):
+            return cached.body, cached.etag
+
+        collection = await map_feature_collection(db)
+        body = json.dumps(collection, separators=(",", ":")).encode()
+        etag = f'"{hashlib.sha256(body).hexdigest()[:32]}"'
+        _map_cache = _CachedMap(body=body, etag=etag, built_at=time.monotonic())
+        return body, etag
+
+        collection = await map_feature_collection(db)
+        body = json.dumps(collection, separators=(",", ":")).encode()
+        etag = f'"{hashlib.sha256(body).hexdigest()[:32]}"'
+        _map_cache = _CachedMap(body=body, etag=etag, built_at=time.monotonic())
+        return body, etag
 
 
 def _base_query() -> Select[tuple[ChargingPoint]]:

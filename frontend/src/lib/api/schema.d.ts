@@ -206,6 +206,14 @@ export interface paths {
      * @description GeoJSON FeatureCollection sized for the map's clustered source.
      *
      *     Declared before ``/{point_id}`` so the literal segment wins the route match.
+     *
+     *     ~500 KB gzipped over every unarchived point, identical for every caller, and
+     *     only moved by the ETL's hourly ticks. Three things now say so: the payload is
+     *     built at most once per TTL rather than per request, ``Cache-Control`` lets
+     *     the browser and the service worker skip asking at all, and the ``ETag``
+     *     turns the ask that does happen into a 304 with no body. ``private`` because
+     *     the endpoint is session-gated — the payload does not vary by user, but it
+     *     must never land in a shared cache.
      */
     get: operations['read_points_map_api_points_map_get']
     put?: never
@@ -1202,7 +1210,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Successful Response */
+      /** @description GeoJSON FeatureCollection. */
       200: {
         headers: {
           [name: string]: unknown
@@ -1212,6 +1220,13 @@ export interface operations {
             [key: string]: unknown
           }
         }
+      }
+      /** @description The caller's copy still matches the current ETag. */
+      304: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
       }
     }
   }

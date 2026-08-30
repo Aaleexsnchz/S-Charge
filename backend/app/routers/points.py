@@ -2,13 +2,13 @@ import uuid
 from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
 from app.schemas.point import ConnectorScheduleRead, PointDetailRead, PointRead
-from app.services.points import Bbox, get_point, list_points, map_feature_collection
+from app.services.points import Bbox, cached_map_payload, get_point, list_points
 from app.services.tariff_pricing import point_price_schedules
 
 router = APIRouter(prefix="/points", tags=["points"])
@@ -55,21 +55,41 @@ async def read_points(
     return [PointRead.model_validate(point) for point in points]
 
 
-@router.get("/map")
+MAP_RESPONSE_SCHEMA = {"type": "object", "additionalProperties": True}
+
+
+@router.get(
+    "/map",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "GeoJSON FeatureCollection.",
+            "content": {"application/json": {"schema": MAP_RESPONSE_SCHEMA}},
+        },
+        304: {"description": "The caller's copy still matches the current ETag."},
+    },
+)
 async def read_points_map(
     db: Annotated[AsyncSession, Depends(get_db)],
-    response: Response,
-) -> dict[str, object]:
+    request: Request,
+) -> Response:
     """GeoJSON FeatureCollection sized for the map's clustered source.
 
     Declared before ``/{point_id}`` so the literal segment wins the route match.
+
+    ~500 KB gzipped over every unarchived point, identical for every caller, and
+    only moved by the ETL's hourly ticks. Three things now say so: the payload is
+    built at most once per TTL rather than per request, ``Cache-Control`` lets
+    the browser and the service worker skip asking at all, and the ``ETag``
+    turns the ask that does happen into a 304 with no body. ``private`` because
+    the endpoint is session-gated — the payload does not vary by user, but it
+    must never land in a shared cache.
     """
-    # ~500 KB gzipped, identical for every caller, and only moves when the REVE
-    # refresh ticks — hourly at most. Without this the browser refetches all of
-    # it on every visit. ``private`` because the endpoint is session-gated: the
-    # payload is user-independent, but it must never land in a shared cache.
-    response.headers["Cache-Control"] = "private, max-age=600"
-    return await map_feature_collection(db)
+    body, etag = await cached_map_payload(db)
+    headers = {"Cache-Control": "private, max-age=600", "ETag": etag}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
+    return Response(content=body, media_type="application/json", headers=headers)
 
 
 @router.get(

@@ -13,6 +13,7 @@ from app.config import settings
 from app.dependencies import get_db
 from app.main import app
 from app.models.user import User
+from app.services.points import reset_map_cache
 from app.services.user_manager import current_user
 from app.utils.rate_limit import reset_rate_limits
 from httpx import ASGITransport, AsyncClient
@@ -88,6 +89,13 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 async def _reset_rate_limits() -> None:
     """Every test shares one client IP, so counters must not carry over."""
     await reset_rate_limits()
+
+
+@pytest.fixture(autouse=True)
+def _reset_map_cache() -> None:
+    """The map payload is memoised in-process. Tests build a different catalogue
+    each time and would otherwise be served the previous one's answer."""
+    reset_map_cache()
 
 
 @pytest.fixture(autouse=True)

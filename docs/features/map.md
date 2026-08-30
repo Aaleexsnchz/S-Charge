@@ -6,7 +6,7 @@ The whole Spanish catalogue on one map, clustered on the GPU, filterable without
 
 ## Today
 
-- **Backend** — `GET /api/points/map` returns the full catalogue as a slim GeoJSON FeatureCollection (~13.7k features, ~3.5 MB of JSON, ~500 KB gzipped).
+- **Backend** — `GET /api/points/map` returns the full catalogue as a slim GeoJSON FeatureCollection (~13.7k features, ~3.5 MB of JSON, ~500 KB gzipped). The payload is **built at most once every 10 minutes** and held serialised in the process, so neither the aggregate nor the JSON encoding runs per request; it ships `Cache-Control: private, max-age=600` and an `ETag`, and answers a matching `If-None-Match` with a 304 and no body. `private` because the endpoint is session-gated — the payload does not vary by user, but it must never land in a shared cache. Bounded staleness is safe here because the only ageing value is the map's *from* price; the point detail reads live.
 - **Frontend** — `features/map`: MapLibre GL JS over OpenFreeMap's dark style, native clustering, colour driven by `aggregate_status`. Filter chips (availability, connector, price band) refilter the source client-side. The map centres on the user on open. The service worker serves the FeatureCollection stale-while-revalidate, so a repeat visit paints from cache while the refresh runs behind it.
 
 ## Decisions
@@ -31,4 +31,4 @@ Lighthouse, production build, mobile preset, 2026-06-13 — recorded here rather
 | `/login` | 94 | 98 | 96 | 82 |
 | `/map` | 31 | 100 | 100 | 82 |
 
-After slimming the map payload (772 → 503 KB gzipped, −35%): FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map`. The remaining gap is inherent to map pages at this scale — MapLibre's engine, WebGL first paint, a 13.6k-feature source. That is the cost of a first visit; repeat visits now come off the service-worker cache. Remaining lever: fetching the source after first paint.
+After slimming the map payload (772 → 503 KB gzipped, −35%): FCP 3.0 s, LCP 4.5 s, Speed Index 3.4 s on `/map`. The remaining gap is inherent to map pages at this scale — MapLibre's engine, WebGL first paint, a 13.6k-feature source. That is the cost of a first visit; repeat visits now come off the service-worker cache, and a revalidation that reaches the backend costs a 304 rather than the payload. Remaining lever: fetching fewer points in the first place — the viewport work below.

@@ -11,6 +11,7 @@ from app.models.charging_point import (
     PricingKind,
 )
 from app.models.tariff import Tariff, TariffElement
+from app.services.points import reset_map_cache
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -388,3 +389,69 @@ async def test_price_schedule_is_empty_for_a_single_price(
 
     assert response.status_code == 200
     assert response.json()["price_schedules"] == []
+
+
+async def test_map_sends_a_cache_policy_and_an_etag(auth_client: AsyncClient) -> None:
+    response = await auth_client.get("/api/points/map")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "private, max-age=600"
+    assert response.headers["etag"].startswith('"')
+
+
+async def test_map_answers_304_when_the_caller_already_has_it(
+    auth_client: AsyncClient,
+) -> None:
+    first = await auth_client.get("/api/points/map")
+    etag = first.headers["etag"]
+
+    second = await auth_client.get("/api/points/map", headers={"If-None-Match": etag})
+
+    assert second.status_code == 304
+    assert second.content == b""
+    assert second.headers["etag"] == etag
+
+
+async def test_map_serves_the_body_when_the_caller_holds_a_stale_etag(
+    auth_client: AsyncClient,
+) -> None:
+    response = await auth_client.get(
+        "/api/points/map", headers={"If-None-Match": '"not-the-current-payload"'}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["type"] == "FeatureCollection"
+
+
+async def test_map_is_built_once_per_cache_window(
+    auth_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A point added after the first request must not appear until the TTL
+    lapses — the proof that the second request never reached the database."""
+    first = await auth_client.get("/api/points/map")
+    assert first.json()["features"] == []
+
+    db_session.add(
+        ChargingPoint(
+            source=ChargingPointSource.REVE_SEED,
+            source_id="cached-map-point",
+            latitude=Decimal("40.4168"),
+            longitude=Decimal("-3.7038"),
+            address="C/ Mayor 1",
+            city="Madrid",
+            country_code="ESP",
+            time_zone="Europe/Madrid",
+            opening_24_7=True,
+            source_last_updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+    )
+    await db_session.commit()
+
+    second = await auth_client.get("/api/points/map")
+    assert second.json()["features"] == []
+    assert second.headers["etag"] == first.headers["etag"]
+
+    reset_map_cache()
+    third = await auth_client.get("/api/points/map")
+    assert len(third.json()["features"]) == 1
+    assert third.headers["etag"] != first.headers["etag"]
