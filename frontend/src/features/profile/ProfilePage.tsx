@@ -1,8 +1,98 @@
+import CheckIcon from '@mui/icons-material/Check'
+import CloseIcon from '@mui/icons-material/Close'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
-import { Avatar, Box, Button, Stack, Typography } from '@mui/material'
-import { Form, useRouteLoaderData } from 'react-router'
+import {
+  Avatar,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useSnackbar } from 'notistack'
+import { useEffect, useState } from 'react'
+import { Form, useFetcher, useRouteLoaderData } from 'react-router'
 import type { RootLoaderData } from '@/features/auth/loaders'
+import { MAX_NAME_LENGTH, type NameActionData } from './actions'
 import { useAppVersion } from './useAppVersion'
+
+function NameHeading({ currentName }: { currentName: string }) {
+  const fetcher = useFetcher<NameActionData>()
+  const { enqueueSnackbar } = useSnackbar()
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(currentName)
+
+  const saving = fetcher.state !== 'idle'
+  const error = fetcher.data && 'error' in fetcher.data ? fetcher.data.error : null
+  const saved = !saving && fetcher.data !== undefined && 'success' in fetcher.data
+
+  useEffect(() => {
+    if (!saved) return
+    setEditing(false)
+    enqueueSnackbar('Nombre actualizado', { variant: 'success' })
+  }, [saved, enqueueSnackbar])
+
+  if (!editing) {
+    return (
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 1 }}>
+        <Typography variant="h2">{currentName}</Typography>
+        <IconButton
+          size="small"
+          aria-label="Editar nombre"
+          onClick={() => {
+            setName(currentName)
+            setEditing(true)
+          }}
+          sx={{ color: 'text.disabled' }}
+        >
+          <EditOutlinedIcon fontSize="inherit" />
+        </IconButton>
+      </Stack>
+    )
+  }
+
+  return (
+    <fetcher.Form method="post">
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start', mt: 1 }}>
+        <TextField
+          name="name"
+          variant="standard"
+          autoFocus
+          disabled={saving}
+          slotProps={{
+            htmlInput: { maxLength: MAX_NAME_LENGTH, style: { textAlign: 'center' } },
+          }}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          error={error !== null}
+          helperText={error}
+          sx={{ width: 200 }}
+        />
+        <IconButton
+          type="submit"
+          size="small"
+          color="primary"
+          aria-label="Guardar nombre"
+          disabled={saving || name.trim() === ''}
+        >
+          {saving ? <CircularProgress size={18} /> : <CheckIcon fontSize="inherit" />}
+        </IconButton>
+        <IconButton
+          size="small"
+          aria-label="Cancelar"
+          disabled={saving}
+          onClick={() => setEditing(false)}
+          sx={{ color: 'text.disabled' }}
+        >
+          <CloseIcon fontSize="inherit" />
+        </IconButton>
+      </Stack>
+    </fetcher.Form>
+  )
+}
 
 export function ProfilePage() {
   const data = useRouteLoaderData('root') as RootLoaderData | undefined
@@ -11,10 +101,20 @@ export function ProfilePage() {
   const user = data?.user
   if (!user) return null
 
-  const initial = (user.name?.trim()?.[0] ?? user.email[0] ?? '?').toUpperCase()
+  const name = user.name?.trim() ?? ''
+  const initial = (name[0] ?? user.email[0] ?? '?').toUpperCase()
 
   return (
-    <Box sx={{ p: 2, maxWidth: 600, mx: 'auto' }}>
+    <Box
+      sx={{
+        p: 2,
+        maxWidth: 600,
+        mx: 'auto',
+        minHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Stack spacing={1} sx={{ alignItems: 'center', textAlign: 'center', py: 2 }}>
         <Avatar
           sx={{
@@ -28,25 +128,13 @@ export function ProfilePage() {
         >
           {initial}
         </Avatar>
-        {user.name && (
-          <Typography variant="h2" sx={{ mt: 1 }}>
-            {user.name}
-          </Typography>
-        )}
+        <NameHeading currentName={name} />
         <Typography variant="body2" color="text.secondary">
           {user.email}
         </Typography>
       </Stack>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ display: 'block', textAlign: 'center' }}
-      >
-        Versión {version ?? '—'}
-      </Typography>
-
-      <Box sx={{ mt: 3 }}>
+      <Box sx={{ mt: 'auto', pt: 3 }}>
         <Form method="post" action="/logout">
           <Button
             type="submit"
@@ -60,6 +148,14 @@ export function ProfilePage() {
           </Button>
         </Form>
       </Box>
+
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: 'block', textAlign: 'center', mt: 2 }}
+      >
+        Versión {version ?? '—'}
+      </Typography>
     </Box>
   )
 }

@@ -11,7 +11,8 @@ export function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const canSubmit = email.trim() !== '' && password.length >= MIN_PASSWORD_LENGTH
+  const canSubmit =
+    name.trim() !== '' && email.trim() !== '' && password.length >= MIN_PASSWORD_LENGTH
 
   return (
     <Stack spacing={3}>
@@ -23,7 +24,8 @@ export function RegisterPage() {
           <TextField
             name="name"
             type="text"
-            label="Nombre (opcional)"
+            label="Nombre"
+            required
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}

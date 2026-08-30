@@ -3,6 +3,8 @@ import { Box, Button, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { useNavigate } from 'react-router'
 import {
   pointPricingState,
+  STATUS_DOT_COLOR,
+  STATUS_DOT_GLOW,
   STATUS_LABELS,
   shortPriceLabel,
   standardLabel,
@@ -10,12 +12,6 @@ import {
 import type { Point } from '@/features/points/usePoint'
 import { useGeolocation } from '@/hooks/useGeolocation'
 import { type NearbyPoint, useNearbyPoints } from './useNearbyPoints'
-
-const STATUS_DOT_COLOR: Record<string, string> = {
-  available: 'success.main',
-  occupied: 'warning.main',
-  unknown: 'text.disabled',
-}
 
 function pointName(point: Point): string {
   return point.name ?? point.cpo_name ?? 'Punto de carga'
@@ -45,10 +41,11 @@ function NearbyCard({ point }: { point: NearbyPoint }) {
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
         <Box
           sx={{
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
             borderRadius: '50%',
             bgcolor: STATUS_DOT_COLOR[point.aggregate_status] ?? 'text.disabled',
+            boxShadow: STATUS_DOT_GLOW[point.aggregate_status] ?? 'none',
           }}
         />
         <Typography variant="caption" color="text.secondary">

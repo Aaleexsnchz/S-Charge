@@ -70,7 +70,7 @@ async def test_oauth_first_time_user(
     )
 
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/profile"
+    assert resp.headers["location"] == "/"
     assert COOKIE_NAME in fresh_client.cookies
 
     user_row = (

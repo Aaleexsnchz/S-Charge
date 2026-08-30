@@ -87,7 +87,7 @@ export async function loginAction({
   const password = String(formData.get('password') ?? '')
 
   const { error, response } = await submitLogin(username, password)
-  if (response.ok) return redirect('/profile')
+  if (response.ok) return redirect('/')
 
   if ((response.status === 400 || response.status === 422) && error) {
     if (errorCodeFromDetail(error.detail) === 'LOGIN_USER_NOT_VERIFIED') {
@@ -104,8 +104,7 @@ export async function registerAction({
   const formData = await request.formData()
   const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
-  const nameValue = formData.get('name')
-  const name = typeof nameValue === 'string' && nameValue ? nameValue : null
+  const name = String(formData.get('name') ?? '').trim()
 
   const { error, response } = await apiClient.POST('/api/auth/register', {
     body: { email, password, name },

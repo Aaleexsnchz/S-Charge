@@ -694,7 +694,7 @@ export interface components {
        */
       is_verified?: boolean | null
       /** Name */
-      name?: string | null
+      name: string
       /** Password */
       password: string
     }

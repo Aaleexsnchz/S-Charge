@@ -29,6 +29,7 @@ Note this only excuses *givens*, not casual choices: a dependency you would have
 | [auth-0002](auth-0002-cookie-session.md) | Single HttpOnly cookie session, no refresh tokens | 1 |
 | [auth-0003](auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation | 1 |
 | [auth-0004](auth-0004-rate-limits-and-client-ip.md) | Rate-limit the auth endpoints; treat the audited client IP as personal data | 5 |
+| [auth-0005](auth-0005-name-is-the-onboarding-state.md) | A mandatory display name, with the null name as its own onboarding state | 8 |
 
 Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
 

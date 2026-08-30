@@ -17,6 +17,8 @@ import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { OnboardingGate } from '@/features/onboarding/OnboardingGate'
+import { updateNameAction } from '@/features/profile/actions'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { NotFoundPage } from './NotFoundPage'
 import { RootLayout } from './RootLayout'
@@ -56,7 +58,9 @@ export const router = createBrowserRouter([
       {
         element: (
           <ProtectedRoute>
-            <RootLayout />
+            <OnboardingGate>
+              <RootLayout />
+            </OnboardingGate>
           </ProtectedRoute>
         ),
         children: [
@@ -85,7 +89,8 @@ export const router = createBrowserRouter([
               Component: (await import('@/features/points/PointDetailPage')).PointDetailPage,
             }),
           },
-          { path: 'profile', element: <ProfilePage /> },
+          { path: 'profile', element: <ProfilePage />, action: updateNameAction },
+          { path: 'onboarding', action: updateNameAction },
           { path: 'logout', action: logoutAction },
         ],
       },

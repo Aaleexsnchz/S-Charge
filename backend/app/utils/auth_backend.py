@@ -11,7 +11,7 @@ from app.config import settings
 ALGORITHM = "HS256"
 TOKEN_AUDIENCE = ["s-charge:session"]
 COOKIE_NAME = "session"
-OAUTH_LOGIN_REDIRECT_URL = "/profile"
+OAUTH_LOGIN_REDIRECT_URL = "/"
 
 _SESSION_SECONDS = settings.session_token_expire_days * 86400
 

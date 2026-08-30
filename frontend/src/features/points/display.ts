@@ -24,11 +24,27 @@ export const STATUS_LABELS: Record<AggregateStatus, string> = {
 
 export const STATUS_CHIP_COLOR: Record<
   AggregateStatus,
-  'success' | 'warning' | 'error' | 'default'
+  'primary' | 'success' | 'warning' | 'error' | 'default'
 > = {
-  available: 'success',
-  occupied: 'warning',
+  available: 'primary',
+  occupied: 'error',
   unknown: 'default',
+}
+
+/** One status palette for every surface that is not the map: chips, list dots,
+ *  card headers. The map keeps its own copy in hex, since MapLibre paint
+ *  expressions cannot read theme tokens. */
+export const STATUS_DOT_COLOR: Record<AggregateStatus, string> = {
+  available: 'primary.main',
+  occupied: 'error.main',
+  unknown: 'text.disabled',
+}
+
+/** A live state glows in its own colour; an unknown one has nothing to report. */
+export const STATUS_DOT_GLOW: Record<AggregateStatus, string> = {
+  available: '0 0 7px rgba(127,231,196,0.7)',
+  occupied: '0 0 7px rgba(239,68,68,0.7)',
+  unknown: 'none',
 }
 
 export function powerLabel(maxPowerW: number | null | undefined): string | null {

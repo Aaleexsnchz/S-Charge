@@ -44,6 +44,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 | [auth-0001](decisions/auth-0001-fastapi-users.md) | Use `fastapi-users` as the authentication library |
 | [auth-0002](decisions/auth-0002-cookie-session.md) | Single HttpOnly cookie session, no refresh tokens |
 | [auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md) | Pre-registration shell attack mitigation |
+| [auth-0005](decisions/auth-0005-name-is-the-onboarding-state.md) | A mandatory display name, with the null name as its own onboarding state |
 | [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) | Mirror the REVE catalogue into Postgres instead of proxying it |
 | [be-0002](decisions/be-0002-availability-not-modelled.md) | Do not model live availability — show points as available and say so |
 | [be-0003](decisions/be-0003-price-on-the-connector.md) | Store the tariff's price bands, and resolve the price on the connector |

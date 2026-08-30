@@ -57,7 +57,11 @@ async def test_a_real_session_cookie_opens_the_gate(client: AsyncClient) -> None
     ) as send:
         register = await client.post(
             "/api/auth/register",
-            json={"email": "gate@example.com", "password": "long-enough-password-123"},
+            json={
+                "email": "gate@example.com",
+                "password": "long-enough-password-123",
+                "name": "Gate",
+            },
         )
     assert register.status_code == 201
 

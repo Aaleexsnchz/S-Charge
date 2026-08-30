@@ -1,13 +1,15 @@
 // Placeholder data — dev-time scaffolding to preview the dashboard's appearance.
 // Remove when sessions/reservation/stats backends land. See docs/features.md.
+// The month's totals mirror MOCK_SESSIONS; keep both in step.
+
+export const MOCK_MONTH_SPEND = { value: '63,83', unit: '€' }
 
 export type DashboardStat = { label: string; value: string; unit?: string }
 
 export const MOCK_STATS: DashboardStat[] = [
-  { label: 'Sesiones este mes', value: '14' },
-  { label: 'kWh cargados', value: '312.6' },
-  { label: 'Gastado', value: '118.40', unit: '€' },
-  { label: 'CO₂ evitado', value: '142', unit: 'kg' },
+  { label: 'Sesiones', value: '8' },
+  { label: 'Cargados', value: '201,1', unit: 'kWh' },
+  { label: 'CO₂ evitado', value: '108', unit: 'kg' },
 ]
 
 export type MockReservation = {
@@ -18,8 +20,8 @@ export type MockReservation = {
 }
 
 export const MOCK_NEXT_RESERVATION: MockReservation | null = {
-  station: 'REVE Sagrada Família',
-  when: 'Hoy · 18:30 – 19:30',
-  connector: 'CCS 150 kW',
-  startsIn: '08h 47m',
+  station: 'Bluespace - Leganés',
+  when: 'Hoy · 18:30 – 19:15',
+  connector: 'CCS 120 kW',
+  startsIn: '02h 15m',
 }

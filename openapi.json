@@ -1025,15 +1025,10 @@
             "title": "Is Verified"
           },
           "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
           },
           "password": {
             "title": "Password",
@@ -1042,7 +1037,8 @@
         },
         "required": [
           "email",
-          "password"
+          "password",
+          "name"
         ],
         "title": "UserCreate",
         "type": "object"
@@ -1154,6 +1150,8 @@
           "name": {
             "anyOf": [
               {
+                "maxLength": 100,
+                "minLength": 1,
                 "type": "string"
               },
               {

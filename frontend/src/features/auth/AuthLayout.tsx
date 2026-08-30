@@ -1,11 +1,11 @@
-import { Box, Paper, Stack, Typography } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 import { Navigate, Outlet, useRouteLoaderData } from 'react-router'
 import { Wordmark } from '@/components/Wordmark'
 import type { RootLoaderData } from './loaders'
 
 export function AuthLayout() {
   const data = useRouteLoaderData('root') as RootLoaderData | undefined
-  if (data?.user) return <Navigate to="/profile" replace />
+  if (data?.user) return <Navigate to="/" replace />
   return (
     <Box
       sx={{
@@ -16,16 +16,22 @@ export function AuthLayout() {
         p: 2.5,
       }}
     >
-      <Stack spacing={3} sx={{ width: '100%', maxWidth: 400 }}>
-        <Stack spacing={0.75} sx={{ alignItems: 'center', textAlign: 'center' }}>
-          <Wordmark size={28} />
-          <Typography variant="body2" color="text.secondary">
+      <Stack spacing={4} sx={{ width: '100%', maxWidth: 380 }}>
+        <Stack spacing={1.25} sx={{ alignItems: 'center', textAlign: 'center' }}>
+          <Wordmark size={42} />
+          <Typography
+            variant="numeric"
+            sx={{
+              fontSize: 10,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: 'text.disabled',
+            }}
+          >
             Carga más inteligente
           </Typography>
         </Stack>
-        <Paper sx={{ p: 3 }}>
-          <Outlet />
-        </Paper>
+        <Outlet />
       </Stack>
     </Box>
   )
