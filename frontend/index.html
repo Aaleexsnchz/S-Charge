@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The map's first paint waits on a third-party origin: warming DNS, TCP
+         and TLS here takes a round trip off the critical path for /map. -->
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
     <meta name="theme-color" content="#7FE7C4" />
     <meta
       name="description"

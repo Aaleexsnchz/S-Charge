@@ -122,6 +122,14 @@ export function MapPage() {
       zoom: SPAIN_ZOOM,
       attributionControl: { compact: true },
     })
+    // The OpenFreeMap dark style references sprite icons its own sprite sheet
+    // does not carry. MapLibre warns once per missing image per tile that asks
+    // for it, so a transparent 1x1 placeholder keeps the console readable.
+    map.on('styleimagemissing', (event) => {
+      if (map.hasImage(event.id)) return
+      map.addImage(event.id, { width: 1, height: 1, data: new Uint8Array(4) })
+    })
+
     const geolocate = new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,

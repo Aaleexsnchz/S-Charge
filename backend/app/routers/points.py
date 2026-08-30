@@ -58,11 +58,17 @@ async def read_points(
 @router.get("/map")
 async def read_points_map(
     db: Annotated[AsyncSession, Depends(get_db)],
+    response: Response,
 ) -> dict[str, object]:
     """GeoJSON FeatureCollection sized for the map's clustered source.
 
     Declared before ``/{point_id}`` so the literal segment wins the route match.
     """
+    # ~500 KB gzipped, identical for every caller, and only moves when the REVE
+    # refresh ticks — hourly at most. Without this the browser refetches all of
+    # it on every visit. ``private`` because the endpoint is session-gated: the
+    # payload is user-independent, but it must never land in a shared cache.
+    response.headers["Cache-Control"] = "private, max-age=600"
     return await map_feature_collection(db)
 
 
