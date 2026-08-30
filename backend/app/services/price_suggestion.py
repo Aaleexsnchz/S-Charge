@@ -3,7 +3,7 @@
 No caller today, deliberately. The simulator used to fall back to this when REVE
 published no tariff, which presented an estimate as the operator's price; it now
 reports no cost instead. What survives is the recommendation an owner is offered
-when pricing their own point in Phase 7, where a suggested number is the point
+when pricing their own point in Phase 8, where a suggested number is the point
 rather than a claim about someone else's charger.
 """
 

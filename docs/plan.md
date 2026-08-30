@@ -108,7 +108,7 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 | 5 | Deployment + CI/CD + releases | Core | Done | [phase-5](phases/phase-5.md) |
 | 6 | ETL reactivation + price model | Core | Done | [phase-6](phases/phase-6.md) |
 | 7 | Thesis writing | Core | In progress | written outside the repo |
-| 8 | Private charging points + owner pricing | Core | Pending | planned at phase start |
+| 8 | Private charging points + owner pricing | Core | Pending | [phase-8](phases/phase-8.md) |
 | 9 | Smart charging optimiser | Core | Pending | planned at phase start |
 | 10 | Wallet + ledger | Core | Pending | planned at phase start |
 | 11 | Charging sessions | Core | Pending | planned at phase start |

@@ -14,8 +14,9 @@ The plan stays **live** for the phase's duration: slice statuses move, open ques
 | 4 — Frontend redesign + dashboard-first IA | [phase-4.md](phase-4.md) |
 | 5 — Deployment + CI/CD + releases | [phase-5.md](phase-5.md) |
 | 6 — ETL reactivation + price model | [phase-6.md](phase-6.md) |
+| 8 — Private charging points + owner pricing | [phase-8.md](phase-8.md) |
 
-Phases 7–14 are described in [plan.md](../plan.md); their plans get written when they start. **The numbers are the build order**, and two of those phases are cut.
+The remaining phases are described in [plan.md](../plan.md); their plans get written when they start. **The numbers are the build order**, and two of those phases are cut.
 
 **[open-items.md](open-items.md) carries what is still open from phases already left behind** — a later phase can start while detail from an earlier one is unfinished, and that is where it stays visible.
 
