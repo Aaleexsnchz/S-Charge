@@ -1,6 +1,6 @@
 # Owner points
 
-**Status:** 🟡 Mock UI · **Real in** [Phase 8](../plan.md)
+**Status:** 🟡 Mock UI · **Real in** [Phase 8](../plan/plan.md)
 
 The platform contribution: a user registers their own charging point, chooses whether it is publicly listed, prices it, and watches its usage. This is the first data in the system that REVE does not provide.
 

@@ -29,7 +29,7 @@ This is the part that ends up in the thesis. A decision with a fork in the road 
 ADR instead, and is referenced from here rather than argued twice.
 -->
 
-- **<Decision>.** <Why, and what lost.> — [<adr-id>](../decisions/<file>.md)
+- **<Decision>.** <Why, and what lost.> — [<adr-id>](../../decisions/<file>.md)
 
 ## Slice 1 — <name>
 
@@ -68,7 +68,7 @@ single slice.
 
 When the phase ends, this document is compacted rather than deleted or left as-is:
 
-1. **Migrate what outlives it, first.** A decision to [decisions/](../decisions/), an operational procedure to [operations.md](../operations.md) or [setup/deployment.md](../setup/deployment.md), a library choice to [tech-stack.md](../tech-stack.md), a measured baseline to the document that will be compared against it, a concept to [thesis/](../thesis/). **No permanent document may cite a phase plan as its source of truth** ([AGENTS.md](../../AGENTS.md) → Documentation discipline).
+1. **Migrate what outlives it, first.** A decision to [decisions/](../../decisions/), an operational procedure to [operations.md](../../operations.md) or [setup/deployment.md](../../setup/deployment.md), a library choice to [tech-stack.md](../../tech-stack.md), a measured baseline to the document that will be compared against it, a concept to [thesis/](../../thesis/). **No permanent document may cite a phase plan as its source of truth** ([AGENTS.md](../../../AGENTS.md) → Documentation discipline).
 2. **Keep the slices table.** It is the roll-up, and the PR column is the trail back to the diff.
 3. **Compact each closed slice to a short section** — what it contained and where its permanent knowledge now lives. A paragraph or a few ticked boxes, not the working notes.
 4. **Leave the open slices in full**, at the end, after a `---`. Detail is what makes them actionable; the closed ones no longer need it.

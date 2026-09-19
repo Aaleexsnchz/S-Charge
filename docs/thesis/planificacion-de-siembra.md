@@ -4,7 +4,7 @@ status: borrador (redacción de la memoria, nivel conceptual)
 
 # Planificación de la siembra — cron y el contrato por tick
 
-El ETL del catálogo REVE se ejecuta con cron en el host: una sola línea invoca el orquestador `seed_reve` dentro del contenedor del backend, que gasta hasta cinco llamadas a REVE por hora y termina. A lo largo de ~12 días de ticks desatendidos, el catálogo español completo aterriza en Postgres. Cuando las tres filas de `reve_etl_cursor` tienen `completed_at`, el cron pasa a invocar el refresco incremental descrito en [precios-y-actualizacion.md](precios-y-actualizacion.md). Véase [phases/phase-2.md](../phases/phase-2.md) para los criterios de la slice.
+El ETL del catálogo REVE se ejecuta con cron en el host: una sola línea invoca el orquestador `seed_reve` dentro del contenedor del backend, que gasta hasta cinco llamadas a REVE por hora y termina. A lo largo de ~12 días de ticks desatendidos, el catálogo español completo aterriza en Postgres. Cuando las tres filas de `reve_etl_cursor` tienen `completed_at`, el cron pasa a invocar el refresco incremental descrito en [precios-y-actualizacion.md](precios-y-actualizacion.md). Véase [plan/phases/phase-2.md](../plan/phases/phase-2.md) para los criterios de la slice.
 
 ## Por qué es necesario un planificador
 

@@ -19,7 +19,7 @@ related: [auth-0002, fe-0002]
 - *HTTPS is required anyway.* The PWA ([fe-0002](fe-0002-pwa.md)) and browser geolocation both need a secure context; Caddy provides and auto-renews certificates with near-zero config.
 - *Cost is ~€7–18/mo*, with no per-service multiplication and no free-tier sleeping.
 
-**Implementation (Phase 5).** Slice-by-slice plan: [phases/phase-5.md](../phases/phase-5.md). Host runbook: [setup/deployment.md](../setup/deployment.md).
+**Implementation (Phase 5).** Slice-by-slice plan: [plan/phases/phase-5.md](../plan/phases/phase-5.md). Host runbook: [setup/deployment.md](../setup/deployment.md).
 
 - **Host spec** (the actual requirement; the SKU is a purchasing detail): **2 vCPU · 4 GB RAM · x86-64 · ≥40 GB disk · EU region · Ubuntu 26.04 LTS · monthly billing · SSH key attached at creation.** 4 GB is a floor because the deploy builds the prod images on the host (`up -d --build`) and 2 GB does not survive a Vite production build next to Postgres, backend and Caddy. x86-64 rules out every ARM option (Oracle Always-Free, Hetzner CAX, Scaleway ARM) until an arm64 supercronic binary lands in [backend/Dockerfile](../../backend/Dockerfile).
 - **Provider: Hetzner** — [CX23](https://www.hetzner.com/cloud/cost-optimized/) (~€7/mo) when in stock, else [CPX22](https://www.hetzner.com/cloud/regular-performance) (~€12–18); CX stock is per location, FSN/NBG/HEL are separate pools. Both bill hourly with no minimum term and no setup fee, so a wrong-sized box costs cents to discard. Fallbacks if Hetzner is unusable, best first: [netcup](https://www.netcup.com/en/server/vps) (~€4–7), [IONOS](https://www.ionos.com/servers/vps) (~€5–10), [OVHcloud](https://www.ovhcloud.com/en/vps/) (~€6–12), [Scaleway](https://www.scaleway.com/en/cost-optimized-instances/) x86 (~€7–12) — cheaper on paper, paid for in contract terms or annual prepay. Prices indicative, checked 2026-07-27.
@@ -60,7 +60,7 @@ related: [auth-0002, fe-0002]
 
 **References.**
 
-- [plan.md](../plan.md) — Phase 5 and the scaling-strategy artifact; [phases/phase-5.md](../phases/phase-5.md) — the slice plan.
+- [plan.md](../plan/plan.md) — Phase 5 and the scaling-strategy artifact; [plan/phases/phase-5.md](../plan/phases/phase-5.md) — the slice plan.
 - [setup/deployment.md](../setup/deployment.md) — host provisioning runbook; [operations.md](../operations.md) — day-2 operations.
 - [auth-0002](auth-0002-cookie-session.md) cookie session; [fe-0002](fe-0002-pwa.md) PWA (secure-context requirement).
 - [thesis/planificacion-de-siembra.md](../thesis/planificacion-de-siembra.md) — why the refresh runs on a schedule (and why a server, not a laptop, should host it).

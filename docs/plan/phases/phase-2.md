@@ -2,7 +2,7 @@
 
 Per [plan.md](../plan.md): REVE seeded into Postgres via cursor-based ETL under the 5 req/hr public-API cap. The frontend renders a map of Spanish charging points with filters and a detail view.
 
-The ETL mirrors three endpoints, not four: operational status (working/broken) is assumed always-operational and not fetched. EVSE *availability* is the `status` column (OCPI value, e.g. `AVAILABLE`) and the map's `aggregate_status` rolls up to available/occupied/unknown; live availability is not modelled ([plan.md](../plan.md) → Data strategy). A post-seed incremental refresh (`refresh_reve.py`) keeps the catalogue fresh under the cap — see [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+The ETL mirrors three endpoints, not four: operational status (working/broken) is assumed always-operational and not fetched. EVSE *availability* is the `status` column (OCPI value, e.g. `AVAILABLE`) and the map's `aggregate_status` rolls up to available/occupied/unknown; live availability is not modelled ([plan.md](../plan.md) → Data strategy). A post-seed incremental refresh (`refresh_reve.py`) keeps the catalogue fresh under the cap — see [precios-y-actualizacion.md](../../thesis/precios-y-actualizacion.md).
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ The ETL mirrors three endpoints, not four: operational status (working/broken) i
 | 3 | Markers, clustering, point sheet | Done | #6 |
 | 4 | Filters + `/points/:id` + Lighthouse | Done | #6 |
 
-Decisions: [fe-0003](../decisions/fe-0003-maplibre-openfreemap.md) (MapLibre + OpenFreeMap).
+Decisions: [fe-0003](../../decisions/fe-0003-maplibre-openfreemap.md) (MapLibre + OpenFreeMap).
 
 ## Slice 1 — REVE seed ETL + mirror schema + `/api/points`
 
@@ -71,4 +71,4 @@ Sub-90 lines:
 
 ## Pending
 
-- **Map viewport loading** — the load-once model is unchanged; open-on-position, zoom-gated `bbox` fetch and a padded cache are designed in [features/map.md](../features/map.md) and scheduled for the polish phase.
+- **Map viewport loading** — the load-once model is unchanged; open-on-position, zoom-gated `bbox` fetch and a padded cache are designed in [features/map.md](../../features/map.md) and scheduled for the polish phase.

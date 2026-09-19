@@ -1,6 +1,6 @@
 # EV Charging Point Management App — Plan
 
-The high-level definition of the project: what it is, what it is built from, and the phases it ships in. This document states current scope only — when scope changes, it is rewritten, not annotated. Slice-level detail lives in [phases/](phases/); per-feature status lives in [features/](features/).
+The high-level definition of the project: what it is, what it is built from, and the phases it ships in. This document states current scope only — when scope changes, it is rewritten, not annotated. Slice-level detail lives in [phases/](phases/); per-feature status lives in [features/](../features/).
 
 ## Context
 
@@ -31,7 +31,7 @@ REVE provides the real network presence; PVPC provides the economics; user-gener
 
 ## Tech stack
 
-React + Vite + TypeScript with MUI, React Router and TanStack Query on the frontend; FastAPI + SQLAlchemy + PostgreSQL on the backend; Docker Compose everywhere; one EU VPS behind Caddy in production. Every dependency and the reason it is there: [tech-stack.md](tech-stack.md).
+React + Vite + TypeScript with MUI, React Router and TanStack Query on the frontend; FastAPI + SQLAlchemy + PostgreSQL on the backend; Docker Compose everywhere; one EU VPS behind Caddy in production. Every dependency and the reason it is there: [tech-stack.md](../tech-stack.md).
 
 ---
 
@@ -76,7 +76,7 @@ React + Vite + TypeScript with MUI, React Router and TanStack Query on the front
 7. **Owner dashboard** — per-point usage stats (sessions, energy, revenue from the ledger) and management
 8. **AI/agent assistant** — value-add features over the app's own APIs; **cut** (Phase 13)
 
-One document per feature, with live implementation status: [features/](features/).
+One document per feature, with live implementation status: [features/](../features/).
 
 ---
 
@@ -91,7 +91,7 @@ One document per feature, with live implementation status: [features/](features/
 | `/my-points` | Owner point management + stats |
 | `/profile`, `/login`, … | Profile (opened from the avatar) + auth |
 
-Per-screen implementation status: [features/](features/).
+Per-screen implementation status: [features/](../features/).
 
 ---
 
@@ -118,7 +118,7 @@ Each phase is one meaningful functionality, shipped as a sequence of **slices (o
 
 **The numbers are the build order**, and phases 7 to 14 were renumbered to keep it that way: the memoria is being written now, so it takes the number after the last phase that shipped, and the hardening pass moved to the end because it is what happens immediately before the application opens to the public. **A phase's status is only ever pending, in progress or done** — a cut phase says so in its scope, not in its status. The order is argued below.
 
-Releases track this table: a minor version marks a phase shipping and `v0.1.0` is the first production deploy. **`v1.0.0` is not a thesis milestone.** The build defended is whatever `0.x` is running on the day, and the release line simply continues across the defence — the thesis is evaluated on the application, not on a version string, and tagging `v1.0.0` for a demo would spend the one number that says something about the product on an event internal to the author. `v1.0.0` is the release that **opens the application to the public**: registration no longer invite-only, anyone can sign up and use it. What that costs is a gate, not a date — see [Opening to the public](#opening-to-the-public) — and it may well land after the defence (see [AGENTS.md](../AGENTS.md) → Releases).
+Releases track this table: a minor version marks a phase shipping and `v0.1.0` is the first production deploy. **`v1.0.0` is not a thesis milestone.** The build defended is whatever `0.x` is running on the day, and the release line simply continues across the defence — the thesis is evaluated on the application, not on a version string, and tagging `v1.0.0` for a demo would spend the one number that says something about the product on an event internal to the author. `v1.0.0` is the release that **opens the application to the public**: registration no longer invite-only, anyone can sign up and use it. What that costs is a gate, not a date — see [Opening to the public](#opening-to-the-public) — and it may well land after the defence (see [AGENTS.md](../../AGENTS.md) → Releases).
 
 **The scope is now six features, prototyped end to end.** The rule that makes that defensible: **only the physical actuation is simulated, never the logic**. The data model, the business rules, the API and the interface are the ones a real integration would use, and each simulated boundary sits exactly where the real component would plug in.
 
@@ -144,7 +144,7 @@ The memoria closing is what sets this order. Everything from here is **demo mate
 3. **Phases 10 and 11 — wallet, then sessions.** One unit of value, in that order, and only if a full week survives phase 9: sessions are worthless without a balance to hold funds against. This is where the effort curve turns, because phase 10 also triggers the encrypted full-dump backup and drags retention and erasure in with it — ops work on top of the code.
 4. **Phase 14 — the hardening pass**, last, because it is the work that immediately precedes [opening the application to the public](#opening-to-the-public) and its scope is whatever the phases before it left exposed. Nothing in it is shipped yet: Caddy still carries `frame-ancestors 'none'` as its whole Content-Security-Policy, and the backend still sets no cache headers at all.
 
-**Cut: phases 12 and 13.** The AI layer was always the planned cut, being the one capability nothing else depends on. The trip planner joins it: it is the largest phase left — a new external routing integration, its own algorithm, its own screen — and it is the one the memoria already prices as low priority. Cutting a phase means the feature keeps its ⬜ status in [features/](features/) and its mock UI stays badged; **the app must never present a cut feature as if it worked**.
+**Cut: phases 12 and 13.** The AI layer was always the planned cut, being the one capability nothing else depends on. The trip planner joins it: it is the largest phase left — a new external routing integration, its own algorithm, its own screen — and it is the one the memoria already prices as low priority. Cutting a phase means the feature keeps its ⬜ status in [features/](../features/) and its mock UI stays badged; **the app must never present a cut feature as if it worked**.
 
 ### Opening to the public
 
@@ -189,7 +189,7 @@ Vehicle catalogue, PVPC price ingest, and per-car pre-charge simulation — a va
 - [x] `vehicles` table seeded with ~25–30 common Spanish-market EVs (battery kWh, max AC/DC kW)
 - [x] PVPC hourly prices ingested daily from REE's public API
 - [x] `/api/simulate`: car model + connector (+ SoC range) → predicted duration, energy, cost (REVE tariff or owner price); spec/physics-based (power = min(vehicle, connector), AC/DC taper)
-- [x] Simulation UI: the "Simular carga" dialog on point detail; algorithm write-up in [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md)
+- [x] Simulation UI: the "Simular carga" dialog on point detail; algorithm write-up in [thesis/simulacion-de-recarga.md](../thesis/simulacion-de-recarga.md)
 
 ### Phase 4 — Frontend redesign + dashboard-first IA — done
 
@@ -204,7 +204,7 @@ Adopted the `s-charge` dark design system (theme tokens, mono-numeric typography
 
 ### Phase 5 — Deployment + CI/CD + releases — done (`v0.1.0`)
 
-Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](decisions/infra-0001-deployment.md).
+Deployment comes before the remaining feature work so there is a secure, phone-accessible HTTPS instance early — then a CI/CD pipeline and semantic-version releases. Architecture and rejected alternatives: [decisions/infra-0001](../decisions/infra-0001-deployment.md).
 
 **Running `v0.1.0`.** Getting the ETLs onto the server was originally a criterion here; it is [Phase 6](#phase-6--etl-reactivation--price-model--done-v020)'s, because the stack ships with `scheduler` deliberately stopped and turning it on is a decision about a frozen watermark rather than a step of a deploy.
 
@@ -214,7 +214,7 @@ Deployment comes before the remaining feature work so there is a secure, phone-a
 
 - [x] Deployed on a single small VPS behind Caddy (auto-HTTPS), same-origin; reachable at a real HTTPS URL on a phone; PWA installable from production
 - [ ] Pre-deploy **security gate** passed (HTTPS+HSTS, host firewall, Postgres not host-published, secrets rotated, OAuth/cookie set for prod origin, CORS locked, backups confirmed)
-- [x] CI/CD: a tag push deploys to production ([infra-0003](decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
+- [x] CI/CD: a tag push deploys to production ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)); branch protection (PR required + green checks); prod images built in CI so Dockerfile breakage fails before the deploy
 - [x] Version derived from the git tag and shown in `/api/health`; `v0.1.0` tagged at the first production deploy
 
 ### Phase 6 — ETL reactivation + price model — done (`v0.2.0`)
@@ -230,11 +230,11 @@ Deliberately scheduled before the feature work: the ETLs are backend-only, and t
 - [x] **The frozen state is recorded before anything ticks.** Cursor and counts captured 2026-08-22, production identical to the local snapshot to the microsecond
 - [x] **A stalled ETL is visible and never destructive.** A 504 records the error and leaves the watermark where it is at any age; `failing_since` and `consecutive_failures` answer *how long has this been broken*. The automatic jump to `now − lookback` is gone, and with it the mechanism that would have turned the July stall into a permanent loss
 - [x] **The cursor race is fixed rather than worked around.** A Postgres advisory lock on its own connection guards both the seed and the refresh; a second runner exits without making a REVE call or writing anything. Moved here from the hardening phase, since this is when the ETLs were open on the bench
-- [x] **The price REVE publishes is stored as published.** Tariffs carry bands, not a number: the same tariff prices differently by hour and by connector power, and 7,175 connectors sit on one that publishes more than one energy price. The bands live in `tariff_elements`, the resolved price on the connector, and a connector the source never priced stops being served the same as one the source priced at zero ([be-0003](decisions/be-0003-price-on-the-connector.md))
-- [x] **The drain completes and the recoverable span is a measured number**, recorded in [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) against the 78 pages / 16 h / 7,760 rows estimate
+- [x] **The price REVE publishes is stored as published.** Tariffs carry bands, not a number: the same tariff prices differently by hour and by connector power, and 7,175 connectors sit on one that publishes more than one energy price. The bands live in `tariff_elements`, the resolved price on the connector, and a connector the source never priced stops being served the same as one the source priced at zero ([be-0003](../decisions/be-0003-price-on-the-connector.md))
+- [x] **The drain completes and the recoverable span is a measured number**, recorded in [thesis/precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md) against the 78 pages / 16 h / 7,760 rows estimate
 - [x] **PVPC is current again.** `fetch_pvpc` gap-backfills from the last stored hour, so one run heals it — but the curve stops at `2026-08-01 21:00 UTC` in the seed, so the prices views show an empty "today" until the ETLs are back on
 - [x] **The app answers with the price that actually applies.** The map filter, the point detail and the simulator read the bands; free chargers say *gratis* and time-priced ones say how they are priced
-- [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](decisions/infra-0001-deployment.md) — re-read that before reopening it
+- [ ] **An alternative to `supercronic` is investigated**, with a decision recorded either way — keeping it is a fine outcome if the reasons are written down. What prompts the question: it is a pinned **amd64-only** binary fetched at image build, which is what rules out every arm64 host including the free ones ([infra-0001](../decisions/infra-0001-deployment.md)); it cannot be replicated, since two schedulers would exhaust REVE's 5 req/hr budget instantly; and it is a third-party dependency in the critical path of the one job that must not silently stop. Candidates worth weighing: host `systemd` timers, `pg_cron` inside Postgres, a small job queue, or a scheduled GitHub Actions workflow calling an authenticated endpoint. APScheduler was already rejected once in [infra-0001](../decisions/infra-0001-deployment.md) — re-read that before reopening it
 - [x] **Both jobs observed running unattended** on the server, on a cadence that was chosen rather than inherited, with `last_error` empty and `electricity_prices` reaching today
 
 ### Phase 7 — Thesis writing — in progress
@@ -247,9 +247,9 @@ Document, diagram, defend. Includes the business and strategy chapters that elev
 - [ ] Architecture + ER diagrams, UI screenshots included
 - [ ] Algorithm chapter: formulation, pseudocode, evaluation of the charging optimiser
 - [ ] Business plan & viability chapter; future-roadmap chapter (incl. native mobile)
-- [ ] Deployment & scaling chapter: architecture-for-scale + cost/unit-economics model. **Argued, not built** — the live deploy stays a single VPS. The chapter's job is to name where one box breaks first (concurrent connections, image builds competing with Postgres for RAM, no failover during a deploy) and what replaces each part at each step: managed Postgres, an image registry so the host only pulls, a second node behind a load balancer, and container orchestration (Kubernetes, ECS) only once there is a fleet to schedule. Justifying why orchestration is *not* used at this scale is as much a result as describing when it would be. Source material and the full gap register: [production-readiness.md](production-readiness.md) — the strongest parts are the ones specific to this system rather than generic (the scheduler cannot be replicated under a 5 req/hr cap; the ETL cursor races; in-process rate limiting weakens as replicas multiply), plus the two disciplines a multi-node move forces: **expand/contract migrations** and **observability**, of which there is currently none
+- [ ] Deployment & scaling chapter: architecture-for-scale + cost/unit-economics model. **Argued, not built** — the live deploy stays a single VPS. The chapter's job is to name where one box breaks first (concurrent connections, image builds competing with Postgres for RAM, no failover during a deploy) and what replaces each part at each step: managed Postgres, an image registry so the host only pulls, a second node behind a load balancer, and container orchestration (Kubernetes, ECS) only once there is a fleet to schedule. Justifying why orchestration is *not* used at this scale is as much a result as describing when it would be. Source material and the full gap register: [production-readiness.md](../production-readiness.md) — the strongest parts are the ones specific to this system rather than generic (the scheduler cannot be replicated under a 5 req/hr cap; the ETL cursor races; in-process rate limiting weakens as replicas multiply), plus the two disciplines a multi-node move forces: **expand/contract migrations** and **observability**, of which there is currently none
 - [ ] Compliance section in the business chapter: **GDPR is unaddressed and unrecorded**, in an app storing EU personal data (`users`, `oauth_account`). Name what real users would make binding — privacy policy, lawful basis, processor agreements (Hetzner, Resend, Google), retention, right to erasure, portability, 72-hour breach notification — and note that erasure is not merely a missing endpoint, since deleting a user has to reckon with their sessions and ledger rows. Arguing the posture is legitimate chapter content even with nothing built; having never considered it is not
-- [ ] **Rights over the mirrored REVE data — unexamined, needs research before it is argued.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the *engineering* case for holding a local copy and never asked the legal one. Mirroring a third party's dataset for one's own use and re-serving it to the public are different acts, and the second is what a deployed instance does. What has to be established: REVE's terms of use and whether they permit redistribution, whether the catalogue attracts the EU *sui generis* database right (Directive 96/9/EC) separately from copyright, whether attribution is owed and where it would be shown, and how much the answer is helped by the fact that the data is served only to authenticated users of this application rather than published openly. **Do not assert a conclusion in the thesis before checking the terms** — an invented permission is worse than an acknowledged open question, and "we mirror a public dataset" is not itself an argument
+- [ ] **Rights over the mirrored REVE data — unexamined, needs research before it is argued.** [be-0001](../decisions/be-0001-reve-mirror-not-proxy.md) settled the *engineering* case for holding a local copy and never asked the legal one. Mirroring a third party's dataset for one's own use and re-serving it to the public are different acts, and the second is what a deployed instance does. What has to be established: REVE's terms of use and whether they permit redistribution, whether the catalogue attracts the EU *sui generis* database right (Directive 96/9/EC) separately from copyright, whether attribution is owed and where it would be shown, and how much the answer is helped by the fact that the data is served only to authenticated users of this application rather than published openly. **Do not assert a conclusion in the thesis before checking the terms** — an invented permission is worse than an acknowledged open question, and "we mirror a public dataset" is not itself an argument
 - [ ] Defense slides (15–20) + demo plan
 - [ ] Tutor approves final version
 
@@ -257,7 +257,7 @@ Document, diagram, defend. Includes the business and strategy chapters that elev
 
 ## Stretch goals
 
-Only if hours remain after the phases in the build order above. Not committed scope; the defense demo must not depend on them. Full list: [ideas-backlog.md](ideas-backlog.md).
+Only if hours remain after the phases in the build order above. Not committed scope; the defense demo must not depend on them. Full list: [ideas-backlog.md](../ideas-backlog.md).
 
 - **Route optimisation (minimal version).** Origin/destination → route polyline from a free routing API (OSRM / OpenRouteService) → corridor-query seeded points along it → rank candidate stops by detour + price + predicted session. No consumption modelling, no custom routing engine.
 - **Real payments.** Replace the simulated wallet/ledger with a real processor (e.g. Stripe test mode) + commission tracking on the owner dashboard.
@@ -292,7 +292,7 @@ The `/api/recommend` optimiser: at a point the user owns, the cheapest schedule 
 
 - [ ] `/api/recommend`: owned point + departure + energy needed → cheapest PVPC schedule + 1–2 alternatives, with the saving against charging now
 - [ ] Optimiser UI at an owned point
-- [ ] Algorithm write-up in [thesis/](thesis/): formulation, pseudocode, evaluation
+- [ ] Algorithm write-up in [thesis/](../thesis/): formulation, pseudocode, evaluation
 
 ### Phase 10 — Wallet + ledger — pending
 
@@ -303,17 +303,17 @@ The economics: a simulated wallet and append-only ledger, so that money exists b
 - [ ] Wallet/ledger: per-user balance derived from an append-only ledger, simulated top-up, transaction history
 - [ ] Funds can be held against a balance and later settled or released, since that is how a session pays
 - [ ] Owner dashboard shows revenue derived from the ledger
-- [ ] **The offsite backup must start carrying user data — this phase is the trigger.** Today only the PII-free seed dump leaves the machine ([operations.md](operations.md)), which is right while accounts are reproducible: the irreplaceable asset is the REVE catalogue, ~12 days under a 5 req/hr cap, and an owner can re-register in a minute. A balance cannot be re-registered. From here, losing the host means losing money that existed, so the weekly copy has to become a **full dump encrypted client-side** — an `rclone crypt` remote, because B2's server-side encryption leaves the keys with Backblaze and the point is that the processor cannot read it. That in turn brings retention and right-to-erasure into scope for the backups, not just the database: a deleted account must age out of the offsite copies on a stated schedule
+- [ ] **The offsite backup must start carrying user data — this phase is the trigger.** Today only the PII-free seed dump leaves the machine ([operations.md](../operations.md)), which is right while accounts are reproducible: the irreplaceable asset is the REVE catalogue, ~12 days under a 5 req/hr cap, and an owner can re-register in a minute. A balance cannot be re-registered. From here, losing the host means losing money that existed, so the weekly copy has to become a **full dump encrypted client-side** — an `rclone crypt` remote, because B2's server-side encryption leaves the keys with Backblaze and the point is that the processor cannot read it. That in turn brings retention and right-to-erasure into scope for the backups, not just the database: a deleted account must age out of the offsite copies on a stated schedule
 
 ### Phase 11 — Charging sessions — pending
 
 One flow from quote to settlement: the driver configures a charge at a point, sees what it will cost, confirms, and the session runs until it completes or they stop it. Replaces the Sessions mock and the dashboard's placeholder card with real data.
 
-**Reservations are not part of it.** Booking a point from the REVE catalogue is a promise no operator has agreed to keep, and a reservation that will not be honoured is worth nothing to the driver standing at an occupied charger. A session claims only what is true — the driver plugged in, and this is what it cost — so it works across the whole catalogue instead of only user-registered points. Reserving ahead survives as a parked idea for owned points ([ideas-backlog.md](ideas-backlog.md)).
+**Reservations are not part of it.** Booking a point from the REVE catalogue is a promise no operator has agreed to keep, and a reservation that will not be honoured is worth nothing to the driver standing at an occupied charger. A session claims only what is true — the driver plugged in, and this is what it cost — so it works across the whole catalogue instead of only user-registered points. Reserving ahead survives as a parked idea for owned points ([ideas-backlog.md](../ideas-backlog.md)).
 
 **Done when:**
 
-- [ ] Configure → quote → confirm at a point: the [simulation](features/simulation.md) prices the charge and the driver accepts or declines
+- [ ] Configure → quote → confirm at a point: the [simulation](../features/simulation.md) prices the charge and the driver accepts or declines
 - [ ] Confirming holds the quoted amount; the session is priced at the bands quoted then, so it can only cost less than quoted and never more
 - [ ] A session ends when its planned duration elapses or the driver stops it, computed on read rather than by a timer or a background job
 - [ ] Stopping early charges only the energy delivered, priced band by band, and releases the rest of the hold
@@ -332,13 +332,13 @@ Deterministic, and separate from [Phase 13](#phase-13--aiagent-assistant--cut) o
 - [ ] Route between two points with the charging stops required for the vehicle's range
 - [ ] Each stop shows the point, the energy to take on, the dwell time and the cost at that point's price
 - [ ] Total trip time and cost, against the same trip with no range constraint
-- [ ] Planner screen, mobile-first, and the write-up of the algorithm in [thesis/](thesis/)
+- [ ] Planner screen, mobile-first, and the write-up of the algorithm in [thesis/](../thesis/)
 
 ### Phase 13 — AI/agent assistant — cut
 
 A value-add layer of natural-language / tool-calling features over the app's own APIs (points, simulate, recommend, sessions, prices). Money and optimisation stay deterministic; the LLM orchestrates and explains.
 
-**Cut, and its feature set was therefore never decided.** It was always the phase nothing else depends on, and the menu it would have been chosen from stays in [ideas-backlog.md](ideas-backlog.md) — the choice, and the reasons the candidates differ in cost, is thesis material whether or not the code exists.
+**Cut, and its feature set was therefore never decided.** It was always the phase nothing else depends on, and the menu it would have been chosen from stays in [ideas-backlog.md](../ideas-backlog.md) — the choice, and the reasons the candidates differ in cost, is thesis material whether or not the code exists.
 
 **Done when:**
 
@@ -358,7 +358,7 @@ Responsive QA, error/empty states, test coverage, a full security review and a p
 - [ ] Backend tests pass with ≥70% coverage on `services/`
 - [ ] Security review pass (auth, secrets, headers, dependencies, rate limits)
 - [ ] Performance pass (bundle/code-split, query + index review, map payload/viewport)
-- [ ] **The rest of the Content-Security-Policy in the `Caddyfile`.** Phase 5 slice 16 shipped the OWASP header set and a CSP carrying only `frame-ancestors 'none'`; what is missing is `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src`. `HttpOnly` stops JavaScript reading the session cookie but not an XSS payload issuing authenticated requests with it, so CSP is the control that actually limits the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses — a chapter that currently argues about DBSC and DPoP while the cheap mitigation is absent. **The `style-src` directive is the blocked one**: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate most of the benefit. Ship the directives that do not depend on it and record why the remaining one is held back. **Roll it out with `Content-Security-Policy-Report-Only` first** — the same policy, reported and not enforced — so violations are collected from the real app instead of discovered as a blank map. The map is where the breakage will be: MapLibre fetches its style and tiles from `tiles.openfreemap.org`, so that host needs `connect-src` and `img-src`, and it spawns workers from blob URLs. **`Cross-Origin-Embedder-Policy` is deliberately not part of this**: per MDN it exists to enable cross-origin isolation for `SharedArrayBuffer` and unthrottled timers, which this app does not use, so `require-corp` would block the tiles for no benefit. If it is ever wanted, `credentialless` loads CORP-less cross-origin resources by stripping credentials
+- [ ] **The rest of the Content-Security-Policy in the `Caddyfile`.** Phase 5 slice 16 shipped the OWASP header set and a CSP carrying only `frame-ancestors 'none'`; what is missing is `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src`. `HttpOnly` stops JavaScript reading the session cookie but not an XSS payload issuing authenticated requests with it, so CSP is the control that actually limits the blast radius of the threat [thesis/robo-de-sesion.md](../thesis/robo-de-sesion.md) analyses — a chapter that currently argues about DBSC and DPoP while the cheap mitigation is absent. **The `style-src` directive is the blocked one**: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate most of the benefit. Ship the directives that do not depend on it and record why the remaining one is held back. **Roll it out with `Content-Security-Policy-Report-Only` first** — the same policy, reported and not enforced — so violations are collected from the real app instead of discovered as a blank map. The map is where the breakage will be: MapLibre fetches its style and tiles from `tiles.openfreemap.org`, so that host needs `connect-src` and `img-src`, and it spawns workers from blob URLs. **`Cross-Origin-Embedder-Policy` is deliberately not part of this**: per MDN it exists to enable cross-origin isolation for `SharedArrayBuffer` and unthrottled timers, which this app does not use, so `require-corp` would block the tiles for no benefit. If it is ever wanted, `credentialless` loads CORP-less cross-origin resources by stripping credentials
 - [ ] **`Cache-Control` on the remaining public read endpoints.** `/api/points/map` is done — it memoises the built payload for 10 minutes, sends `Cache-Control: private, max-age=600`, and answers `If-None-Match` with a 304, so a repeat load neither rebuilds the aggregate over ~13.6k points nor re-ships ~503 KB. `/api/points`, `/api/points/{id}`, `/api/prices` and `/api/vehicles` still set no cache headers at all. The catalogue changes at the ETL's hourly cadence, not per request. This is also the right answer to "should the public endpoints be rate-limited" — they are cheap to *serve* repeatedly and expensive to *rebuild* repeatedly, so caching removes the cost that a limit would only ration. Pairs with the service-worker runtime caching deferred out of [phase-2](phases/phase-2.md)
 - [ ] **Automated backup-restore verification.** The restore is currently exercised by hand, and a backup nobody has restored is a hypothesis. A script that restores the latest dump into a throwaway container and asserts row counts plus `alembic current` at head turns "we take backups" into "we verify they restore" — the stronger claim, and cheap
 

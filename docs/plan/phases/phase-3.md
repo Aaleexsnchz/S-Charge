@@ -8,7 +8,7 @@ Per [plan.md](../plan.md): vehicle catalogue, PVPC price ingest, and per-car pre
 | 2 | PVPC price ingest | Done | #6 |
 | 3 | `/api/simulate` + UI | Done | direct to `main` |
 
-**Pricing rule set here and used from Phase 8 on:** serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin`, recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Detail: [precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+**Pricing rule set here and used from Phase 8 on:** serve the real REVE tariff; where none exists, estimate `PVPC(hour) + margin`, recommended defaults **AC +0.22 / DC +0.32 €/kWh** (derived from ~27k real tariffs vs PVPC), owner-overridable. Detail: [precios-y-actualizacion.md](../../thesis/precios-y-actualizacion.md).
 
 ## Slice 1 — Vehicle catalogue
 
@@ -38,4 +38,4 @@ Per [plan.md](../plan.md): vehicle catalogue, PVPC price ingest, and per-car pre
 - [x] `POST /api/simulate` + tests (happy path, AC vs DC, taper, cost)
 - [x] Simulation UI: vehicle picker, point/connector context, results metrics — shipped as a dialog on point detail rather than a standalone `/simulate` route
 
-**Deferred enhancement:** a power-vs-SoC charging-curve chart. The model can already produce the curve; it needs a small `/api/simulate` addition plus a chart component. Tracked in [features/simulation.md](../features/simulation.md).
+**Deferred enhancement:** a power-vs-SoC charging-curve chart. The model can already produce the curve; it needs a small `/api/simulate` addition plus a chart component. Tracked in [features/simulation.md](../../features/simulation.md).

@@ -25,7 +25,7 @@ The demo window is the case that decides it. Under deploy-on-merge, any merge al
 - **The server sits on a detached HEAD**, tracking the deployed ref rather than a moving branch. `git pull` is no longer part of a deploy; CD does `git checkout --detach`.
 - **A tag deploys without re-running CI.** The commit is already on `main` and CI passed when it merged, so the tree is proven — but only under the rule that **tags point at commits already on `main`**. Tagging an arbitrary commit would deploy something CI never saw.
 - Rollback is unchanged and becomes more natural: deploying is a checkout of a ref, so rolling back is the same operation aimed at the previous tag.
-- [plan.md](../plan.md)'s Phase 5 criterion "deploy on merge to `main`" is superseded by this record.
+- [plan.md](../plan/plan.md)'s Phase 5 criterion "deploy on merge to `main`" is superseded by this record.
 
 **Rejected alternatives.**
 

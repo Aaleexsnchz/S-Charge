@@ -34,5 +34,5 @@ Shipped as one commit (`feat(frontend): adopt s-charge dark design system and da
 
 - [x] `sessions.mock.ts`, `myPoints.mock.ts`, `dashboard.mock.ts` fixtures
 - [x] "datos de ejemplo" badge on every mock-backed surface
-- [x] Each mock surface tracked in [features/](../features/) so its real phase is known
+- [x] Each mock surface tracked in [features/](../../features/) so its real phase is known
 - [x] Lint + build green

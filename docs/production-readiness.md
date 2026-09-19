@@ -8,7 +8,7 @@ This is a master's thesis prototype deployed for one demo instance. Its architec
 
 Read it as the answer to *"why didn't you do X?"* — the honest answer is usually "because at one user on one box it costs more than it returns", and that reasoning is recorded per item so a reader can distinguish engineering judgement from oversight.
 
-Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan.md) Phase 7 and to be written as `thesis/despliegue-y-escalado.md`.
+Where an item is already argued in depth elsewhere, this file links out rather than repeating it. The scaling architecture itself — where one box breaks first and what replaces each part — is a thesis chapter, outlined in [plan.md](plan/plan.md) Phase 7 and to be written as `thesis/despliegue-y-escalado.md`.
 
 ---
 
@@ -20,13 +20,13 @@ Where an item is already argued in depth elsewhere, this file links out rather t
 
 **No staging environment.** Production is the only place the production configuration has ever run. Migrations meet production-shaped data for the first time in production.
 
-**Deploys are not zero-downtime, and migrations are not backwards-compatible.** The current deploy replaces containers and then migrates, leaving a brief window where new code runs against the old schema ([phases/phase-5.md](phases/phase-5.md) Slice 5). With rolling deploys across multiple nodes this stops being a window and becomes a guarantee: both versions run simultaneously, so every migration must follow **expand/contract** — add nullable, write both, backfill, drop in a later release. This is the single largest discipline change on the path to multi-node, and it constrains how every future migration is written.
+**Deploys are not zero-downtime, and migrations are not backwards-compatible.** The current deploy replaces containers and then migrates, leaving a brief window where new code runs against the old schema ([plan/phases/phase-5.md](plan/phases/phase-5.md) Slice 5). With rolling deploys across multiple nodes this stops being a window and becomes a guarantee: both versions run simultaneously, so every migration must follow **expand/contract** — add nullable, write both, backfill, drop in a later release. This is the single largest discipline change on the path to multi-node, and it constrains how every future migration is written.
 
 ## Data and durability
 
 **Backups are nightly logical dumps.** `pg_dump` to Backblaze B2 ([operations.md](operations.md)) gives an RPO of up to 24 hours — a bad afternoon loses a day. Production wants continuous WAL archiving and point-in-time recovery, so the recovery target is minutes.
 
-**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan.md) Phase 14.*
+**Restores are verified by hand, if at all.** A backup nobody has restored is a hypothesis, not a backup. Production verifies restores automatically and on a schedule. *Scheduled: [plan.md](plan/plan.md) Phase 14.*
 
 **Postgres is self-managed.** Failover, minor-version patching, and connection pooling are all manual or absent. A managed instance moves those to the provider; at scale you would also want a read replica, since the catalogue queries (~13.7k charging points) are read-dominated.
 
@@ -52,11 +52,11 @@ The foundation is better than the absence suggests: the backend already emits st
 
 ## Application security
 
-**The Content-Security-Policy is incomplete.** Caddy ships the OWASP header set — HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` — and a CSP carrying only `frame-ancestors 'none'`; `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src` are missing. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. The blocked directive is `style-src`: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate much of the benefit. Shipping the directives that do not depend on it, and recording why the remaining one is held back, is the honest interim. *Scheduled: [plan.md](plan.md) Phase 14.*
+**The Content-Security-Policy is incomplete.** Caddy ships the OWASP header set — HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options` — and a CSP carrying only `frame-ancestors 'none'`; `default-src`, `script-src`, `style-src`, `base-uri`, `form-action` and `object-src` are missing. `HttpOnly` prevents JavaScript from *reading* the session cookie, but an XSS payload can still issue authenticated requests with it — so CSP is the control that actually reduces the blast radius of the threat [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) analyses. The blocked directive is `style-src`: MUI and Emotion inject inline `<style>` tags, so a strict policy would force `style-src 'unsafe-inline'` and negate much of the benefit. Shipping the directives that do not depend on it, and recording why the remaining one is held back, is the honest interim. *Scheduled: [plan.md](plan/plan.md) Phase 14.*
 
 **Sessions cannot be revoked.** The session is a stateless JWT ([auth-0002](decisions/auth-0002-cookie-session.md)): a stolen token stays valid until it expires, and there is no logout-everywhere, no per-session audit, and no way to eject an attacker. Production backs sessions with a database table carrying `revoked_at`. Argued at length in [auth-0002](decisions/auth-0002-cookie-session.md) and [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md); the same reasoning covers verification and password-reset tokens ([auth-0003](decisions/auth-0003-preregistration-shell-mitigation.md)).
 
-**Rate limiting is in-process.** Once implemented ([phases/phase-5.md](phases/phase-5.md) Slice 13), the limiter's default storage is per-process memory. With N replicas that grants N times the intended limit, so the protection *weakens as you scale* — the opposite of the desired property. Production backs it with Redis.
+**Rate limiting is in-process.** Once implemented ([plan/phases/phase-5.md](plan/phases/phase-5.md) Slice 13), the limiter's default storage is per-process memory. With N replicas that grants N times the intended limit, so the protection *weakens as you scale* — the opposite of the desired property. Production backs it with Redis.
 
 **Nothing scans the built images or the code**, no SAST/DAST in CI, and no penetration testing. Renovate keeps dependencies current ([infra-0004](decisions/infra-0004-renovate-over-dependabot.md)) and GitHub's dependency alerts feed it, so a known-vulnerable package opens a PR out of schedule — but that covers the manifests, not the images built from them nor the code written here.
 
@@ -83,9 +83,9 @@ Four routes exist today, none of them taken. The first two are **access rights**
 
 None of this exists, and the erasure path is not merely a missing endpoint — deleting a user has to reckon with what happens to their sessions, bookings and ledger rows.
 
-*Scheduled as thesis content: [plan.md](plan.md) Phase 7, alongside the business chapter.*
+*Scheduled as thesis content: [plan.md](plan/plan.md) Phase 7, alongside the business chapter.*
 
-**The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — the memoria's regulatory chapter states it as an open question, and [plan.md](plan.md) makes answering it a condition of opening the app to the public.
+**The right to re-serve the mirrored catalogue is unestablished.** [be-0001](decisions/be-0001-reve-mirror-not-proxy.md) settled the engineering case for holding a local copy and never asked the legal one. The REVE API's terms of use could not be verified: the endpoint answers `403` without credentials and the legal notice is not retrievable by an automated client. Copying for one's own use and re-serving to the public are different acts, and a deployed instance does the second. Unresolved as of 2026-08-06 and **not to be asserted either way** — the memoria's regulatory chapter states it as an open question, and [plan.md](plan/plan.md) makes answering it a condition of opening the app to the public.
 
 **The position improved materially when the read endpoints were closed.** Every `/api/*` route except `/api/health` and the auth surface now requires a session, so the catalogue reaches authenticated users of this application rather than the public. Serving a mirrored dataset to one's own users is a far easier thing to defend than publishing it, and it narrows the question the thesis has to answer. It does not settle it.
 
@@ -95,7 +95,7 @@ There is a documented way out if this ever blocks anything: the DGT's National A
 
 ## Process
 
-**One developer, no review.** Every change is written and approved by the same person. Branch protection ([phases/phase-5.md](phases/phase-5.md) Slice 9) enforces that changes arrive through a pull request with green CI, which catches mechanical errors but not design ones.
+**One developer, no review.** Every change is written and approved by the same person. Branch protection ([plan/phases/phase-5.md](plan/phases/phase-5.md) Slice 9) enforces that changes arrive through a pull request with green CI, which catches mechanical errors but not design ones.
 
 **No load testing.** No measurement exists of where this stack saturates — concurrent connections, map-viewport query cost, or the RAM contention between a Vite build and Postgres during a deploy. The Phase 7 chapter argues where the box breaks first; nothing has measured it.
 

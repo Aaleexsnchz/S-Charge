@@ -13,9 +13,9 @@ In dev only **Postgres** is containerised; the backend and frontend run natively
 Read before proposing architectural or scope changes:
 
 - **[docs/README.md](docs/README.md)** — documentation index; the map of every doc. Start here to locate anything.
-- **[docs/plan.md](docs/plan.md)** — the project definition: scope, architecture, phases, acceptance criteria.
+- **[docs/plan/plan.md](docs/plan/plan.md)** — the project definition: scope, architecture, phases, acceptance criteria.
 - **[docs/features/](docs/features/)** — one document per feature: what it does, what exists today, what is pending.
-- **[docs/phases/](docs/phases/)** — the slice plan for the phase in progress.
+- **[docs/plan/phases/](docs/plan/phases/)** — the slice plan for the phase in progress.
 - **[docs/decisions/](docs/decisions/)** — ADRs. Foundational givens live in [docs/tech-stack.md](docs/tech-stack.md) instead.
 - **[docs/thesis/](docs/thesis/)** — concept-level chapters for the thesis writeup, including [skills.md](docs/thesis/skills.md), the record of which agent skills this project uses.
 - **[docs/operations.md](docs/operations.md)** — deploying, the production stack, database backups and restores, major Postgres upgrades.
@@ -70,7 +70,7 @@ The filter: **would this still interest someone who will never read this reposit
 
 **Which documents to update when a slice ships** is a checklist applied at the end of a change, not while writing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Phase plans** are written just before a phase starts, never in advance, and stay live for its duration: [docs/phases/README.md](docs/phases/README.md).
+**Phase plans** are written just before a phase starts, never in advance, and stay live for its duration: [docs/plan/phases/README.md](docs/plan/phases/README.md).
 
 **Use the `documentation-and-adrs` skill for documentation work.** Only the deltas are recorded here and in [docs/decisions/README.md](docs/decisions/README.md) — anything the skill already says is not repeated:
 
@@ -78,6 +78,6 @@ The filter: **would this still interest someone who will never read this reposit
 - **Ids are area-prefixed** (`auth-`, `be-`, `fe-`, `infra-`), not globally sequential.
 - **No `CHANGELOG.md`.** Release notes come from merged PR titles ([infra-0002](docs/decisions/infra-0002-manual-release-tagging.md)).
 
-**Phase plans are disposable.** [docs/phases/](docs/phases/) holds working plans for the phase being built — they are not documentation, nobody reads them afterwards, and duplication between a phase plan and the permanent docs is fine. What is not fine is knowledge that exists *only* in one. **When a phase closes, migrate its permanent knowledge out first** — a decision to [docs/decisions/](docs/decisions/), an operational procedure to [docs/operations.md](docs/operations.md), a measured baseline to the feature doc that will be compared against it, a concept to [docs/thesis/](docs/thesis/). No permanent document may cite a phase plan as its source of truth.
+**Phase plans are disposable.** [docs/plan/phases/](docs/plan/phases/) holds working plans for the phase being built — they are not documentation, nobody reads them afterwards, and duplication between a phase plan and the permanent docs is fine. What is not fine is knowledge that exists *only* in one. **When a phase closes, migrate its permanent knowledge out first** — a decision to [docs/decisions/](docs/decisions/), an operational procedure to [docs/operations.md](docs/operations.md), a measured baseline to the feature doc that will be compared against it, a concept to [docs/thesis/](docs/thesis/). No permanent document may cite a phase plan as its source of truth.
 
 **Skills.** When you use an agent skill on this project and it is **not already listed** in [docs/thesis/skills.md](docs/thesis/skills.md), add it there in the same change — one row, saying what it was used for *here*, not what the skill is in general. Only skills actually used on this project go in the file: the environment offers others from unrelated work, and listing those would misrepresent how this was built. The file is thesis material, so an undocumented skill is a gap in the methodology annex, not a tooling detail.

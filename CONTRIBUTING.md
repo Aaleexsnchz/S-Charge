@@ -41,8 +41,8 @@ Breaking changes take the standard markers — `feat!:` or a `BREAKING CHANGE:` 
 A change that leaves a document stale is not finished. When a slice ships, work through these:
 
 - **[docs/features/](docs/features/)** — the feature's document: move its status, delete the mock it just replaced, update what is pending
-- **[docs/phases/phase-N.md](docs/phases/)** — tick the task, move the slice's row in the status table, record the PR
-- **[docs/plan.md](docs/plan.md)** — tick acceptance bullets and move the phase's status; rewrite the phase prose if shipped reality diverges. High-level only: no slice detail, no history
+- **[docs/plan/phases/phase-N.md](docs/plan/phases/)** — tick the task, move the slice's row in the status table, record the PR
+- **[docs/plan/plan.md](docs/plan/plan.md)** — tick acceptance bullets and move the phase's status; rewrite the phase prose if shipped reality diverges. High-level only: no slice detail, no history
 - **[docs/README.md](docs/README.md)** — add or adjust the index row when you add, move or remove a doc
 - **[docs/tech-stack.md](docs/tech-stack.md)** — a new library or tool gets a row with one line on why it is there
 - **[docs/decisions/](docs/decisions/)** — a fork in the road gets a record; the test is in [decisions/README.md](docs/decisions/README.md)

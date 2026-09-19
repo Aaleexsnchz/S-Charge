@@ -1,6 +1,6 @@
 # Vehicle catalogue
 
-**Status:** ✅ Implemented · **Shipped in** [Phase 3](../phases/phase-3.md)
+**Status:** ✅ Implemented · **Shipped in** [Phase 3](../plan/phases/phase-3.md)
 
 A curated table of EVs common in the Spanish market, used as the input to charge simulation: usable battery capacity and maximum AC/DC charging power per model.
 

@@ -29,4 +29,4 @@ related: [fe-0002]
 
 - MapLibre GL JS documentation — clustering example
 - OpenFreeMap — hosted styles and usage terms
-- [phases/phase-2.md](../phases/phase-2.md) — slice acceptance criteria
+- [plan/phases/phase-2.md](../plan/phases/phase-2.md) — slice acceptance criteria

@@ -1,6 +1,6 @@
 # Wallet
 
-**Status:** ⬜ Planned · **Phase** [10](../plan.md)
+**Status:** ⬜ Planned · **Phase** [10](../plan/plan.md)
 
 A simulated wallet and ledger so that charging at someone else's public point moves money: the driver is debited, the owner is credited, and both see the movement. No real payment processor — that is a [stretch goal](../ideas-backlog.md), and the simulation is stated as such in the thesis.
 

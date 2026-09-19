@@ -1,6 +1,6 @@
 # Documentation index
 
-Everything under `docs/` lives here, grouped by purpose — the root [README](../README.md) links here rather than duplicating it. The index is two levels: this file lists the top-level docs and the folders; the per-item lists for [features/](features/) and [phases/](phases/) live in their own READMEs. Add a new doc to whichever of the two is its home, in the same commit.
+Everything under `docs/` lives here, grouped by purpose — the root [README](../README.md) links here rather than duplicating it. The index is two levels: this file lists the top-level docs and the folders; the per-item lists for [features/](features/) and [plan/phases/](plan/phases/) live in their own READMEs. Add a new doc to whichever of the two is its home, in the same commit.
 
 The grouping follows [Diátaxis](https://diataxis.fr/): docs are sorted by what the reader needs — to *do* a task (how-to), *look up* a fact (reference), or *understand* a decision (explanation) — plus a project-management group for planning docs.
 
@@ -83,8 +83,8 @@ Planning and status; not part of the Diátaxis taxonomy.
 
 | Doc | Covers |
 | --- | --- |
-| [plan.md](plan.md) | The project definition: scope, architecture, phases, acceptance criteria. Living doc, current state only. |
-| [phases/](phases/) | Per-phase slice plans, written just before each phase starts. Conventions and the structure a plan follows: [phases/README.md](phases/README.md). |
+| [plan/plan.md](plan/plan.md) | The project definition: scope, architecture, phases, acceptance criteria. Living doc, current state only. |
+| [plan/phases/](plan/phases/) | Per-phase slice plans, written just before each phase starts. Conventions and the structure a plan follows: [plan/phases/README.md](plan/phases/README.md). |
 | [features/](features/) | Per-feature status and pending work. Also listed under Reference above. |
 | [ideas-backlog.md](ideas-backlog.md) | Deferred ideas (AI/agent features, real payments, route optimisation) parked for the "decide later" moment. |
 | [production-readiness.md](production-readiness.md) | Known gaps against production-grade operation: what serving real users would require that this deployment deliberately omits, and why. Not a feature backlog — a register of conscious omissions. |

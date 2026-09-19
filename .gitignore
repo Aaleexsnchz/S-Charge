@@ -37,3 +37,6 @@ backups/
 **/.agents/
 
 .codex
+
+# The defended thesis PDF: the working reference for aim and scope, not part of the repository for now
+docs/Alejandro_Sanchez_TFM.pdf

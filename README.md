@@ -11,7 +11,7 @@ S-Charge puts both in one app. The real network is mirrored from the public **RE
 
 Built mobile-first at a 360px reference width, because the user is standing next to a charging point holding a phone.
 
-Developed as a Master's thesis in IoT by a single developer. Scope and roadmap: [docs/plan.md](docs/plan.md).
+Developed as a Master's thesis in IoT by a single developer. Scope and roadmap: [docs/plan/plan.md](docs/plan/plan.md).
 
 ## Quick start
 
@@ -97,7 +97,7 @@ Every change reaches `main` through a pull request. `just install` puts the left
 
 The categorized index is at **[docs/README.md](docs/README.md)**. Most-reached entries:
 
-- [docs/plan.md](docs/plan.md) — scope, phases, acceptance criteria
+- [docs/plan/plan.md](docs/plan/plan.md) — scope, phases, acceptance criteria
 - [docs/features/](docs/features/) — one document per feature, with implementation status
 - [docs/operations.md](docs/operations.md) — deploying, backups and restores, Postgres upgrades
 - [docs/decisions/](docs/decisions/) — architectural decision records

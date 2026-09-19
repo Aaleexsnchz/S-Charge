@@ -1,6 +1,6 @@
 # Smart home charging
 
-**Status:** ⬜ Planned · **Phase** [9](../plan.md)
+**Status:** ⬜ Planned · **Phase** [9](../plan/plan.md)
 
 At a point the user owns, the cheapest way to charge tonight: given the PVPC curve, a departure time and the energy needed, when should the charge actually run, and what does waiting save.
 

@@ -1,6 +1,6 @@
 # Charging point catalogue
 
-**Status:** ✅ Implemented · **Shipped in** [Phase 2](../phases/phase-2.md)
+**Status:** ✅ Implemented · **Shipped in** [Phase 2](../plan/phases/phase-2.md)
 
 The Spanish charging network, mirrored from REVE into our own database and served as a nested OCPI-shaped structure: charging point → EVSE → connector. The connector carries the price, because a tariff shared across connectors of different power cannot carry one ([be-0003](../decisions/be-0003-price-on-the-connector.md)).
 
@@ -14,7 +14,7 @@ The Spanish charging network, mirrored from REVE into our own database and serve
 - **The catalogue drifts, the drift is measured, and the refresh repairs it.** About a quarter of every drained tariff page is a connector the mirror does not hold — **1,837** after one full drain, ~4 % growth in two and a half months. `reve_unmirrored_connectors` banks those with their tariff payload, and a `/locations` page that creates the connector settles its row in the same transaction, so the station arrives *priced* rather than blank for the ~243 days until its price next changes. The row count is the standing answer to how much of the catalogue is missing. `/cpos` and `/locations` share the tariff budget by priority rather than running on their own, so a catalogue catch-up can never delay a price.
 - **The price schedule rides on the detail response, not on `ConnectorRead`.** `GET /api/points` takes a bbox and has **no limit**, so bands on the shared connector model would be resolved for every connector in a viewport to serve a list that displays none of them — the "resolve the price on every read" alternative [be-0003](../decisions/be-0003-price-on-the-connector.md) rejected. A `PointDetailRead` subclass keeps the cost on the one-point endpoint, where it measures 1–2 ms against that endpoint's 5 ms.
 - **Price history cannot be recovered, and is not shown.** No REVE call shape returns a tariff's past values — the feed carries only what a connector costs now — so a price chart would have to be built from what this mirror happened to observe, starting at the seed. Nothing in the app reads it today.
-- **Availability is not modelled.** `Evse.status` exists and `aggregate_status` rolls it up, but no source feeds it — see [plan.md](../plan.md) → Data strategy.
+- **Availability is not modelled.** `Evse.status` exists and `aggregate_status` rolls it up, but no source feeds it — see [plan.md](../plan/plan.md) → Data strategy.
 
 ## Related
 
@@ -24,4 +24,4 @@ Data model chapter: [thesis/modelo-de-datos.md](../thesis/modelo-de-datos.md). P
 
 - **`CONGESTION_TIME` bands are never priced.** 218 band rows carry a component type absent from REVE's published enum. It is a surcharge, so it never outranks `ENERGY`, `TIME` or `FLAT` and costs nothing today — but a connector whose only applicable band is one resolves to `unknown` and shows no price. Worth revisiting only if it becomes common.
 - **`price` is ex-VAT per OCPI, and the app does not say so.** 4,017 of 5,513 band rows carry a `vat`, mostly `21.00` — but **192 write `0.21`**, the same rate as a fraction, so any correction has to normalise that first or it will under-charge those by 100×. Pre-existing, not introduced by the price model. The open question is whether the app shows what the driver pays or what the operator publishes; showing neither label is the current, unstated, answer.
-- **`aggregate_status` should default to `available`, not `unknown`,** when no `Evse.status` exists. Small backend change; the honesty note it depends on is already in [plan.md](../plan.md).
+- **`aggregate_status` should default to `available`, not `unknown`,** when no `Evse.status` exists. Small backend change; the honesty note it depends on is already in [plan.md](../plan/plan.md).

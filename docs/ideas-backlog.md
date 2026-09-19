@@ -2,12 +2,12 @@
 
 Deferred ideas parked for the "decide later" moment — nothing here is committed scope.
 Pull from this list when a phase has slack or when deciding the AI layer's depth. When an
-idea is promoted, move it into [plan.md](plan.md) (a phase + acceptance criteria) and
+idea is promoted, move it into [plan.md](plan/plan.md) (a phase + acceptance criteria) and
 remove it here.
 
 ## AI / agent features (Phase 13 — pick from here)
 
-**Phase 13 is cut** ([plan.md](plan.md) → Build order) and the **specific features were never decided** —
+**Phase 13 is cut** ([plan.md](plan/plan.md) → Build order) and the **specific features were never decided** —
 this is the menu it would have been chosen from, kept because the choice is thesis material. All call the app's own APIs (points, simulate, recommend,
 sessions, prices) as tools — no new data sources. Depth scales to remaining hours.
 
@@ -48,7 +48,7 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
   ([AGENTS.md](../AGENTS.md) → Releases), so there is no changelog file in the repo. If the
   thesis wants a changelog appendix, git-cliff renders one from the existing Conventional
   Commits on demand — no bot, no release PRs, nothing to maintain until the day it is
-  wanted. Reasoning for the manual-tagging baseline: [phases/phase-5.md](phases/phase-5.md).
+  wanted. Reasoning for the manual-tagging baseline: [plan/phases/phase-5.md](plan/phases/phase-5.md).
 
 ## Infrastructure (deferred)
 
@@ -70,7 +70,7 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
 
 ## Reserving a point ahead
 
-Booking a point for a future window, which [Phase 11](plan.md) deliberately leaves out: on the REVE
+Booking a point for a future window, which [Phase 11](plan/plan.md) deliberately leaves out: on the REVE
 catalogue a reservation is a promise no operator has agreed to keep. It becomes defensible only for
 a point whose owner controls it, and only once owners exist — so it is an idea for after
 [owner points](features/owner-points.md), not committed scope.

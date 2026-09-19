@@ -1,6 +1,6 @@
 # Charging sessions
 
-**Status:** 🟡 Mock UI · **Real in** [Phase 11](../plan.md)
+**Status:** 🟡 Mock UI · **Real in** [Phase 11](../plan/plan.md)
 
 One flow, from the quote a driver accepts to the money that settles when the charge ends: pick a connector, configure the charge, see what it will cost, confirm, and the session runs until it completes or the driver stops it early.
 

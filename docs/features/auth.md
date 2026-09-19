@@ -1,6 +1,6 @@
 # Authentication
 
-**Status:** ✅ Implemented · **Shipped in** [Phase 1](../phases/phase-1.md)
+**Status:** ✅ Implemented · **Shipped in** [Phase 1](../plan/phases/phase-1.md)
 
 Email/password and Google sign-in, with email verification and password reset. A single HttpOnly session cookie carries the session; there are no tokens in JavaScript.
 
@@ -19,7 +19,7 @@ Email/password and Google sign-in, with email verification and password reset. A
 
 ## Pending
 
-- OAuth and email links cannot be tested from a phone in local dev (both point at `localhost`) — they get their real-device test on the production domain in [Phase 5](../phases/phase-5.md).
+- OAuth and email links cannot be tested from a phone in local dev (both point at `localhost`) — they get their real-device test on the production domain in [Phase 5](../plan/phases/phase-5.md).
 - The rate limits and the forwarded-header fix only take effect behind Caddy, so neither is verifiable in local dev; both are checked on the first deploy.
 - `users.name` stays nullable in the database: rows created before the rule have no name to backfill with, and inventing one to satisfy a `NOT NULL` would be worse than enforcing it at the edge. The column can be tightened once no null rows remain.
 - Google's profile name is not copied on sign-in. `httpx-oauth`'s client asks the People API for `emailAddresses` only, so reading it means a second call to Google on the login path — a new failure mode on the most critical route, to save a screen the gate already has to render for legacy accounts. `picture_url` is unwritten for the same reason.

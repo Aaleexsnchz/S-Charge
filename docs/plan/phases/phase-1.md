@@ -11,7 +11,7 @@ Slices 1–3 ship the auth backend; Slice 4 is the frontend scaffold.
 | 3 | Email verification + password reset | Done | direct to `main` |
 | 4 | Frontend scaffold | Done | #2 |
 
-Decisions: [auth-0001](../decisions/auth-0001-fastapi-users.md) · [auth-0002](../decisions/auth-0002-cookie-session.md) · [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) · [fe-0002](../decisions/fe-0002-pwa.md).
+Decisions: [auth-0001](../../decisions/auth-0001-fastapi-users.md) · [auth-0002](../../decisions/auth-0002-cookie-session.md) · [auth-0003](../../decisions/auth-0003-preregistration-shell-mitigation.md) · [fe-0002](../../decisions/fe-0002-pwa.md).
 
 ## Slice 1 — Email/password auth [x]
 

@@ -1,6 +1,6 @@
 # Phase 5 — Deployment + CI/CD + releases
 
-Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete CI/CD pipeline, and semantic-version releases. The refresh ETLs ship to the always-on server here but are **not started** — that is [Phase 6](phase-6.md). Architecture and rejected alternatives: [infra-0001](../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../setup/deployment.md).
+Per [plan.md](../plan.md): a secure, phone-accessible HTTPS instance, a complete CI/CD pipeline, and semantic-version releases. The refresh ETLs ship to the always-on server here but are **not started** — that is [Phase 6](phase-6.md). Architecture and rejected alternatives: [infra-0001](../../decisions/infra-0001-deployment.md). Host-level runbook: [setup/deployment.md](../../setup/deployment.md).
 
 | Slice | Scope | Status | PR |
 | --- | --- | --- | --- |
@@ -29,35 +29,35 @@ Closed slices are summarised first; what outlives this phase has been migrated t
 
 ## Slice 1 — Repo-side prod artifacts [x]
 
-`docker-compose.prod.yml` as a standalone file, the `Caddyfile`, the `scheduler` image stage (supercronic + committed `backend/crontab`) replacing the host refresh crons, env-driven CORS, the root `justfile`, and the provisioning runbook in [setup/deployment.md](../setup/deployment.md). `cd.yml` landed here too, originally triggered by a green CI run on `main` and since changed to a tag push ([infra-0003](../decisions/infra-0003-deploy-on-tag.md)).
+`docker-compose.prod.yml` as a standalone file, the `Caddyfile`, the `scheduler` image stage (supercronic + committed `backend/crontab`) replacing the host refresh crons, env-driven CORS, the root `justfile`, and the provisioning runbook in [setup/deployment.md](../../setup/deployment.md). `cd.yml` landed here too, originally triggered by a green CI run on `main` and since changed to a tag push ([infra-0003](../../decisions/infra-0003-deploy-on-tag.md)).
 
 ## Slice 2 — Accounts, host, DNS [x]
 
-Hetzner server purchased and **`s-charge.app` bought at Cloudflare Registrar**; `A` + `AAAA` records point at the host **DNS-only**, so Caddy can complete the ACME challenge over either protocol. The registrar choice, the HSTS-preload consequence and the rejected `.es` are in [infra-0001](../decisions/infra-0001-deployment.md).
+Hetzner server purchased and **`s-charge.app` bought at Cloudflare Registrar**; `A` + `AAAA` records point at the host **DNS-only**, so Caddy can complete the ACME challenge over either protocol. The registrar choice, the HSTS-preload consequence and the rejected `.es` are in [infra-0001](../../decisions/infra-0001-deployment.md).
 
 ## Slice 3 — Server hardening [x]
 
-Key-only SSH on a non-root `deploy` user, `ufw` limited to SSH + 80/443 on both protocols, `fail2ban` + `unattended-upgrades`, Docker Engine from the official repo, and a dedicated `ed25519` deploy key for CI. Commands and the two gotchas worth keeping — fail2ban's systemd backend, and why the deploy key carries no `command=` restriction — are in [setup/deployment.md](../setup/deployment.md) §1.
+Key-only SSH on a non-root `deploy` user, `ufw` limited to SSH + 80/443 on both protocols, `fail2ban` + `unattended-upgrades`, Docker Engine from the official repo, and a dedicated `ed25519` deploy key for CI. Commands and the two gotchas worth keeping — fail2ban's systemd backend, and why the deploy key carries no `command=` restriction — are in [setup/deployment.md](../../setup/deployment.md) §1.
 
-**`ufw` does not protect Docker-published ports**; what keeps Postgres private is that `db` has no `ports:` entry at all. Recorded in [operations.md](../operations.md).
+**`ufw` does not protect Docker-published ports**; what keeps Postgres private is that `db` has no `ports:` entry at all. Recorded in [operations.md](../../operations.md).
 
 ## Slice 4 — Toolchain: lefthook + CI hygiene [x]
 
-pre-commit replaced by [lefthook.yml](../../lefthook.yml): staged-file ruff and biome on commit, and a pre-push hook mirroring CI that `just ci` also runs, so the two cannot drift. betterleaks moved to a CI job over full history, leaving the local scan best-effort. CI hygiene closed with it — `--frozen-lockfile`, pnpm single-sourced from `packageManager`, `.nvmrc`, least-privilege `permissions`, caching, and a conditional `concurrency` group.
+pre-commit replaced by [lefthook.yml](../../../lefthook.yml): staged-file ruff and biome on commit, and a pre-push hook mirroring CI that `just ci` also runs, so the two cannot drift. betterleaks moved to a CI job over full history, leaving the local scan best-effort. CI hygiene closed with it — `--frozen-lockfile`, pnpm single-sourced from `packageManager`, `.nvmrc`, least-privilege `permissions`, caching, and a conditional `concurrency` group.
 
-Why a full CI gate is affordable in a hook — the parallelism measurement — is in [CONTRIBUTING.md](../../CONTRIBUTING.md). The two silent traps it surfaced are commented where they bite, in `lefthook.yml`.
+Why a full CI gate is affordable in a hook — the parallelism measurement — is in [CONTRIBUTING.md](../../../CONTRIBUTING.md). The two silent traps it surfaced are commented where they bite, in `lefthook.yml`.
 
 ## Slice 5 — Release plumbing [x]
 
 `APP_VERSION` reaches both images as a **build argument**, so it is not runtime configuration and a deploy that forgets to export it reports `dev` until the next rebuild. CI builds the three production image targets. CD dumps the database before `alembic upgrade head`, keeping the last five, and carries `permissions: {}`. `release.yml` turns a tag into a GitHub Release. An image review ran alongside: the frontend gained the `HEALTHCHECK` it lacked, `python:*-slim` was single-sourced to an `ARG`, and nginx moved to the unprivileged image on 8080.
 
-Policy is [infra-0002](../decisions/infra-0002-manual-release-tagging.md); the image stages and their sizes are in [operations.md](../operations.md); rollback and the migration window — the half git cannot undo — are in [setup/deployment.md](../setup/deployment.md). Base images are pinned by digest since [Slice 11](#slice-11--renovate).
+Policy is [infra-0002](../../decisions/infra-0002-manual-release-tagging.md); the image stages and their sizes are in [operations.md](../../operations.md); rollback and the migration window — the half git cannot undo — are in [setup/deployment.md](../../setup/deployment.md). Base images are pinned by digest since [Slice 11](#slice-11--renovate).
 
 ## Slice 6 — Runtime versions + API contract [x]
 
 Python 3.13 everywhere, including `backend/.python-version`, which decides the interpreter `uv` builds the local environment with. The dev database moved to Postgres 18 with identical row counts and the stuck REVE watermark preserved at `2026-07-08 19:30:03`. `openapi.json` is exported by `scripts/export_openapi.py`, committed, and gated at two levels — the schema must match the app, and the generated types must match the schema — both verified to fail on a real drift.
 
-**`uuidv7()` was evaluated and rejected**; the reasoning is in [tech-stack.md](../tech-stack.md), and the mount-path trap a major Postgres upgrade carries is in [operations.md](../operations.md).
+**`uuidv7()` was evaluated and rejected**; the reasoning is in [tech-stack.md](../../tech-stack.md), and the mount-path trap a major Postgres upgrade carries is in [operations.md](../../operations.md).
 
 ## Slice 9 — Close the CI/CD loop [x]
 
@@ -71,7 +71,7 @@ Renovate opens grouped dependency PRs on Monday mornings — one per area, major
 
 The dashboard approval gate is on while the thesis is being delivered: everything pending is listed on one issue and a checkbox releases each PR. Removing that one line makes the bot autonomous.
 
-Why Renovate rather than Dependabot, and what the third-party app costs: [infra-0004](../decisions/infra-0004-renovate-over-dependabot.md).
+Why Renovate rather than Dependabot, and what the third-party app costs: [infra-0004](../../decisions/infra-0004-renovate-over-dependabot.md).
 
 ## Slice 12 — REVE tariff backfill → moved to [Phase 6](phase-6.md)
 
@@ -81,13 +81,13 @@ Turning the ETLs on is a decision about a frozen watermark and an unmeasured 504
 
 One `.env` at the repository root, with `.env.example` as its committed twin and the only documentation of what configuration exists. The frontend keeps no env file — Vite's `envDir` staying put is what makes it structurally impossible for a backend secret to reach the bundle. `ENVIRONMENT=production` arms a boot check, because `secret_key` defaulted to the empty string and signs every session: a missing line failed *open*. A test asserts `Settings` and `.env.example` describe the same set, so a setting cannot ship undocumented.
 
-**Compose truncates an env value at the first `$` and only warns** — recorded in [setup/deployment.md](../setup/deployment.md).
+**Compose truncates an env value at the first `$` and only warns** — recorded in [setup/deployment.md](../../setup/deployment.md).
 
 ## Slice 15 — Authenticate the read endpoints [x]
 
 Every `/api/*` route except `/api/health` and the auth surface now requires a session, applied at the `include_router` calls rather than per route, where one new endpoint would silently miss it. This was the backend catching up with a decision the frontend had already made: `points`, `prices`, `simulate` and `vehicles` carried no user dependency, so anyone holding the URL could pull the full catalogue while a real user was made to log in for the same data.
 
-The regression guard reads `app.openapi()["paths"]` rather than a hand-written list, so a router mounted unguarded fails it rather than shipping open. Its consequence for the [REVE data-rights question](../production-readiness.md) is recorded there.
+The regression guard reads `app.openapi()["paths"]` rather than a hand-written list, so a router mounted unguarded fails it rather than shipping open. Its consequence for the [REVE data-rights question](../../production-readiness.md) is recorded there.
 
 **Not done:** a browser click-through after login — the one claim resting on argument rather than a run.
 
@@ -95,9 +95,9 @@ The regression guard reads `app.openapi()["paths"]` rather than a hand-written l
 
 The OWASP header set on every Caddy response, **minus two deliberate omissions**: `Cross-Origin-Embedder-Policy: require-corp` would block the OpenFreeMap tiles, and `geolocation=()` would kill `useGeolocation`. The CSP carries only `frame-ancestors 'none'`; the rest is [Phase 14](../plan.md), blocked on MUI and Emotion injecting inline styles. `cryptography` bumped for [CVE-2026-69247](https://advisories.gitlab.com/pypi/cryptography/CVE-2026-69247/); `pip-audit` clean afterwards. Interactive docs disabled under `ENVIRONMENT=production` — defence in depth, since Caddy forwards only `/api/*` and they were never reachable.
 
-Two backup defects fixed: the cron script hardcoded the laptop's `$HOME` for `rclone` and its config, and the dump had no size check — the 0-byte dump that reached the offsite bucket on 2026-07-13 is [recorded in operations.md](../operations.md).
+Two backup defects fixed: the cron script hardcoded the laptop's `$HOME` for `rclone` and its config, and the dump had no size check — the 0-byte dump that reached the offsite bucket on 2026-07-13 is [recorded in operations.md](../../operations.md).
 
-**Not addressed, deliberately:** the 14-day session with no revocation ([auth-0002](../decisions/auth-0002-cookie-session.md)), the deploy key with no `command=` restriction, and the boot check verifying `SECRET_KEY` differs from the placeholder without checking it is strong. All three are known and recorded.
+**Not addressed, deliberately:** the 14-day session with no revocation ([auth-0002](../../decisions/auth-0002-cookie-session.md)), the deploy key with no `command=` restriction, and the boot check verifying `SECRET_KEY` differs from the placeholder without checking it is strong. All three are known and recorded.
 
 ---
 
@@ -105,7 +105,7 @@ Two backup defects fixed: the cron script hardcoded the laptop's `$HOME` for `rc
 
 **Acceptance:** the app loads over HTTPS on a phone, the PWA installs, `/api/health` reports ok with a version, and **the `scheduler` service is not running** — deliberately, not by accident.
 
-Live on the host since 2026-08-04. Runbook: [setup/deployment.md](../setup/deployment.md) §3–5.
+Live on the host since 2026-08-04. Runbook: [setup/deployment.md](../../setup/deployment.md) §3–5.
 
 - [x] Repo cloned to `/opt/s-charge` **over SSH**, using a read-only repository deploy key — an HTTPS remote cannot authenticate unattended and breaks CD at `git fetch`
 - [x] Database bootstrapped from `ev_charging_seed_20260803T070005Z.dump` — **never re-seed**, the REVE catalogue takes ~12 days under the 5 req/hr cap
@@ -140,7 +140,7 @@ Live on the host since 2026-08-04. Runbook: [setup/deployment.md](../setup/deplo
 
 **Acceptance:** the authentication endpoints are rate-limited, and the IP recorded in the auth audit log is the real client's rather than the reverse proxy's.
 
-Done in the repository. Auth endpoints are rate-limited per IP and per path, uvicorn trusts Caddy's forwarded headers via `--forwarded-allow-ips=172.16.0.0/12` rather than `*`, and container log retention is capped because those logs now carry real client IPs. The decision, the limits chosen and the data-protection position: [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md).
+Done in the repository. Auth endpoints are rate-limited per IP and per path, uvicorn trusts Caddy's forwarded headers via `--forwarded-allow-ips=172.16.0.0/12` rather than `*`, and container log retention is capped because those logs now carry real client IPs. The decision, the limits chosen and the data-protection position: [auth-0004](../../decisions/auth-0004-rate-limits-and-client-ip.md).
 
 Verified locally against a real proxy chain — the prod image behind `caddy:2.11-alpine`, two persistent client containers on distinct addresses getting separate counters. Short-lived probe containers do *not* work as separate clients: Docker recycles the freed address, so every probe reuses one IP and the run looks exactly like the bug.
 

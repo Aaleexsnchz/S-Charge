@@ -4,7 +4,7 @@ One document per phase: the detailed plan for that phase and nothing else. [plan
 
 A phase plan is **written just before the phase starts**, never in advance. Writing it early produces a plan whose decisions were taken without the information needed to take them — the useful work is raising the questions, arguing them out, and recording what was settled and what was rejected, and that can only happen against the code as it actually is.
 
-The plan stays **live** for the phase's duration: slice statuses move, open questions get answered in place, and scope that turns out to be wrong is rewritten. It states current reality only — no dated revision blocks. These are working plans, not documentation: what must outlive the phase gets migrated out when it closes ([AGENTS.md](../../AGENTS.md) → Documentation discipline).
+The plan stays **live** for the phase's duration: slice statuses move, open questions get answered in place, and scope that turns out to be wrong is rewritten. It states current reality only — no dated revision blocks. These are working plans, not documentation: what must outlive the phase gets migrated out when it closes ([AGENTS.md](../../../AGENTS.md) → Documentation discipline).
 
 | Phase | Plan |
 | --- | --- |

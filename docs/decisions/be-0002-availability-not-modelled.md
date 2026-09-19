@@ -31,4 +31,4 @@ Inventing it was planned twice and abandoned twice. First calibrated against ACN
 **References.**
 
 - [thesis/modelo-de-datos.md](../thesis/modelo-de-datos.md) — *camino no tomado: la ocupación simulada*.
-- [plan.md](../plan.md) → Data strategy.
+- [plan.md](../plan/plan.md) → Data strategy.
