@@ -1,29 +1,14 @@
 import { Button, Link as MuiLink, Stack, Typography } from '@mui/material'
-import { useSnackbar } from 'notistack'
-import { useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
-import { apiClient } from '@/lib/api/client'
+import { useResendVerification } from './useResendVerification'
 
 export function CheckEmailPage() {
   const [searchParams] = useSearchParams()
   const email = searchParams.get('email') ?? ''
-  const { enqueueSnackbar } = useSnackbar()
-  const [resending, setResending] = useState(false)
+  const { resend, resending } = useResendVerification()
 
-  async function handleResend() {
-    if (!email) return
-    setResending(true)
-    const { response } = await apiClient.POST('/api/auth/request-verify-token', { body: { email } })
-    setResending(false)
-    if (response.ok) {
-      enqueueSnackbar('Correo reenviado. Revisa tu bandeja de entrada.', {
-        variant: 'success',
-      })
-    } else {
-      enqueueSnackbar('No se pudo reenviar el correo. Inténtalo de nuevo.', {
-        variant: 'error',
-      })
-    }
+  function handleResend() {
+    if (email) void resend(email)
   }
 
   return (

@@ -1,6 +1,6 @@
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import { Box, Button, Paper, Skeleton, Stack, Typography } from '@mui/material'
-import { useNavigate } from 'react-router'
+import { Box, Button, CardActionArea, Paper, Skeleton, Stack, Typography } from '@mui/material'
+import { Link as RouterLink } from 'react-router'
 import {
   pointPricingState,
   STATUS_DOT_COLOR,
@@ -26,53 +26,51 @@ function connectorStandards(point: Point): string[] {
 }
 
 function NearbyCard({ point }: { point: NearbyPoint }) {
-  const navigate = useNavigate()
   const price = pointPricingState(point)
   return (
     <Paper
-      onClick={() => navigate(`/points/${point.id}`)}
       sx={{
-        p: 1.75,
-        cursor: 'pointer',
         transition: 'border-color 120ms',
         '&:hover': { borderColor: 'primary.main' },
       }}
     >
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-        <Box
-          sx={{
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            bgcolor: STATUS_DOT_COLOR[point.aggregate_status] ?? 'text.disabled',
-            boxShadow: STATUS_DOT_GLOW[point.aggregate_status] ?? 'none',
-          }}
-        />
-        <Typography variant="caption" color="text.secondary">
-          {STATUS_LABELS[point.aggregate_status]}
+      <CardActionArea component={RouterLink} to={`/points/${point.id}`} sx={{ p: 1.75 }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
+          <Box
+            sx={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              bgcolor: STATUS_DOT_COLOR[point.aggregate_status] ?? 'text.disabled',
+              boxShadow: STATUS_DOT_GLOW[point.aggregate_status] ?? 'none',
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {STATUS_LABELS[point.aggregate_status]}
+          </Typography>
+          <Typography variant="numeric" sx={{ ml: 'auto', fontSize: 12 }} color="text.secondary">
+            {point.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km
+          </Typography>
+        </Stack>
+        <Typography sx={{ fontWeight: 600 }} noWrap>
+          {pointName(point)}
         </Typography>
-        <Typography variant="numeric" sx={{ ml: 'auto', fontSize: 12 }} color="text.secondary">
-          {point.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km
-        </Typography>
-      </Stack>
-      <Typography sx={{ fontWeight: 600 }} noWrap>
-        {pointName(point)}
-      </Typography>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mt: 0.5 }}>
-        {price !== null &&
-          (price.kind === 'per_kwh' || price.kind === 'free' ? (
-            <Typography variant="numeric" sx={{ fontWeight: 600 }}>
-              {shortPriceLabel(price)}
-            </Typography>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              {shortPriceLabel(price)}
-            </Typography>
-          ))}
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }} noWrap>
-          {connectorStandards(point).join(' · ')}
-        </Typography>
-      </Stack>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mt: 0.5 }}>
+          {price !== null &&
+            (price.kind === 'per_kwh' || price.kind === 'free' ? (
+              <Typography variant="numeric" sx={{ fontWeight: 600 }}>
+                {shortPriceLabel(price)}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {shortPriceLabel(price)}
+              </Typography>
+            ))}
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }} noWrap>
+            {connectorStandards(point).join(' · ')}
+          </Typography>
+        </Stack>
+      </CardActionArea>
     </Paper>
   )
 }

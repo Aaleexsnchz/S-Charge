@@ -31,6 +31,23 @@ export const STATUS_CHIP_COLOR: Record<
   unknown: 'default',
 }
 
+type ChipColor = (typeof STATUS_CHIP_COLOR)[AggregateStatus]
+
+/** One EVSE's OCPI status. Unlisted values (PLANNED, REMOVED, UNKNOWN, or
+ *  anything new) read as unknown rather than as occupied. */
+const EVSE_STATUS: Record<string, { label: string; color: ChipColor }> = {
+  AVAILABLE: { label: 'Disponible', color: 'primary' },
+  CHARGING: { label: 'Ocupado', color: 'error' },
+  BLOCKED: { label: 'Ocupado', color: 'error' },
+  RESERVED: { label: 'Reservado', color: 'warning' },
+  INOPERATIVE: { label: 'Fuera de servicio', color: 'default' },
+  OUTOFORDER: { label: 'Fuera de servicio', color: 'default' },
+}
+
+export function evseStatus(status: string): { label: string; color: ChipColor } {
+  return EVSE_STATUS[status] ?? { label: 'Estado desconocido', color: 'default' }
+}
+
 /** One status palette for every surface that is not the map: chips, list dots,
  *  card headers. The map keeps its own copy in hex, since MapLibre paint
  *  expressions cannot read theme tokens. */

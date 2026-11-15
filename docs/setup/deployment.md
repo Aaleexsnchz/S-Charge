@@ -61,7 +61,7 @@ The CD workflow assumes `/opt/s-charge`; if you choose another path, update `cd.
 Create the server-side `.env` — one file at the root, never committed. Start from [.env.example](../../.env.example) and set prod values:
 
 - fresh `SECRET_KEY` (`openssl rand -hex 32`) and a strong `POSTGRES_PASSWORD` (mirrored in `DATABASE_URL`) — **rotate, don't reuse, the dev values**
-- `ENVIRONMENT=production`, `APP_DEBUG=false`, `SESSION_COOKIE_SECURE=true`
+- `ENVIRONMENT=production`, `SESSION_COOKIE_SECURE=true`
 - `CORS_ALLOW_ORIGINS=` (empty — same-origin behind Caddy)
 - `APP_BASE_URL=https://s-charge.app` and `GOOGLE_REDIRECT_URI=https://s-charge.app/api/auth/google/callback`
 - `SITE_ADDRESS=s-charge.app` — Caddy's public address, and the only variable Compose reads by interpolation rather than handing to a container

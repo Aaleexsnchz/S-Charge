@@ -37,11 +37,9 @@ export function Wordmark({ size = 18, accent = true }: WordmarkProps) {
           fill="none"
           width="100%"
           height="100%"
-          role="img"
-          aria-label="rayo"
+          aria-hidden="true"
           style={{ display: 'block' }}
         >
-          <title>rayo</title>
           <path d="M7 1 L2 13 L6 13 L5 23 L10 11 L6 11 L7 1 Z" fill="currentColor" />
         </svg>
       </Box>

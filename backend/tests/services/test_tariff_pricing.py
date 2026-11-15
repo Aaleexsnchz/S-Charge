@@ -15,6 +15,7 @@ from app.models.charging_point import (
 from app.models.tariff import Tariff, TariffElement
 from app.services.tariff_pricing import (
     connector_price_bands,
+    connector_prices_over,
     point_price_schedules,
     recompute_connector_prices,
 )
@@ -302,6 +303,35 @@ async def test_a_tighter_power_band_beats_a_more_restricted_one(
     connector = await _resolve(db_session, connector_id, _madrid(12))
 
     assert connector.current_price_per_kwh == Decimal("0.29")
+
+
+# A 22 kW connector satisfies both caps; the wider band is listed first so that
+# falling back to element order would pick it.
+OVERLAPPING_POWER_BANDS: list[dict[str, Any]] = [
+    {"band": DAY, "max_power_kw": 50, "price": "0.47"},
+    {"band": DAY, "max_power_kw": 22, "price": "0.29"},
+    {"band": NIGHT, "max_power_kw": 22, "price": "0.25"},
+]
+
+
+async def test_schedule_and_simulator_agree_with_the_map_on_overlapping_caps(
+    db_session: AsyncSession,
+) -> None:
+    connector_id = await _connector_on(db_session, OVERLAPPING_POWER_BANDS)
+    at = _madrid(12)
+
+    connector = await _resolve(db_session, connector_id, at)
+    bands = await connector_price_bands(
+        db_session, await _point_of(db_session, connector_id), at
+    )
+    minutes = await connector_prices_over(
+        db_session, connector_id, at, at + timedelta(minutes=1)
+    )
+
+    assert connector.current_price_per_kwh == Decimal("0.29")
+    current = [band for band in bands[connector_id] if band.is_current]
+    assert [band.price_per_kwh for band in current] == [Decimal("0.29")]
+    assert set(minutes.values()) == {Decimal("0.29")}
 
 
 async def test_a_band_restricted_only_by_a_cap_beats_the_fallback(

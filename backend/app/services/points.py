@@ -77,12 +77,6 @@ async def cached_map_payload(db: AsyncSession) -> tuple[bytes, str]:
         _map_cache = _CachedMap(body=body, etag=etag, built_at=time.monotonic())
         return body, etag
 
-        collection = await map_feature_collection(db)
-        body = json.dumps(collection, separators=(",", ":")).encode()
-        etag = f'"{hashlib.sha256(body).hexdigest()[:32]}"'
-        _map_cache = _CachedMap(body=body, etag=etag, built_at=time.monotonic())
-        return body, etag
-
 
 def _base_query() -> Select[tuple[ChargingPoint]]:
     return (

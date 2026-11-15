@@ -1,37 +1,23 @@
-"""Post-seed incremental refresh of REVE tariffs (prices).
+"""Post-seed incremental refresh of the REVE catalogue.
 
-Runs on the same hourly, budgeted cron as ``seed_reve`` once the initial seed
-is complete. Only ``/connectors/tariffs`` is refreshed: prices are the sole
-field that changes often enough to matter. The physical catalogue (``/cpos``,
-``/locations``) is left frozen at the seed snapshot — it carries no price data,
-rarely changes, and refreshing it would only starve the tariff call budget; the
-cost is that stations added to REVE after the seed won't appear.
+Runs on the same hourly, budgeted cron as ``seed_reve`` once the initial seed is
+complete. Each tick spends its call budget down ``REFRESH_PRIORITY``: tariffs
+first, because prices are what the app serves, then CPOs and locations on
+whatever budget is left, each throttled by its own minimum interval.
 
-The endpoint takes only ``date_from`` (plus ``page``/``limit``) — there is **no
-``date_to``** — and returns every connector whose tariff changed since that
-instant. Each tick sets ``date_from`` to the watermark, paginates the result
-(across ticks under budget), and on a full drain advances the watermark to the
-moment the cycle started, so the next cycle picks up everything since.
+Every endpoint takes only ``date_from`` (plus ``page``/``limit``), with **no
+``date_to``**, and returns everything changed since that instant. A tick
+paginates from the watermark, across ticks if the budget runs out, and on a full
+drain advances the watermark to the moment the cycle started.
 
-What matters is how much has changed *between ``date_from`` and now*: a recent
-``date_from`` is a small, cheap result; a watermark that has fallen days behind
-makes REVE scan/return too much and the gateway times out (504), and because
-there is no ``date_to`` an old range cannot be sliced into chunks.
+A watermark that has fallen far behind makes REVE return too much and the
+gateway times out (504); with no ``date_to`` the range cannot be sliced. **A 504
+never moves the watermark**: skipping ahead would silently lose the changes in
+between, while a stall is visible in ``last_error`` and an operator can
+intervene with ``--date-from``.
 
-**A 504 never moves the watermark.** The tick records the error and leaves the
-position alone, whatever its age, so the window stays recoverable and an
-operator decides what to do about it. An earlier version jumped a stale
-watermark forward to a span known to return 200, which kept the refresh moving
-by writing the skipped stretch off — silently, and unrecoverably. That is how a
-two-hour outage in July 2026 became a 45-day gap. Losing data is worse than
-stalling, and a stall is visible in ``last_error``.
-
-The cost is that a watermark REVE will not serve now burns one call per tick
-until someone intervenes. That is the intended trade, and ``--date-from`` is how
-it gets intervened with.
-
-A ``429`` stops the tick to resume next time. ``ReveClient(max_retries=0)`` here:
-a 504 is not worth an immediate retry under a 5-call/hour budget.
+A ``429`` stops the tick to resume next time. ``ReveClient(max_retries=0)``: a
+504 is not worth an immediate retry under a 5-call/hour budget.
 """
 
 import argparse

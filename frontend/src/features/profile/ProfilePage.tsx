@@ -14,8 +14,8 @@ import {
 } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { useEffect, useState } from 'react'
-import { Form, useFetcher, useRouteLoaderData } from 'react-router'
-import type { RootLoaderData } from '@/features/auth/loaders'
+import { Form, useFetcher } from 'react-router'
+import { useCurrentUser, userInitial } from '@/features/auth/currentUser'
 import { MAX_NAME_LENGTH, type NameActionData } from './actions'
 import { useAppVersion } from './useAppVersion'
 
@@ -95,14 +95,13 @@ function NameHeading({ currentName }: { currentName: string }) {
 }
 
 export function ProfilePage() {
-  const data = useRouteLoaderData('root') as RootLoaderData | undefined
+  const user = useCurrentUser()
   // Before the early return: the linter enforces unconditional hook calls.
   const { data: version } = useAppVersion()
-  const user = data?.user
   if (!user) return null
 
   const name = user.name?.trim() ?? ''
-  const initial = (name[0] ?? user.email[0] ?? '?').toUpperCase()
+  const initial = userInitial(user)
 
   return (
     <Box

@@ -1,5 +1,5 @@
 import { Box, Button } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/api/client'
 
 function GoogleMark() {
@@ -28,15 +28,31 @@ function GoogleMark() {
 export function GoogleSignInButton({ label }: { label: string }) {
   const [loading, setLoading] = useState(false)
 
+  // Coming back from Google with the back button restores this page from the
+  // bfcache with the button still disabled.
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setLoading(false)
+    }
+    window.addEventListener('pageshow', reset)
+    return () => window.removeEventListener('pageshow', reset)
+  }, [])
+
   async function onClick() {
     setLoading(true)
-    const { data } = await apiClient.GET('/api/auth/google/authorize')
-    if (!data) {
+    let url: string | undefined
+    try {
+      const { data } = await apiClient.GET('/api/auth/google/authorize')
+      url = data?.authorization_url
+    } catch {
+      // Offline: handled below like a refused request.
+    }
+    if (!url) {
       setLoading(false)
       window.location.href = '/login?error=oauth_failed'
       return
     }
-    window.location.href = data.authorization_url
+    window.location.href = url
   }
 
   return (

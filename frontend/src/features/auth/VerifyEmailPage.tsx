@@ -22,10 +22,14 @@ export function VerifyEmailPage() {
     }
 
     void (async () => {
-      const { response } = await apiClient.POST('/api/auth/verify', {
-        body: { token },
-      })
-      if (response.ok) {
+      let ok = false
+      try {
+        const { response } = await apiClient.POST('/api/auth/verify', { body: { token } })
+        ok = response.ok
+      } catch {
+        // Offline: fall through to the failure path rather than spin forever.
+      }
+      if (ok) {
         enqueueSnackbar('Email verificado. Ya puedes iniciar sesión.', {
           variant: 'success',
         })

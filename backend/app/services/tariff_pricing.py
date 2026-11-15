@@ -211,7 +211,7 @@ async def recompute_connector_prices(
 
 _SCHEDULE_SQL = text(f"""
 WITH applicable AS (
-    SELECT c.id AS connector_id, e.price, e.element_index,
+    SELECT c.id AS connector_id, e.price, e.element_index, e.max_power_kw,
            band.lo AS start_time, band.hi AS end_time,
            l.local_ts::time AS local_time,
            (e.start_time IS NOT NULL OR e.end_time IS NOT NULL) AS has_window,
@@ -236,9 +236,10 @@ windowed AS (
 ranked AS (
     SELECT DISTINCT ON (connector_id, start_time, end_time)
            connector_id, start_time, end_time, price, local_time,
-           is_restricted, element_index
+           is_restricted, max_power_kw, element_index
     FROM windowed
-    ORDER BY connector_id, start_time, end_time, is_restricted DESC, element_index
+    ORDER BY connector_id, start_time, end_time, is_restricted DESC,
+             max_power_kw ASC NULLS LAST, element_index
 ),
 -- REVE writes both bounds inclusive, so 00:00-18:00 and 18:00-22:00 both contain
 -- 18:00. Exactly one row may be current or the page highlights two prices, so
@@ -251,7 +252,8 @@ current_band AS (
                   THEN local_time BETWEEN start_time AND end_time
               ELSE local_time >= start_time OR local_time <= end_time
           END
-    ORDER BY connector_id, is_restricted DESC, element_index
+    ORDER BY connector_id, is_restricted DESC, max_power_kw ASC NULLS LAST,
+             element_index
 )
 SELECT r.connector_id, r.start_time, r.end_time, r.price,
        (cb.connector_id IS NOT NULL) AS is_current
@@ -341,7 +343,7 @@ async def point_price_schedules(
 _WINDOW_SQL = text(f"""
 WITH applicable AS (
     SELECT g.ts, e.price,
-           e.element_index,
+           e.element_index, e.max_power_kw,
 {_RESTRICTION_COLUMNS}
 {_APPLICABLE_JOINS}
 {_LOCAL_TS_SERIES}
@@ -354,7 +356,7 @@ WITH applicable AS (
 )
 SELECT DISTINCT ON (ts) ts, price
 FROM applicable
-ORDER BY ts, is_restricted DESC, element_index
+ORDER BY ts, is_restricted DESC, max_power_kw ASC NULLS LAST, element_index
 """)  # noqa: S608
 
 

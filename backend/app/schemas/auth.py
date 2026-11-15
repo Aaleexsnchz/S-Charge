@@ -7,6 +7,8 @@ from pydantic import StringConstraints, field_validator
 Name = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
+# Matches the column width, so an oversized value is a 422 rather than a 500.
+PictureUrl = Annotated[str, StringConstraints(max_length=2048)]
 
 
 class UserRead(schemas.BaseUser[UUID]):
@@ -25,7 +27,7 @@ class UserCreate(schemas.BaseUserCreate):
 
 class UserUpdate(schemas.BaseUserUpdate):
     name: Name | None = None
-    picture_url: str | None = None
+    picture_url: PictureUrl | None = None
 
     @field_validator("email", mode="before")
     @classmethod

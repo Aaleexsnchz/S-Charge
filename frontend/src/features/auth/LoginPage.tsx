@@ -22,10 +22,10 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
-import { apiClient } from '@/lib/api/client'
 import { tokens } from '@/theme'
 import type { LoginActionData } from './actions'
 import { GoogleSignInButton } from './GoogleSignInButton'
+import { useResendVerification } from './useResendVerification'
 
 const BOLT_PATH = 'M7 1 L2 13 L6 13 L5 23 L10 11 L6 11 L7 1 Z'
 const GAUGE_WIDTH = 58
@@ -146,23 +146,9 @@ export function LoginPage() {
   const canSubmit = email.trim() !== '' && password !== ''
   const charge = (email.trim() !== '' ? 0.5 : 0) + (password !== '' ? 0.5 : 0)
 
-  const [resending, setResending] = useState(false)
-  async function handleResendVerify() {
-    if (!unverifiedEmail) return
-    setResending(true)
-    const { response } = await apiClient.POST('/api/auth/request-verify-token', {
-      body: { email: unverifiedEmail },
-    })
-    setResending(false)
-    if (response.ok) {
-      enqueueSnackbar('Correo reenviado. Revisa tu bandeja de entrada.', {
-        variant: 'success',
-      })
-    } else {
-      enqueueSnackbar('No se pudo reenviar el correo. Inténtalo de nuevo.', {
-        variant: 'error',
-      })
-    }
+  const { resend, resending } = useResendVerification()
+  function handleResendVerify() {
+    if (unverifiedEmail) void resend(unverifiedEmail)
   }
 
   return (

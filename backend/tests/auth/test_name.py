@@ -80,6 +80,15 @@ async def test_patch_me_refuses_to_clear_the_name(
     assert (await logged_in.get("/api/users/me")).json()["name"] == "Alejandro"
 
 
+async def test_patch_me_rejects_a_picture_url_longer_than_the_column(
+    logged_in: AsyncClient,
+) -> None:
+    resp = await logged_in.patch(
+        "/api/users/me", json={"picture_url": "https://x.test/" + "a" * 2048}
+    )
+    assert resp.status_code == 422
+
+
 async def test_patch_me_leaves_an_omitted_name_alone(logged_in: AsyncClient) -> None:
     resp = await logged_in.patch("/api/users/me", json={"picture_url": None})
     assert resp.status_code == 200

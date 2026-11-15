@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Must be set to something of their own in production. The check is equality
@@ -24,11 +24,8 @@ class Settings(BaseSettings):
     # Baked into the image at build time from the git tag. Never edit a version
     # string by hand: the tag is the source of truth (infra-0002).
     app_version: str = UNVERSIONED
-    # TODO: wire into /docs visibility when needed; it already gates the
-    # production configuration check below.
+    # `production` hides the OpenAPI docs and enables the checks below.
     environment: str = "development"
-    # TODO: pass to FastAPI(debug=...) or gate verbose SQL logging when needed
-    debug: bool = Field(default=True, validation_alias="APP_DEBUG")
     secret_key: str = DEVELOPMENT_PLACEHOLDER
     # Comma-separated. Prod is same-origin behind Caddy, so it sets this empty.
     cors_allow_origins: str = "http://localhost:5173"

@@ -17,6 +17,7 @@ import {
 } from '@mui/material'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { Wordmark } from '@/components/Wordmark'
+import { useCurrentUser, userInitial } from '@/features/auth/currentUser'
 
 function activeSection(pathname: string) {
   if (pathname.startsWith('/map') || pathname.startsWith('/points')) return 'map'
@@ -28,6 +29,7 @@ function activeSection(pathname: string) {
 
 export function RootLayout() {
   const section = activeSection(useLocation().pathname)
+  const user = useCurrentUser()
 
   return (
     <Box sx={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -45,7 +47,7 @@ export function RootLayout() {
                 color: 'primary.contrastText',
               }}
             >
-              A
+              {user ? userInitial(user) : null}
             </Avatar>
           </IconButton>
         </Toolbar>

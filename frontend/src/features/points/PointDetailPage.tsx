@@ -12,9 +12,10 @@ import {
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router'
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
 import { type ConnectorOption, SimulateDialog } from '@/features/simulate/SimulateDialog'
 import {
+  evseStatus,
   googleMapsDirectionsUrl,
   longPriceLabel,
   type PricingState,
@@ -97,6 +98,9 @@ function PriceCard({ state }: { state: PricingState }) {
 export function PointDetailPage() {
   const { pointId } = useParams<{ pointId: string }>()
   const navigate = useNavigate()
+  // React Router keys the first entry of a session 'default': opened from a
+  // shared link or a PWA deep link, going back would leave the app.
+  const isFirstEntry = useLocation().key === 'default'
   const { data: point, isPending, error } = usePoint(pointId ?? null)
   const [simulateOpen, setSimulateOpen] = useState(false)
 
@@ -145,7 +149,11 @@ export function PointDetailPage() {
     <Box sx={{ overflowY: 'auto', height: '100%' }}>
       <Stack spacing={2} sx={{ p: 2, maxWidth: 600, mx: 'auto', pb: 4 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <IconButton aria-label="Volver" onClick={() => navigate(-1)} edge="start">
+          <IconButton
+            aria-label="Volver"
+            onClick={() => (isFirstEntry ? navigate('/map') : navigate(-1))}
+            edge="start"
+          >
             <ArrowBackIcon />
           </IconButton>
           <Box sx={{ minWidth: 0 }}>
@@ -224,8 +232,8 @@ export function PointDetailPage() {
                   {evse.status !== null && (
                     <Chip
                       size="small"
-                      label={evse.status === 'AVAILABLE' ? 'Disponible' : 'Ocupado'}
-                      color={evse.status === 'AVAILABLE' ? 'success' : 'warning'}
+                      label={evseStatus(evse.status).label}
+                      color={evseStatus(evse.status).color}
                       variant="outlined"
                     />
                   )}
