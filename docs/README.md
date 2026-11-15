@@ -60,7 +60,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 
 ### The thesis document
 
-**The memoria is written in Word, outside this repository, and that copy is the only one.** A Markdown mirror of the chapters lived here and was deleted: keeping two copies in step cost more than it returned, and the one that fell behind was always this one. Nothing in `docs/` may claim to be the submitted text.
+**The submitted memoria is [thesis/S-Charge-TFM.pdf](thesis/S-Charge-TFM.pdf)**, exported from the Word source, which lives outside this repository. A Markdown mirror of the chapters lived here and was deleted: keeping two copies in step cost more than it returned, and the one that fell behind was always this one. Nothing else in `docs/` may claim to be the submitted text.
 
 ### Thesis chapters
 

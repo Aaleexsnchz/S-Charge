@@ -26,7 +26,7 @@ Cada tick está **acotado** (≤5 llamadas a REVE, elige el siguiente endpoint n
 
 ```bash
 # Instalar (una sola vez) — se ejecuta en el minuto 30 de cada hora.
-(crontab -l 2>/dev/null; echo "30 * * * * /usr/bin/docker compose -f /home/aaleexsnchz/tfm/docker-compose.yml exec -T backend uv run python -m scripts.seed_reve >> /home/aaleexsnchz/.reve-seed.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "30 * * * * /usr/bin/docker compose -f $HOME/S-Charge/docker-compose.yml exec -T backend uv run python -m scripts.seed_reve >> $HOME/.reve-seed.log 2>&1") | crontab -
 
 # Verificar
 crontab -l

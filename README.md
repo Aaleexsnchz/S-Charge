@@ -13,6 +13,10 @@ Built mobile-first at a 360px reference width, because the user is standing next
 
 Developed as a Master's thesis in IoT by a single developer. Scope and roadmap: [docs/plan/plan.md](docs/plan/plan.md).
 
+> **Status: not currently deployed.** The application ran in production on a VPS while the thesis was being developed; that server has been shut down, so there is no live instance to try. Everything needed to run it locally is below, and the deployment runbook is kept in [docs/setup/deployment.md](docs/setup/deployment.md).
+>
+> **Thesis:** the submitted memoria (Spanish) is at [docs/thesis/S-Charge-TFM.pdf](docs/thesis/S-Charge-TFM.pdf).
+
 ## Quick start
 
 Needs [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io), and Docker with the Compose plugin (for Postgres). The task runner is optional but assumed below: `uv tool install rust-just`.
@@ -105,4 +109,4 @@ The categorized index is at **[docs/README.md](docs/README.md)**. Most-reached e
 
 ## License
 
-Licensing to be determined before any public release.
+The code is released under the [MIT License](LICENSE). The thesis document in [docs/thesis/S-Charge-TFM.pdf](docs/thesis/S-Charge-TFM.pdf) is not covered by it; all rights reserved.

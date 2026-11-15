@@ -12,7 +12,7 @@ Docker has two jobs here, and they are separate:
 ## Reaching the production host
 
 ```bash
-ssh s-charge          # ~/.ssh/config alias -> deploy@s-charge.app, key id_ed25519_s-charge
+ssh s-charge          # ~/.ssh/config alias -> deploy@<host>, key id_ed25519_s-charge
 cd /opt/s-charge      # the checkout cd.yml deploys into
 ```
 
@@ -90,7 +90,7 @@ ssh -L 55432:localhost:5432 s-charge
 
 Leave that session open and point DBeaver (or `psql`) at `localhost:55432`. Credentials are the server-side `.env` — rotated at first deploy, so not the dev ones. Port 55432 rather than 5432 because the dev stack holds 5432 locally.
 
-**Use the `s-charge` alias, not `deploy@s-charge.app`.** The `Host s-charge` block in `~/.ssh/config` is what supplies the user and `IdentityFile`; spelling the hostname out matches no block, so ssh offers its default keys and the server answers `Permission denied (publickey)`.
+**Use the `s-charge` alias, not `deploy@<host>`.** The `Host s-charge` block in `~/.ssh/config` is what supplies the user and `IdentityFile`; spelling the hostname out matches no block, so ssh offers its default keys and the server answers `Permission denied (publickey)`.
 
 ### Ad-hoc SQL on the host
 

@@ -80,7 +80,7 @@ The REVE catalogue took ~12 days to seed under the 5 req/hr cap — **never re-s
 The dump exists in two places — `backups/` on the development laptop and the B2 bucket. Push it from the laptop unless `rclone` is already configured on the host:
 
 ```bash
-scp backups/<latest seed>.dump deploy@s-charge.app:/opt/s-charge/   # from the laptop
+scp backups/<latest seed>.dump deploy@<host>:/opt/s-charge/   # from the laptop
 ```
 
 Then, on the host, from `/opt/s-charge`:
