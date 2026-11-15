@@ -38,6 +38,16 @@ def _detect_provider(request: Request | None) -> str:
     return route_name.removeprefix("oauth:").split(".", 1)[0]
 
 
+def _request_meta(request: Request | None) -> dict[str, str | None]:
+    """The caller's IP and user agent, for the audit trail."""
+    if request is None:
+        return {"ip": None, "user_agent": None}
+    return {
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+
+
 class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
     reset_password_token_secret = settings.secret_key
     verification_token_secret = settings.secret_key
@@ -55,8 +65,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             "register",
             user_id=str(user.id),
             email=user.email,
-            ip=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
+            **_request_meta(request),
         )
         if not user.is_verified:
             await self.request_verify(user, request)
@@ -71,8 +80,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
             "login_ok",
             user_id=str(user.id),
             provider=_detect_provider(request),
-            ip=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
+            **_request_meta(request),
         )
 
     async def on_after_request_verify(
@@ -84,8 +92,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         audit(
             "verify_ok",
             user_id=str(user.id),
-            ip=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
+            **_request_meta(request),
         )
 
     async def on_after_forgot_password(
@@ -99,8 +106,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, UUID]):
         audit(
             "reset_ok",
             user_id=str(user.id),
-            ip=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None,
+            **_request_meta(request),
         )
 
     async def oauth_callback(  # type: ignore[override]

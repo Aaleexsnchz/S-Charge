@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 export type Coords = { lat: number; lng: number }
 
-export type GeolocationStatus = 'idle' | 'prompting' | 'granted' | 'denied' | 'unavailable'
+type GeolocationStatus = 'idle' | 'prompting' | 'granted' | 'denied' | 'unavailable'
 
 type GeolocationState = {
   coords: Coords | null

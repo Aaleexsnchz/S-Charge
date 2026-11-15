@@ -17,8 +17,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { useState } from 'react'
 import { Eyebrow } from '@/components/Eyebrow'
+import { Stat } from '@/components/Stat'
+import { formatDecimal, formatEur } from '@/lib/format'
+import { tokens } from '@/theme'
 import { durationLabel } from './display'
 import { useSimulate } from './useSimulate'
 import { useVehicles } from './useVehicles'
@@ -35,7 +39,6 @@ type Props = {
   connectors: ConnectorOption[]
 }
 
-/** The charge the driver asked for, drawn on the battery it applies to. */
 function SocRange({ from, to, valid }: { from: number; to: number; valid: boolean }) {
   const lo = Math.min(Math.max(from, 0), 100)
   const hi = Math.min(Math.max(to, 0), 100)
@@ -51,7 +54,7 @@ function SocRange({ from, to, valid }: { from: number; to: number; valid: boolea
             width: `${hi - lo}%`,
             borderRadius: 999,
             bgcolor: 'primary.main',
-            boxShadow: '0 0 8px rgba(127,231,196,0.5)',
+            boxShadow: `0 0 8px ${alpha(tokens.accent, 0.5)}`,
           }}
         />
       )}
@@ -59,25 +62,14 @@ function SocRange({ from, to, valid }: { from: number; to: number; valid: boolea
   )
 }
 
-/** Value and unit are one unbreakable pair: a "kWh" that wraps to its own line
- *  reads as a different number. */
-function Figure({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Eyebrow>{label}</Eyebrow>
-      <Typography
-        variant="numeric"
-        sx={{ display: 'block', fontSize: 15, fontWeight: 600, mt: 0.25, whiteSpace: 'nowrap' }}
-      >
-        {value}
-        {unit && (
-          <Box component="span" sx={{ fontSize: 11, color: 'text.secondary', ml: 0.4 }}>
-            {unit}
-          </Box>
-        )}
-      </Typography>
-    </Box>
-  )
+const FIGURE_SX = { minWidth: 0 }
+// nowrap: a unit wrapped onto its own line reads as a different number.
+const FIGURE_VALUE_SX = {
+  display: 'block',
+  fontSize: 15,
+  fontWeight: 600,
+  mt: 0.25,
+  whiteSpace: 'nowrap',
 }
 
 export function SimulateDialog({ open, onClose, connectors }: Props) {
@@ -117,11 +109,7 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
       <DialogTitle sx={{ pb: 1.5 }}>Simular carga</DialogTitle>
-      {/* `dividers` is load-bearing, not decoration. Without it MUI applies
-          `.MuiDialogTitle-root + & { padding-top: 0 }`, and since the content is
-          an `overflow-y: auto` scrollport it clips at its padding box — slicing
-          the first field's label, which floats above its own input. An `sx`
-          padding cannot win that rule: one class loses to a sibling selector. */}
+      {/* `dividers` keeps the top padding MUI drops after a title, which would clip the first label. */}
       <DialogContent dividers>
         <Stack spacing={2}>
           <FormControl fullWidth size="small">
@@ -222,10 +210,7 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
                     variant="numeric"
                     sx={{ fontSize: 38, fontWeight: 700, lineHeight: 1, color: 'primary.main' }}
                   >
-                    {result.cost_eur.toLocaleString('es-ES', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {formatEur(result.cost_eur)}
                   </Typography>
                   <Typography variant="numeric" sx={{ fontSize: 15, color: 'text.secondary' }}>
                     €
@@ -248,17 +233,24 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
                   justifyContent: 'space-between',
                 }}
               >
-                <Figure label="Duración" value={durationLabel(result.duration_minutes)} />
-                <Figure
+                <Stat
+                  sx={FIGURE_SX}
+                  valueSx={FIGURE_VALUE_SX}
+                  label="Duración"
+                  value={durationLabel(result.duration_minutes)}
+                />
+                <Stat
+                  sx={FIGURE_SX}
+                  valueSx={FIGURE_VALUE_SX}
                   label="Energía"
-                  value={result.energy_kwh.toLocaleString('es-ES', { maximumFractionDigits: 1 })}
+                  value={formatDecimal(result.energy_kwh, 1)}
                   unit="kWh"
                 />
-                <Figure
+                <Stat
+                  sx={FIGURE_SX}
+                  valueSx={FIGURE_VALUE_SX}
                   label="Potencia"
-                  value={result.average_power_kw.toLocaleString('es-ES', {
-                    maximumFractionDigits: 1,
-                  })}
+                  value={formatDecimal(result.average_power_kw, 1)}
                   unit="kW"
                 />
               </Stack>
@@ -271,11 +263,7 @@ export function SimulateDialog({ open, onClose, connectors }: Props) {
                 >
                   Precio medio de la carga:{' '}
                   <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-                    {result.price_per_kwh.toLocaleString('es-ES', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    €/kWh
+                    {formatEur(result.price_per_kwh)} €/kWh
                   </Box>
                 </Typography>
               )}

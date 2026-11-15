@@ -1,6 +1,3 @@
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,18 +18,12 @@ OAUTH_PATH_PREFIX = "/api/auth/google/"
 OAUTH_FAILURE_REDIRECT = "/login?error=oauth_failed"
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    yield
-
-
 # Dropping the schema route takes Swagger and ReDoc with it: FastAPI mounts both
 # only `if self.openapi_url`. `just gen-api` calls app.openapi() directly rather
 # than over HTTP, so the committed contract is unaffected.
 app = FastAPI(
     title="EV Charging Point Management API",
     version=settings.app_version,
-    lifespan=lifespan,
     openapi_url=None if settings.environment == "production" else "/openapi.json",
 )
 
@@ -66,10 +57,9 @@ async def oauth_redirect_exception_handler(
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 
-# The frontend already gates every page behind ProtectedRoute; without this the
-# API disagreed, serving the catalogue, prices and simulator to anyone holding
-# the URL. Applied at the mount rather than per route, so a new endpoint inside
-# one of these routers cannot be added unguarded.
+# Every data endpoint requires a session, as every page does in the frontend.
+# Applied at the mount rather than per route, so a new endpoint inside one of
+# these routers cannot be added unguarded.
 AUTHENTICATED = [Depends(current_user)]
 
 app.include_router(points_router, prefix="/api", dependencies=AUTHENTICATED)

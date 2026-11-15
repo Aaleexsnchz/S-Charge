@@ -321,16 +321,11 @@ async def test_map_aggregate_status_rollup(
     assert statuses[str(busy.id)] == "occupied"
 
 
-async def test_get_point_unknown_returns_reve_error_shape(
-    auth_client: AsyncClient,
-) -> None:
+async def test_get_point_unknown_returns_404(auth_client: AsyncClient) -> None:
     response = await auth_client.get(f"/api/points/{uuid.uuid4()}")
 
     assert response.status_code == 404
-    assert response.json() == {
-        "status_code": 404,
-        "status_message": "Charging point not found",
-    }
+    assert response.json() == {"detail": "Charging point not found"}
 
 
 async def test_price_schedule_lists_the_bands_with_one_current(

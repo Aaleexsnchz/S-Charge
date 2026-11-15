@@ -1,8 +1,6 @@
 import { Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 
-/** The app's section voice: the mono utility face, tracked wide and small. It
- *  labels without competing with the figure or heading it introduces. */
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
     <Typography

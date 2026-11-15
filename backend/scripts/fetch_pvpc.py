@@ -1,9 +1,8 @@
-"""Daily PVPC fetch with gap-backfill.
+"""PVPC fetch with gap-backfill.
 
-apidatos.ree.es publishes the hourly PVPC series with a lag (today fills in
-during the day; the next day late in the evening, often answering 500 until
-then). Each run re-fetches every day from the last stored hour through tomorrow,
-so a multi-day hole (e.g. the host being asleep) self-heals on the next tick.
+REE publishes tomorrow's curve in the evening and answers 5xx for it until
+then. Each run fetches every day from the last stored hour through tomorrow, so
+a multi-day hole heals on the next run.
 """
 
 import asyncio

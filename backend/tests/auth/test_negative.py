@@ -1,20 +1,13 @@
 from app.services.user_manager import MIN_PASSWORD_LENGTH
 from httpx import AsyncClient
 
+from tests.auth.conftest import PASSWORD, register
+
 EMAIL = "bob@example.com"
-PASSWORD = "long-enough-password-123"
-
-
-async def _register(client: AsyncClient, email: str, password: str) -> None:
-    resp = await client.post(
-        "/api/auth/register",
-        json={"email": email, "password": password, "name": "Bob"},
-    )
-    assert resp.status_code == 201
 
 
 async def test_register_duplicate_email(client: AsyncClient) -> None:
-    await _register(client, EMAIL, PASSWORD)
+    await register(client, EMAIL)
 
     resp = await client.post(
         "/api/auth/register",
@@ -51,11 +44,11 @@ async def test_register_password_one_short_of_minimum_rejected(
 
 
 async def test_register_password_at_minimum_accepted(client: AsyncClient) -> None:
-    await _register(client, EMAIL, "a" * MIN_PASSWORD_LENGTH)
+    await register(client, EMAIL, password="a" * MIN_PASSWORD_LENGTH)
 
 
 async def test_login_wrong_password(client: AsyncClient) -> None:
-    await _register(client, EMAIL, PASSWORD)
+    await register(client, EMAIL)
 
     resp = await client.post(
         "/api/auth/login",
@@ -86,7 +79,7 @@ async def test_me_with_malformed_cookie(client: AsyncClient) -> None:
 
 
 async def test_login_unverified_user_blocked(client: AsyncClient) -> None:
-    await _register(client, EMAIL, PASSWORD)
+    await register(client, EMAIL)
 
     resp = await client.post(
         "/api/auth/login",

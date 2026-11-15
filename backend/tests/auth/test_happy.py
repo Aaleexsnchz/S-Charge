@@ -1,22 +1,12 @@
-from collections.abc import Iterator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
-import pytest
 from app.utils.auth_backend import COOKIE_NAME
 from httpx import AsyncClient
 
+from tests.auth.conftest import PASSWORD
+
 EMAIL = "alice@example.com"
-PASSWORD = "long-enough-password-123"
 NAME = "Alice"
-
-
-@pytest.fixture
-def mock_verification_email() -> Iterator[AsyncMock]:
-    with patch(
-        "app.services.user_manager.send_verification_email",
-        new_callable=AsyncMock,
-    ) as mock:
-        yield mock
 
 
 async def test_auth_happy_flow(

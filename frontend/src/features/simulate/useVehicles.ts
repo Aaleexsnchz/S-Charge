@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import type { components } from '@/lib/api/schema'
 
-export type Vehicle = components['schemas']['VehicleRead']
+type Vehicle = components['schemas']['VehicleRead']
 
 export function useVehicles() {
   return useQuery({

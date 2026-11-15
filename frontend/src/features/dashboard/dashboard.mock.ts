@@ -1,10 +1,10 @@
 // Placeholder data — dev-time scaffolding to preview the dashboard's appearance.
-// Remove when sessions/reservation/stats backends land. See docs/features.md.
+// Remove when sessions/reservation/stats backends land. See docs/features/dashboard.md.
 // The month's totals mirror MOCK_SESSIONS; keep both in step.
 
 export const MOCK_MONTH_SPEND = { value: '63,83', unit: '€' }
 
-export type DashboardStat = { label: string; value: string; unit?: string }
+type DashboardStat = { label: string; value: string; unit?: string }
 
 export const MOCK_STATS: DashboardStat[] = [
   { label: 'Sesiones', value: '8' },
@@ -12,7 +12,7 @@ export const MOCK_STATS: DashboardStat[] = [
   { label: 'CO₂ evitado', value: '108', unit: 'kg' },
 ]
 
-export type MockReservation = {
+type MockReservation = {
   station: string
   when: string
   connector: string

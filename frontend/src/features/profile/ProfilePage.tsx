@@ -96,7 +96,6 @@ function NameHeading({ currentName }: { currentName: string }) {
 
 export function ProfilePage() {
   const user = useCurrentUser()
-  // Before the early return: the linter enforces unconditional hook calls.
   const { data: version } = useAppVersion()
   if (!user) return null
 

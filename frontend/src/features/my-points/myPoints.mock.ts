@@ -1,6 +1,6 @@
 // Placeholder data — dev-time scaffolding to preview the My-points tab.
 // `ChargingPoint.owner_user_id` already exists in the backend, so a thin
-// `GET /api/points/mine` would make this real. See docs/features.md.
+// `GET /api/points/mine` would make this real. See docs/features/owner-points.md.
 
 import type { AggregateStatus } from '@/features/map/types'
 

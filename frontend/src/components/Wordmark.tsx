@@ -1,4 +1,5 @@
 import { Box } from '@mui/material'
+import { BOLT_PATH, BOLT_VIEWBOX } from '@/lib/bolt'
 
 type WordmarkProps = {
   size?: number
@@ -33,14 +34,14 @@ export function Wordmark({ size = 18, accent = true }: WordmarkProps) {
         }}
       >
         <svg
-          viewBox="0 0 12 24"
+          viewBox={BOLT_VIEWBOX}
           fill="none"
           width="100%"
           height="100%"
           aria-hidden="true"
           style={{ display: 'block' }}
         >
-          <path d="M7 1 L2 13 L6 13 L5 23 L10 11 L6 11 L7 1 Z" fill="currentColor" />
+          <path d={BOLT_PATH} fill="currentColor" />
         </svg>
       </Box>
       charge

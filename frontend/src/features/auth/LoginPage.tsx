@@ -13,6 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { useSnackbar } from 'notistack'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
@@ -22,12 +23,12 @@ import {
   useNavigation,
   useSearchParams,
 } from 'react-router'
+import { BOLT_PATH, BOLT_VIEWBOX } from '@/lib/bolt'
 import { tokens } from '@/theme'
 import type { LoginActionData } from './actions'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { useResendVerification } from './useResendVerification'
 
-const BOLT_PATH = 'M7 1 L2 13 L6 13 L5 23 L10 11 L6 11 L7 1 Z'
 const GAUGE_WIDTH = 58
 const GAUGE_HEIGHT = 116
 
@@ -42,7 +43,7 @@ function BoltSvg({ children }: { children: ReactNode }) {
   return (
     <Box
       component="svg"
-      viewBox="0 0 12 24"
+      viewBox={BOLT_VIEWBOX}
       aria-hidden
       sx={{
         position: 'absolute',
@@ -58,8 +59,7 @@ function BoltSvg({ children }: { children: ReactNode }) {
   )
 }
 
-/** The brand's own bolt, read as an instrument: a neon charge runs its outline,
- *  and it fills from the bottom as the two credentials land. */
+/** Fills as the two credentials are entered. */
 function BoltGauge({ level }: { level: number }) {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -71,8 +71,8 @@ function BoltGauge({ level }: { level: number }) {
         <BoltSvg>
           <path
             d={BOLT_PATH}
-            fill="rgba(127,231,196,0.06)"
-            stroke="rgba(127,231,196,0.22)"
+            fill={alpha(tokens.accent, 0.06)}
+            stroke={alpha(tokens.accent, 0.22)}
             strokeWidth={0.3}
           />
         </BoltSvg>
@@ -107,8 +107,7 @@ function BoltGauge({ level }: { level: number }) {
             sx={{
               strokeDasharray: '18 82',
               animation: `${travel} 3.2s linear infinite`,
-              filter:
-                'drop-shadow(0 0 2px rgba(127,231,196,0.95)) drop-shadow(0 0 7px rgba(127,231,196,0.55))',
+              filter: `drop-shadow(0 0 2px ${alpha(tokens.accent, 0.95)}) drop-shadow(0 0 7px ${alpha(tokens.accent, 0.55)})`,
               '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           />

@@ -14,10 +14,11 @@ from httpx_oauth.oauth2 import OAuth2Token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.auth.conftest import PASSWORD
+
 CALLBACK_URL = "/api/auth/google/callback"
 GOOGLE_ACCOUNT_ID = "118452365478912345678"
 GOOGLE_EMAIL = "oauth_user@example.com"
-EXISTING_PASSWORD = "long-enough-password-123"
 CSRF_VALUE = "test_csrf_token_value"
 
 
@@ -139,7 +140,7 @@ async def test_oauth_links_to_existing_password_user(
 ) -> None:
     register_resp = await fresh_client.post(
         "/api/auth/register",
-        json={"email": GOOGLE_EMAIL, "password": EXISTING_PASSWORD, "name": "Existing"},
+        json={"email": GOOGLE_EMAIL, "password": PASSWORD, "name": "Existing"},
     )
     assert register_resp.status_code == 201
     existing_id = register_resp.json()["id"]
@@ -172,7 +173,7 @@ async def test_oauth_links_to_existing_password_user(
     fresh_client.cookies.clear()
     login_resp = await fresh_client.post(
         "/api/auth/login",
-        data={"username": GOOGLE_EMAIL, "password": EXISTING_PASSWORD},
+        data={"username": GOOGLE_EMAIL, "password": PASSWORD},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert login_resp.status_code == 400

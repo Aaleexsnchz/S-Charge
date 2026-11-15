@@ -1,5 +1,5 @@
 // Placeholder data — dev-time scaffolding to preview the Sessions tab.
-// Remove when the charging-session backend lands. See docs/features.md.
+// Remove when the charging-session backend lands. See docs/features/sessions.md.
 
 export type MockSession = {
   id: string

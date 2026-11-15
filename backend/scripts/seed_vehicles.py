@@ -9,8 +9,8 @@ import sys
 import uuid
 
 from app.database import SessionLocal
+from app.etl.upsert import upsert
 from app.models.vehicle import Vehicle
-from sqlalchemy.dialects.postgresql import insert
 
 CCS = "IEC_62196_T2_COMBO"
 CHADEMO = "CHADEMO"
@@ -63,16 +63,7 @@ async def seed() -> int:
                 "max_dc_kw": dc,
                 "dc_connector": dc_std,
             }
-            stmt = insert(Vehicle).values(**payload)
-            stmt = stmt.on_conflict_do_update(
-                constraint="uq_vehicles_make_model",
-                set_={
-                    k: stmt.excluded[k]
-                    for k in payload
-                    if k not in ("id", "make", "model")
-                },
-            )
-            await db.execute(stmt)
+            await db.execute(upsert(Vehicle, payload, ["make", "model"]))
         await db.commit()
     print(f"{len(VEHICLES)} vehicles seeded")
     return 0

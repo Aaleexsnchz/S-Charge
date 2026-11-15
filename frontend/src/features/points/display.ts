@@ -1,8 +1,11 @@
+import { alpha } from '@mui/material/styles'
 import type { AggregateStatus } from '@/features/map/types'
 import type { components } from '@/lib/api/schema'
+import { formatDecimal, formatEur } from '@/lib/format'
+import { tokens } from '@/theme'
 import type { Point } from './usePoint'
 
-export const STANDARD_LABELS: Record<string, string> = {
+const STANDARD_LABELS: Record<string, string> = {
   IEC_62196_T2: 'Tipo 2',
   IEC_62196_T2_COMBO: 'CCS Combo 2',
   CHADEMO: 'CHAdeMO',
@@ -48,28 +51,40 @@ export function evseStatus(status: string): { label: string; color: ChipColor } 
   return EVSE_STATUS[status] ?? { label: 'Estado desconocido', color: 'default' }
 }
 
-/** One status palette for every surface that is not the map: chips, list dots,
- *  card headers. The map keeps its own copy in hex, since MapLibre paint
- *  expressions cannot read theme tokens. */
+/** Mirrored in hex by STATUS_COLORS in features/map/mapConfig.ts. */
 export const STATUS_DOT_COLOR: Record<AggregateStatus, string> = {
   available: 'primary.main',
   occupied: 'error.main',
   unknown: 'text.disabled',
 }
 
-/** A live state glows in its own colour; an unknown one has nothing to report. */
 export const STATUS_DOT_GLOW: Record<AggregateStatus, string> = {
-  available: '0 0 7px rgba(127,231,196,0.7)',
-  occupied: '0 0 7px rgba(239,68,68,0.7)',
+  available: `0 0 7px ${alpha(tokens.accent, 0.7)}`,
+  occupied: `0 0 7px ${alpha(tokens.err, 0.7)}`,
   unknown: 'none',
 }
 
 export function powerLabel(maxPowerW: number | null | undefined): string | null {
   if (!maxPowerW) return null
-  return `${(maxPowerW / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })} kW`
+  return `${formatDecimal(maxPowerW / 1000, 1)} kW`
 }
 
 type Connector = components['schemas']['ConnectorRead']
+
+export function pointTitle(point: Pick<Point, 'name' | 'cpo_name'>): string {
+  return point.name ?? point.cpo_name ?? 'Punto de carga'
+}
+
+/** "Tipo 2 · 22 kW", plus " · AC"/" · DC" when `showPowerType` is set. */
+export function connectorLabel(connector: Connector, { showPowerType = true } = {}): string {
+  return [
+    standardLabel(connector.standard),
+    powerLabel(connector.max_electric_power),
+    showPowerType ? (connector.power_type === 'DC' ? 'DC' : 'AC') : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 export type PricingState =
   | { kind: 'per_kwh'; pricePerKwh: number }
@@ -121,7 +136,7 @@ export function pointPricingState(point: Point): PricingState | null {
 }
 
 export function pricePerKwhLabel(pricePerKwh: number): string {
-  return `${pricePerKwh.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/kWh`
+  return `${formatEur(pricePerKwh)} €/kWh`
 }
 
 export function shortPriceLabel(state: PricingState): string {

@@ -1,5 +1,6 @@
 import { Box, Chip } from '@mui/material'
 import { standardLabel } from '@/features/points/display'
+import { formatEur } from '@/lib/format'
 import type { MapFilters } from './types'
 
 const STANDARD_OPTIONS = ['IEC_62196_T2', 'IEC_62196_T2_COMBO', 'CHADEMO']
@@ -59,7 +60,7 @@ export function MapFilterBar({ filters, onChange }: Props) {
       {PRICE_OPTIONS.map((price) => (
         <Chip
           key={price}
-          label={`≤ ${price.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/kWh`}
+          label={`≤ ${formatEur(price)} €/kWh`}
           size="small"
           color={filters.maxPrice === price ? 'primary' : 'default'}
           onClick={() =>

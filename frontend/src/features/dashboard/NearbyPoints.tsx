@@ -1,21 +1,18 @@
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import { Box, Button, CardActionArea, Paper, Skeleton, Stack, Typography } from '@mui/material'
+import { Button, CardActionArea, Paper, Skeleton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router'
 import {
   pointPricingState,
-  STATUS_DOT_COLOR,
-  STATUS_DOT_GLOW,
+  pointTitle,
   STATUS_LABELS,
   shortPriceLabel,
   standardLabel,
 } from '@/features/points/display'
+import { StatusDot } from '@/features/points/StatusDot'
 import type { Point } from '@/features/points/usePoint'
 import { useGeolocation } from '@/hooks/useGeolocation'
+import { formatDecimal } from '@/lib/format'
 import { type NearbyPoint, useNearbyPoints } from './useNearbyPoints'
-
-function pointName(point: Point): string {
-  return point.name ?? point.cpo_name ?? 'Punto de carga'
-}
 
 function connectorStandards(point: Point): string[] {
   const standards = new Set<string>()
@@ -36,24 +33,16 @@ function NearbyCard({ point }: { point: NearbyPoint }) {
     >
       <CardActionArea component={RouterLink} to={`/points/${point.id}`} sx={{ p: 1.75 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
-          <Box
-            sx={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              bgcolor: STATUS_DOT_COLOR[point.aggregate_status] ?? 'text.disabled',
-              boxShadow: STATUS_DOT_GLOW[point.aggregate_status] ?? 'none',
-            }}
-          />
+          <StatusDot status={point.aggregate_status} />
           <Typography variant="caption" color="text.secondary">
             {STATUS_LABELS[point.aggregate_status]}
           </Typography>
           <Typography variant="numeric" sx={{ ml: 'auto', fontSize: 12 }} color="text.secondary">
-            {point.distanceKm.toLocaleString('es-ES', { maximumFractionDigits: 1 })} km
+            {formatDecimal(point.distanceKm, 1)} km
           </Typography>
         </Stack>
         <Typography sx={{ fontWeight: 600 }} noWrap>
-          {pointName(point)}
+          {pointTitle(point)}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mt: 0.5 }}>
           {price !== null &&

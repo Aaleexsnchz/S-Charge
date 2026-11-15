@@ -5,7 +5,6 @@ here: 5 requests per hour per API key, and `limit` capped at 100.
 """
 
 import asyncio
-from collections.abc import AsyncIterator
 from http import HTTPStatus
 from typing import Any
 
@@ -13,8 +12,6 @@ import httpx
 
 from app.config import settings
 from app.utils.audit import audit
-
-MAX_PAGE_SIZE = 100
 
 TRANSIENT_STATUS = frozenset(
     {
@@ -115,31 +112,6 @@ class ReveClient:
                 audit("reve_request_failed", path=path, status=response.status_code)
                 response.raise_for_status()
             return response.json()
-
-    async def get_paginated(
-        self,
-        path: str,
-        params: dict[str, Any] | None = None,
-        *,
-        data_key: str | None = None,
-        page_size: int = MAX_PAGE_SIZE,
-    ) -> AsyncIterator[dict[str, Any]]:
-        if not 1 <= page_size <= MAX_PAGE_SIZE:
-            raise ValueError(
-                f"REVE caps limit between 1 and {MAX_PAGE_SIZE}; got {page_size}"
-            )
-        page = 1
-        while True:
-            page_params = {**(params or {}), "page": page, "limit": page_size}
-            response = await self.get(path, params=page_params)
-            items = response[data_key] if data_key else response
-            if not items:
-                return
-            for item in items:
-                yield item
-            if len(items) < page_size:
-                return
-            page += 1
 
     def _retry_after_seconds(self, response: httpx.Response) -> float:
         header = response.headers.get("Retry-After")

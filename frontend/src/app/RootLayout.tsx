@@ -18,6 +18,7 @@ import {
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { Wordmark } from '@/components/Wordmark'
 import { useCurrentUser, userInitial } from '@/features/auth/currentUser'
+import { BOTTOM_NAV_HEIGHT } from '@/lib/layout'
 
 function activeSection(pathname: string) {
   if (pathname.startsWith('/map') || pathname.startsWith('/points')) return 'map'
@@ -60,7 +61,7 @@ export function RootLayout() {
       <BottomNavigation
         value={section}
         showLabels
-        sx={{ flexShrink: 0, height: 64, pb: 'env(safe-area-inset-bottom)' }}
+        sx={{ flexShrink: 0, height: BOTTOM_NAV_HEIGHT, pb: 'env(safe-area-inset-bottom)' }}
       >
         <BottomNavigationAction
           component={NavLink}

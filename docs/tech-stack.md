@@ -42,7 +42,6 @@ Versions live in `backend/pyproject.toml` and `frontend/package.json`. This docu
 | **pnpm** | shipped | Package manager; content-addressed store, strict by default. Pinned via `packageManager` so CI and the image agree. |
 | **MUI v9 + Emotion** ([fe-0001](decisions/fe-0001-mui.md)) | shipped | Component library. Buys accessible form controls, dialogs, bottom sheets and navigation — with focus rings and ARIA — without writing them, which is where a solo project on a fixed timeline should not spend its hours. Emotion is its styling engine. |
 | **React Router** | shipped | Routing and per-route data loading; the auth bootstrap is a root loader. |
-| **MUI X Charts** | shipped | Charts. Nothing renders a chart on real data yet, so this is a placeholder choice. |
 | **notistack** | shipped | Toasts. |
 
 ## Infrastructure

@@ -17,6 +17,7 @@ from app.schemas.simulation import SimulationRequest
 from app.services.simulation import (
     DCNotSupported,
     _power_at_soc,
+    charge_type_for,
     run_simulation,
     simulate_charge,
 )
@@ -24,6 +25,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 MADRID = ZoneInfo("Europe/Madrid")
 SEED_DT = datetime(2026, 4, 1, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("power_type", "expected"),
+    [("AC_1_PHASE", "AC"), ("AC_3_PHASE", "AC"), ("DC", "DC"), ("dc", "DC")],
+)
+def test_charge_type_for(power_type: str, expected: str) -> None:
+    assert charge_type_for(power_type) == expected
 
 
 def test_simulate_charge_ac_is_flat() -> None:

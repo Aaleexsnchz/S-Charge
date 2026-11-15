@@ -9,14 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # with the declared default: a value still equal to it was never configured.
 REQUIRED_IN_PRODUCTION = ("secret_key", "database_url", "app_base_url")
 
-# The literal .env.example ships, so copying that file without editing it is
-# caught. Held in a variable rather than inline because ruff reads a string
-# literal assigned to `secret_key` as a hardcoded credential (S105).
+# Matches .env.example, so a copy of it left unedited is caught. A variable
+# because ruff reads a literal assigned to `secret_key` as a credential (S105).
 DEVELOPMENT_PLACEHOLDER = "change_me_secret_key"
 
-# The backend's single fallback for an unstamped build. The image passes the
-# build argument through unconditionally, so an image built outside CD arrives
-# here as an empty string rather than as an absent variable.
+# The fallback for an unstamped build, which the image passes in as an empty
+# string rather than leaving the variable unset.
 UNVERSIONED = "dev"
 
 

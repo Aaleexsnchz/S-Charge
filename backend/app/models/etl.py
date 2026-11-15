@@ -62,17 +62,15 @@ class ReveEtlCursor(Base):
 class ReveUnmirroredConnector(Base):
     """A connector REVE serves a tariff for that the catalogue does not hold.
 
-    The refresh only fetches ``/connectors/tariffs``, so it *meets* stations
-    built since the seed without being able to store them — the tariff names an
-    EVSE with no row to attach to. Those rows were logged and dropped, which
-    survives neither a log rotation nor a container being recreated.
+    The tariff refresh *meets* stations built since the seed without being able
+    to store them: the tariff names an EVSE with no row to attach to. A table,
+    because a log line survives neither rotation nor a recreated container.
 
-    ``tariff_raw`` is the reason this is a table rather than a counter. A
-    connector's tariff reappears in the feed only when its price next changes,
-    and that is ~243 days on average, so a repair pass that imported the station
-    without the price would leave it blank for the better part of a year. Rows
-    are deleted once seeded: the table's size is the honest answer to *how much
-    of the catalogue are we missing*, and empty means nothing is.
+    ``tariff_raw`` is why this is more than a list of ids. A tariff reappears in
+    the feed only when its price next changes, often months later, so a repair
+    that imported the station without it would leave it unpriced. Rows are
+    deleted once seeded, so the table's size is how much of the catalogue is
+    missing.
     """
 
     __tablename__ = "reve_unmirrored_connectors"

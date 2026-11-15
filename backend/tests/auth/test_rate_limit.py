@@ -1,8 +1,9 @@
 from app.routers.auth import LOGIN_LIMIT, MAIL_LIMIT
 from httpx import AsyncClient
 
+from tests.auth.conftest import PASSWORD
+
 EMAIL = "rate@example.com"
-PASSWORD = "long-enough-password-123"
 
 
 def _count(limit: str) -> int:

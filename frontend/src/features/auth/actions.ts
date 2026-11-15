@@ -1,5 +1,6 @@
 import { type ActionFunctionArgs, redirect } from 'react-router'
 import { apiClient } from '@/lib/api/client'
+import { GENERIC_ERROR } from '@/lib/errors'
 
 /** Mirrors `MIN_PASSWORD_LENGTH` in the backend's user manager; both come from
  *  NIST SP 800-63B-4 §3.1.1, which requires 15 for a single-factor password. */
@@ -9,7 +10,7 @@ const PASSWORD_TOO_SHORT = `La contraseña debe tener al menos ${MIN_PASSWORD_LE
 
 export type AuthActionError = { error: string }
 
-export type LoginUnverified = { unverifiedEmail: string }
+type LoginUnverified = { unverifiedEmail: string }
 
 export type LoginActionData = AuthActionError | LoginUnverified
 
@@ -26,8 +27,6 @@ const AUTH_ERROR_COPY: Record<string, string> = {
 const FIELD_ERROR_COPY: Record<string, string> = {
   email: 'La dirección de correo introducida no es válida',
 }
-
-const GENERIC_ERROR = 'Error del servidor, inténtalo de nuevo'
 
 export function errorCodeFromDetail(detail: unknown): string | null {
   if (typeof detail === 'string') return detail

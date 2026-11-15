@@ -57,9 +57,8 @@ _APPLICABLE_SOURCE = _APPLICABLE_JOINS + _LOCAL_TS_AT + _BAND_BOUNDS
 # applies to find the band for one instant and the schedule returns instead.
 _APPLICABLE_RESTRICTIONS = """
     -- A tariff past its own validity window does not price anything. These are
-    -- ended promotions, not stale defaults: they average a third of the price of
-    -- the live ones, so serving them sends a driver to a charger expecting to
-    -- pay 0.11 where they will be billed 0.35.
+    -- ended promotions, far cheaper than the live price, so serving them would
+    -- send a driver to a charger expecting a price they will not be billed.
     WHERE (tf.valid_from IS NULL OR tf.valid_from <= :at)
       AND (tf.valid_to IS NULL OR tf.valid_to >= :at)
       AND e.reservation IS NULL
@@ -67,10 +66,9 @@ _APPLICABLE_RESTRICTIONS = """
       AND e.min_current IS NULL
       AND e.min_duration_s IS NULL
       AND (e.start_date IS NULL OR l.local_ts::date >= e.start_date)
-      -- OCPI calls end_date exclusive, but 275 of the 406 dated bands here set
-      -- start_date = end_date for a single day, which exclusive reading would
-      -- make unmatchable on any date at all. Same inclusive-end habit as the
-      -- end_time bands.
+      -- OCPI calls end_date exclusive, but REVE writes single-day bands as
+      -- start_date = end_date, which an exclusive reading would make
+      -- unmatchable. Same inclusive-end habit as the end_time bands.
       AND (e.end_date IS NULL OR l.local_ts::date <= e.end_date)
       AND (
             e.days_of_week IS NULL
@@ -133,8 +131,8 @@ free_agg AS (
 ),
 chosen AS (
     -- An unrestricted band is the tariff's fallback, so the more specific band
-    -- wins over it: 127 tariffs publish both, and ordering by element_index
-    -- alone hands 1,247 connectors the fallback price inside a cheaper window.
+    -- wins over it; ordering by element_index alone would hand the fallback
+    -- price out inside a cheaper window.
     SELECT DISTINCT ON (connector_id) connector_id, component_type, price
     FROM applicable
     -- A zero-priced TIME or FLAT band establishes no pricing model; it is the
@@ -223,8 +221,8 @@ WITH applicable AS (
       AND e.price BETWEEN 0 AND :max_price
 ),
 -- A tariff's unrestricted band is the fallback the resolver drops back to, not
--- an entry in the schedule: listing it beside the real windows shows an all-day
--- price that never applies, at 127 tariffs that publish both.
+-- an entry in the schedule: listing it beside the real windows would show an
+-- all-day price that never applies.
 windowed AS (
     SELECT a.* FROM applicable a
     WHERE a.has_window
@@ -279,11 +277,10 @@ async def connector_price_bands(
 ) -> dict[uuid.UUID, list[PriceBand]]:
     """The energy bands each of a point's connectors is priced by today.
 
-    Only connectors whose price actually varies across the day are returned: a
-    single band is the price, not a schedule, and 96% of priced connectors have
-    exactly one. Bands are gated to the connector's own power rating, so what
-    comes back is what *this* connector charges rather than what its tariff
-    publishes for the whole station.
+    Only connectors whose price varies across the day are returned: a single
+    band is the price, not a schedule. Bands are gated to the connector's own
+    power rating, so what comes back is what *this* connector charges rather
+    than what its tariff publishes for the whole station.
     """
     rows = (
         await db.execute(
@@ -324,11 +321,10 @@ async def point_price_schedules(
 ) -> list[ConnectorSchedule]:
     """A point's price schedules, one per distinct set of bands.
 
-    Connectors are grouped because 92% of the points that price by time of day
-    charge every connector the same way, and repeating one identical table per
-    connector is noise. The 8% that differ keep a table each: the connector is
-    the grain where the price is unique, so a point-level schedule would be a
-    claim the data does not support.
+    Most points that price by time of day charge every connector alike, and an
+    identical table per connector is noise. Connectors that differ keep a table
+    each: the connector is the grain where the price is unique, so a
+    point-level schedule would be a claim the data does not support.
     """
     by_connector = await connector_price_bands(db, point_id, at)
     grouped: dict[tuple[PriceBand, ...], list[uuid.UUID]] = defaultdict(list)

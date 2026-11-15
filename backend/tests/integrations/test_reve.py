@@ -132,38 +132,6 @@ async def test_api_key_never_appears_in_audit_log(httpx_mock: HTTPXMock) -> None
     assert "reve_request_failed" in rendered
 
 
-async def test_get_paginated_yields_items_across_pages(httpx_mock: HTTPXMock) -> None:
-    httpx_mock.add_response(
-        url=f"{BASE_URL}/cpos?page=1&limit=2",
-        json=[{"id": "a"}, {"id": "b"}],
-    )
-    httpx_mock.add_response(
-        url=f"{BASE_URL}/cpos?page=2&limit=2",
-        json=[{"id": "c"}],
-    )
-
-    async with ReveClient(api_key=API_KEY, base_url=BASE_URL) as client:
-        items = [item async for item in client.get_paginated("/cpos", page_size=2)]
-
-    assert items == [{"id": "a"}, {"id": "b"}, {"id": "c"}]
-
-
-async def test_get_paginated_stops_on_empty_first_page(httpx_mock: HTTPXMock) -> None:
-    httpx_mock.add_response(url=f"{BASE_URL}/cpos?page=1&limit=100", json=[])
-
-    async with ReveClient(api_key=API_KEY, base_url=BASE_URL) as client:
-        items = [item async for item in client.get_paginated("/cpos")]
-
-    assert items == []
-    assert len(httpx_mock.get_requests()) == 1
-
-
-async def test_get_paginated_rejects_oversized_page_size() -> None:
-    async with ReveClient(api_key=API_KEY, base_url=BASE_URL) as client:
-        with pytest.raises(ValueError, match="REVE caps limit"):
-            [_ async for _ in client.get_paginated("/cpos", page_size=200)]
-
-
 async def test_missing_api_key_raises() -> None:
     with pytest.raises(RuntimeError, match="REVE_API_KEY"):
         ReveClient(api_key="", base_url=BASE_URL)

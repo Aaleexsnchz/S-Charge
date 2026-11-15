@@ -80,27 +80,22 @@ class RefreshTarget:
     consumes_backlog: bool = False
 
 
-# Order is priority, and the budget loop below gives each target only what the
-# ones above it left. Prices are first because they are what the app serves; the
-# catalogue is a 68+ page catch-up that must never be able to starve them, and on
-# leftover budget it costs about two calls a day once caught up.
+# Order is priority: each target gets only the budget the ones above it left.
+# Prices come first because they are what the app serves, so a catalogue
+# catch-up can never starve them.
 REFRESH_PRIORITY: list[RefreshTarget] = [
     RefreshTarget(TARIFFS_ENDPOINT, import_tariffs, recover=True),
-    # 142 CPOs, of which one changed in June and one in March. A call an hour
-    # would be 24 a day to discover nothing; the foreign key from
-    # charging_points only needs it to be roughly current.
+    # Operators rarely change, and the foreign key from charging_points only
+    # needs them roughly current.
     RefreshTarget(CPOS_ENDPOINT, import_cpos, min_interval=timedelta(days=1)),
-    # Never unfiltered: `date_from` is a poor filter over 77 days (>6,800 of
-    # 13,654 locations) but an excellent one over a day and a half (~125), and
-    # the steady state is the latter.
+    # `date_from` filters well over a narrow window and barely at all over a
+    # wide one. An hourly window would spend a whole call on a few rows, so
+    # locations wait six hours between cycles; the interval never applies
+    # mid-cycle, so a catch-up still runs every tick until it drains.
     RefreshTarget(
         LOCATIONS_ENDPOINT,
         import_locations,
         consumes_backlog=True,
-        # ~88 locations change a day, so an hourly window holds about four -
-        # a whole call for a twentieth of a page. Six hours fills more of one.
-        # The interval never applies mid-cycle, so the catch-up still runs
-        # every tick until it drains.
         min_interval=timedelta(hours=6),
     ),
 ]
@@ -162,29 +157,21 @@ def _recovery_windows(
 ) -> list[datetime | None]:
     """The windows worth trying, in order, each a superset of the one before.
 
-    A `504` means REVE could not serve *this* window, not that the changes are
-    gone: a wider window returns everything the narrower one would, so widening
-    never skips anything. That is what separates this from advancing the
-    watermark past an unserved gap, which loses the gap permanently and is why
-    the automatic jump was removed in Slice 2.
+    A `504` means REVE could not serve *this* window, not that its changes are
+    gone. A wider window returns everything the narrower one would, so widening
+    never skips anything, whereas advancing the watermark past an unserved gap
+    loses that gap for good.
 
-    Widening reaches further back on a fixed schedule rather than recalling a
-    window that once worked. Measured during the 26 August outage, REVE's
-    filtered path degrades as the window narrows -- 36 hours back timed out,
-    26 days answered in 16s, 87 days in 2.7s, and no filter at all in 2.5s --
-    because a scan has to travel further to fill a page of 100 when fewer rows
-    match. Under that failure a remembered window is worth nothing: it is a
-    fact about REVE when it was healthy, and it is recent by construction,
-    which is the shape that fails hardest. It stays as a cheap second rung for
-    an ordinary blip, but the schedule is what actually recovers.
+    The ladder is a fixed schedule rather than a window that once worked: REVE's
+    filtered path degrades as the window *narrows*, because a scan travels
+    further to fill a page when fewer rows match, and a remembered window is
+    recent by construction. It stays as a cheap second rung for an ordinary
+    blip.
 
-    A standing failure also starts further down the ladder, so a rung already
-    known bad is not re-bought at a call an hour. The last rung is never
-    dropped -- that would leave none.
-
-    There is deliberately no unfiltered rung. A full drain is 469 pages and four
-    days, too big to start unattended on a failure nobody has looked at; the
-    tick stops instead and says so.
+    A standing failure starts further down the ladder, so a rung already known
+    bad is not re-bought every tick; the last rung is never dropped. There is
+    no unfiltered rung: a full drain is too large to start unattended on a
+    failure nobody has looked at, so the tick stops and says so instead.
     """
     windows: list[datetime | None] = []
     if watermark is not None:

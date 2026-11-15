@@ -1966,7 +1966,7 @@
     },
     "/api/points/map": {
       "get": {
-        "description": "GeoJSON FeatureCollection sized for the map's clustered source.\n\nDeclared before ``/{point_id}`` so the literal segment wins the route match.\n\n~500 KB gzipped over every unarchived point, identical for every caller, and\nonly moved by the ETL's hourly ticks. Three things now say so: the payload is\nbuilt at most once per TTL rather than per request, ``Cache-Control`` lets\nthe browser and the service worker skip asking at all, and the ``ETag``\nturns the ask that does happen into a 304 with no body. ``private`` because\nthe endpoint is session-gated \u2014 the payload does not vary by user, but it\nmust never land in a shared cache.",
+        "description": "GeoJSON FeatureCollection sized for the map's clustered source.\n\nDeclared before ``/{point_id}`` so the literal segment wins the route match.\n\nThe payload is large, identical for every caller and only moved by the\nETL's hourly ticks, so ``Cache-Control`` lets the browser skip asking and\nthe ``ETag`` turns the ask that does happen into a bodiless 304.\n``private`` because the endpoint is session-gated: the payload does not\nvary by user, but it must never land in a shared cache.",
         "operationId": "read_points_map_api_points_map_get",
         "responses": {
           "200": {
@@ -2022,7 +2022,7 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unknown point; body mirrors REVE's error shape."
+            "description": "Unknown point."
           },
           "422": {
             "content": {

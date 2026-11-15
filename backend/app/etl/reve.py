@@ -11,6 +11,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.etl.upsert import upsert
 from app.integrations.reve import ReveClient
 from app.models.charging_point import (
     ChargingPoint,
@@ -22,6 +23,7 @@ from app.models.cpo import Cpo
 from app.models.etl import ReveUnmirroredConnector
 from app.models.tariff import Tariff, TariffElement
 from app.utils.audit import audit
+from app.utils.dates import parse_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +72,6 @@ class TariffOutcome(enum.StrEnum):
 
 def _missing_fields(raw: dict[str, Any], required: tuple[str, ...]) -> list[str]:
     return [key for key in required if raw.get(key) is None]
-
-
-def _parse_dt(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _decimal_or_none(value: str | float | None) -> Decimal | None:
@@ -145,8 +141,8 @@ def _ensure_list(value: Any) -> list[dict[str, Any]]:
 def _element_rows(tariff_pk: uuid.UUID, elements: Any) -> list[dict[str, Any]]:
     """Flatten an OCPI ``elements`` array to one row per price component.
 
-    REVE follows OCPI, where ``elements`` and ``price_components`` are arrays;
-    accept the single-object shape too so older fixtures keep working.
+    OCPI makes ``elements`` and ``price_components`` arrays; a bare object is
+    read as a one-item list.
     """
     rows: list[dict[str, Any]] = []
     for index, element in enumerate(_ensure_list(elements)):
@@ -206,7 +202,7 @@ def _tariff_changed_in_window(
     raw_tariff = _first_tariff(raw)
     if raw_tariff is None:
         return False
-    updated = _parse_dt(raw_tariff.get("last_tariff_updated"))
+    updated = parse_datetime(raw_tariff.get("last_tariff_updated"))
     if updated is None:
         return False
     if date_from is not None and updated < date_from:
@@ -299,16 +295,11 @@ async def _upsert_cpo(db: AsyncSession, raw: dict[str, Any]) -> bool:
         "country": raw.get("country"),
         "phone": raw.get("phone"),
         "website": raw.get("website"),
-        "confirmed_at": _parse_dt(raw.get("confirmed_at")),
+        "confirmed_at": parse_datetime(raw.get("confirmed_at")),
         "raw_data": raw,
-        "source_last_updated_at": _parse_dt(raw["last_updated"]),
+        "source_last_updated_at": parse_datetime(raw["last_updated"]),
     }
-    stmt = insert(Cpo).values(**payload)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["source_id"],
-        set_={k: stmt.excluded[k] for k in payload if k not in ("id", "source_id")},
-    )
-    await db.execute(stmt)
+    await db.execute(upsert(Cpo, payload, ["source_id"]))
     return True
 
 
@@ -341,18 +332,9 @@ async def _upsert_connector(
         "max_electric_power": raw.get("max_electric_power"),
         "max_voltage": raw["max_voltage"],
         "max_amperage": raw["max_amperage"],
-        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
+        "source_last_updated_at": parse_datetime(raw["last_static_updated"]),
     }
-    stmt = insert(Connector).values(**payload)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["evse_id", "source_id"],
-        set_={
-            k: stmt.excluded[k]
-            for k in payload
-            if k not in ("id", "evse_id", "source_id")
-        },
-    )
-    await db.execute(stmt)
+    await db.execute(upsert(Connector, payload, ["evse_id", "source_id"]))
 
 
 async def _upsert_evse(
@@ -380,17 +362,9 @@ async def _upsert_evse(
         "floor_level": raw.get("floor_level"),
         "capabilities": raw.get("capabilities"),
         "wheelchair_accessibility": raw.get("accessibility"),
-        "source_last_updated_at": _parse_dt(raw["last_static_updated"]),
+        "source_last_updated_at": parse_datetime(raw["last_static_updated"]),
     }
-    base = insert(Evse).values(**payload)
-    stmt = base.on_conflict_do_update(
-        index_elements=["charging_point_id", "source_id"],
-        set_={
-            k: base.excluded[k]
-            for k in payload
-            if k not in ("id", "charging_point_id", "source_id")
-        },
-    ).returning(Evse.id)
+    stmt = upsert(Evse, payload, ["charging_point_id", "source_id"]).returning(Evse.id)
     evse_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     for raw_conn in _ensure_list(raw.get("connectors")):
@@ -436,19 +410,13 @@ async def _upsert_location(db: AsyncSession, raw: dict[str, Any]) -> bool:
         "opening_hours": opening_times.get("regular_hours"),
         "charging_when_closed": raw.get("charging_when_closed"),
         "directions": raw.get("directions"),
-        "source_last_updated_at": _parse_dt(raw["last_updated"]),
+        "source_last_updated_at": parse_datetime(raw["last_updated"]),
         "archived_at": None,
     }
 
-    base = insert(ChargingPoint).values(**payload)
-    stmt = base.on_conflict_do_update(
-        index_elements=["source", "source_id"],
-        set_={
-            k: base.excluded[k]
-            for k in payload
-            if k not in ("id", "source", "source_id")
-        },
-    ).returning(ChargingPoint.id)
+    stmt = upsert(ChargingPoint, payload, ["source", "source_id"]).returning(
+        ChargingPoint.id
+    )
     cp_id: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     for raw_evse in _ensure_list(raw.get("evses")):
@@ -461,9 +429,9 @@ async def _record_unmirrored(
 ) -> None:
     """Keep a tariff whose connector the catalogue does not hold.
 
-    The price arrives now and will not arrive again for ~243 days on average,
-    so it is stored with the ids rather than dropped — a later repair pass can
-    then import the station *priced* instead of blank.
+    The feed carries a tariff again only when its price next changes, often
+    months later, so it is stored with the ids rather than dropped: the
+    repair pass can then import the station priced instead of blank.
     """
     payload = {
         "id": uuid.uuid4(),
@@ -472,15 +440,8 @@ async def _record_unmirrored(
         "tariff_raw": raw_tariff,
         "last_seen_at": datetime.now(UTC),
     }
-    stmt = insert(ReveUnmirroredConnector).values(**payload)
     await db.execute(
-        stmt.on_conflict_do_update(
-            index_elements=["evse_id", "connector_id"],
-            set_={
-                "tariff_raw": stmt.excluded.tariff_raw,
-                "last_seen_at": stmt.excluded.last_seen_at,
-            },
-        )
+        upsert(ReveUnmirroredConnector, payload, ["evse_id", "connector_id"])
     )
 
 
@@ -538,19 +499,13 @@ async def _upsert_connector_tariff(
         "id": uuid.uuid4(),
         "source_id": raw_tariff["id"],
         "currency": raw_tariff["currency"],
-        "valid_from": _parse_dt(raw_tariff.get("start_date_time")),
-        "valid_to": _parse_dt(raw_tariff.get("end_date_time")),
+        "valid_from": parse_datetime(raw_tariff.get("start_date_time")),
+        "valid_to": parse_datetime(raw_tariff.get("end_date_time")),
         "raw_data": raw_tariff,
-        "source_last_updated_at": _parse_dt(raw_tariff["last_tariff_updated"]),
+        "source_last_updated_at": parse_datetime(raw_tariff["last_tariff_updated"]),
         "last_refreshed_at": refreshed_at,
     }
-    base = insert(Tariff).values(**tariff_payload)
-    stmt = base.on_conflict_do_update(
-        index_elements=["source_id"],
-        set_={
-            k: base.excluded[k] for k in tariff_payload if k not in ("id", "source_id")
-        },
-    ).returning(Tariff.id)
+    stmt = upsert(Tariff, tariff_payload, ["source_id"]).returning(Tariff.id)
     tariff_pk: uuid.UUID = (await db.execute(stmt)).scalar_one()
 
     # One tariff is shared across many connectors, so a page of 100 rows would
@@ -579,21 +534,14 @@ async def _upsert_connector_tariff(
 async def seed_backlog_from_ledger(db: AsyncSession) -> int:
     """Price the backlog rows whose connector now exists, and drop them.
 
-    Called after each `/locations` page. The ledger banked these tariffs because
-    the station they name was not in the mirror; a page that creates the station
-    is the moment the price can finally be attached, and the moment the row stops
-    being a record of something missing.
-
-    Both halves belong in one transaction. A sweep that deleted "rows whose
-    connector exists" separately would race this, dropping the payload a moment
-    before it was read and leaving the connector blank for the ~243 days until
-    its price next changes — the exact outcome the ledger exists to prevent.
-
-    Only rows whose connector has appeared are touched, not all of them: the
-    backlog runs to thousands and this runs once per page.
+    Called after each `/locations` page, since a page that creates a station is
+    when its banked tariff can finally be attached. Pricing and deleting share
+    one transaction: a separate sweep of "rows whose connector exists" could
+    delete a payload just before it was read, leaving the connector unpriced
+    until its tariff next changes.
     """
     ready = (
-        select(ReveUnmirroredConnector, Connector.id)
+        select(ReveUnmirroredConnector)
         .join(Evse, Evse.source_id == ReveUnmirroredConnector.evse_id)
         .join(
             Connector,
@@ -601,14 +549,14 @@ async def seed_backlog_from_ledger(db: AsyncSession) -> int:
             & (Connector.source_id == ReveUnmirroredConnector.connector_id),
         )
     )
-    rows = (await db.execute(ready)).all()
-    if not rows:
+    entries = (await db.execute(ready)).scalars().all()
+    if not entries:
         return 0
 
     refreshed_at = datetime.now(UTC)
     rewritten: set[str] = set()
     seeded = 0
-    for entry, _connector_pk in rows:
+    for entry in entries:
         # The ledger stores the inner tariff object; the upsert takes the outer
         # feed row, so the wrapper is rebuilt from the columns beside it.
         raw = {
@@ -628,6 +576,47 @@ async def seed_backlog_from_ledger(db: AsyncSession) -> int:
     return seeded
 
 
+async def _import_catalogue(
+    client: ReveClient,
+    db: AsyncSession,
+    *,
+    path: str,
+    event: str,
+    upsert_one: Callable[[AsyncSession, dict[str, Any]], Awaitable[bool]],
+    date_from: datetime | None,
+    date_to: datetime | None,
+    start_page: int,
+    max_pages: int | None,
+    on_page: Callable[[int, bool], Awaitable[None]] | None,
+) -> tuple[int, int, bool]:
+    skipped = 0
+
+    async def _process(raw: dict[str, Any]) -> None:
+        nonlocal skipped
+        if not await upsert_one(db, raw):
+            skipped += 1
+
+    rows, last_page, exhausted = await _paginate_with_budget(
+        client,
+        path,
+        _window_params(date_from, date_to),
+        _process,
+        start_page=start_page,
+        max_pages=max_pages,
+        on_page=on_page,
+    )
+    audit(
+        event,
+        rows=rows,
+        skipped=skipped,
+        last_page=last_page,
+        exhausted=exhausted,
+        start_page=start_page,
+        max_pages=max_pages,
+    )
+    return rows, last_page, exhausted
+
+
 async def import_cpos(
     client: ReveClient,
     db: AsyncSession,
@@ -638,32 +627,18 @@ async def import_cpos(
     max_pages: int | None = None,
     on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
-    skipped = 0
-
-    async def _process(raw: dict[str, Any]) -> None:
-        nonlocal skipped
-        if not await _upsert_cpo(db, raw):
-            skipped += 1
-
-    rows, last_page, exhausted = await _paginate_with_budget(
+    return await _import_catalogue(
         client,
-        "/cpos",
-        _window_params(date_from, date_to),
-        _process,
+        db,
+        path="/cpos",
+        event="reve_etl_cpos",
+        upsert_one=_upsert_cpo,
+        date_from=date_from,
+        date_to=date_to,
         start_page=start_page,
         max_pages=max_pages,
         on_page=on_page,
     )
-    audit(
-        "reve_etl_cpos",
-        rows=rows,
-        skipped=skipped,
-        last_page=last_page,
-        exhausted=exhausted,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    return rows, last_page, exhausted
 
 
 async def import_locations(
@@ -676,32 +651,18 @@ async def import_locations(
     max_pages: int | None = None,
     on_page: Callable[[int, bool], Awaitable[None]] | None = None,
 ) -> tuple[int, int, bool]:
-    skipped = 0
-
-    async def _process(raw: dict[str, Any]) -> None:
-        nonlocal skipped
-        if not await _upsert_location(db, raw):
-            skipped += 1
-
-    rows, last_page, exhausted = await _paginate_with_budget(
+    return await _import_catalogue(
         client,
-        "/locations",
-        _window_params(date_from, date_to),
-        _process,
+        db,
+        path="/locations",
+        event="reve_etl_locations",
+        upsert_one=_upsert_location,
+        date_from=date_from,
+        date_to=date_to,
         start_page=start_page,
         max_pages=max_pages,
         on_page=on_page,
     )
-    audit(
-        "reve_etl_locations",
-        rows=rows,
-        skipped=skipped,
-        last_page=last_page,
-        exhausted=exhausted,
-        start_page=start_page,
-        max_pages=max_pages,
-    )
-    return rows, last_page, exhausted
 
 
 async def import_tariffs(

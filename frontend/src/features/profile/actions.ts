@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs } from 'react-router'
 import { apiClient } from '@/lib/api/client'
+import { GENERIC_ERROR } from '@/lib/errors'
 
 export const MAX_NAME_LENGTH = 100
 
@@ -7,7 +8,6 @@ export type NameActionData = { success: true } | { error: string }
 
 const EMPTY_NAME = 'Escribe tu nombre'
 const NAME_TOO_LONG = `El nombre no puede superar los ${MAX_NAME_LENGTH} caracteres`
-const GENERIC_ERROR = 'Error del servidor, inténtalo de nuevo'
 
 export async function updateNameAction({ request }: ActionFunctionArgs): Promise<NameActionData> {
   const formData = await request.formData()

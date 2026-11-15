@@ -1,9 +1,12 @@
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import type { ReactNode } from 'react'
-import { Link as RouterLink, useRouteLoaderData } from 'react-router'
+import { Link as RouterLink } from 'react-router'
 import { Eyebrow } from '@/components/Eyebrow'
 import { PlaceholderBadge } from '@/components/PlaceholderBadge'
-import type { RootLoaderData } from '@/features/auth/loaders'
+import { Stat } from '@/components/Stat'
+import { useCurrentUser } from '@/features/auth/currentUser'
+import { tokens } from '@/theme'
 import { MOCK_MONTH_SPEND, MOCK_NEXT_RESERVATION, MOCK_STATS } from './dashboard.mock'
 import { NearbyPoints } from './NearbyPoints'
 
@@ -37,8 +40,7 @@ function SectionHeader({
 }
 
 export function DashboardPage() {
-  const data = useRouteLoaderData('root') as RootLoaderData | undefined
-  const firstName = data?.user?.name?.trim().split(' ')[0]
+  const firstName = useCurrentUser()?.name?.trim().split(' ')[0]
 
   return (
     <Box sx={{ p: 2, maxWidth: 600, mx: 'auto', pb: 4 }}>
@@ -59,7 +61,7 @@ export function DashboardPage() {
                 bottom: 0,
                 width: 2,
                 bgcolor: 'primary.main',
-                boxShadow: '0 0 10px rgba(127,231,196,0.55)',
+                boxShadow: `0 0 10px ${alpha(tokens.accent, 0.55)}`,
               }}
             />
             <Stack
@@ -121,17 +123,14 @@ export function DashboardPage() {
           }}
         >
           {MOCK_STATS.map((stat) => (
-            <Box key={stat.label} sx={{ flex: 1, minWidth: 0 }}>
-              <Eyebrow>{stat.label}</Eyebrow>
-              <Typography variant="numeric" sx={{ fontSize: 17, fontWeight: 600, mt: 0.25 }}>
-                {stat.value}
-                {stat.unit && (
-                  <Box component="span" sx={{ fontSize: 11, color: 'text.secondary', ml: 0.4 }}>
-                    {stat.unit}
-                  </Box>
-                )}
-              </Typography>
-            </Box>
+            <Stat
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+              unit={stat.unit}
+              sx={{ flex: 1, minWidth: 0 }}
+              valueSx={{ fontSize: 17, fontWeight: 600, mt: 0.25 }}
+            />
           ))}
         </Box>
       </Box>

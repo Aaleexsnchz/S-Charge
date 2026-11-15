@@ -3,17 +3,21 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
 from app.schemas.point import ConnectorScheduleRead, PointDetailRead, PointRead
-from app.services.points import Bbox, cached_map_payload, get_point, list_points
+from app.services.points import (
+    MAP_CACHE_TTL_SECONDS,
+    Bbox,
+    cached_map_payload,
+    get_point,
+    list_points,
+)
 from app.services.tariff_pricing import point_price_schedules
 
 router = APIRouter(prefix="/points", tags=["points"])
-
-NOT_FOUND_BODY = {"status_code": 404, "status_message": "Charging point not found"}
 
 BBOX_PARTS = 4
 
@@ -77,16 +81,17 @@ async def read_points_map(
 
     Declared before ``/{point_id}`` so the literal segment wins the route match.
 
-    ~500 KB gzipped over every unarchived point, identical for every caller, and
-    only moved by the ETL's hourly ticks. Three things now say so: the payload is
-    built at most once per TTL rather than per request, ``Cache-Control`` lets
-    the browser and the service worker skip asking at all, and the ``ETag``
-    turns the ask that does happen into a 304 with no body. ``private`` because
-    the endpoint is session-gated — the payload does not vary by user, but it
-    must never land in a shared cache.
+    The payload is large, identical for every caller and only moved by the
+    ETL's hourly ticks, so ``Cache-Control`` lets the browser skip asking and
+    the ``ETag`` turns the ask that does happen into a bodiless 304.
+    ``private`` because the endpoint is session-gated: the payload does not
+    vary by user, but it must never land in a shared cache.
     """
     body, etag = await cached_map_payload(db)
-    headers = {"Cache-Control": "private, max-age=600", "ETag": etag}
+    headers = {
+        "Cache-Control": f"private, max-age={MAP_CACHE_TTL_SECONDS}",
+        "ETag": etag,
+    }
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
     return Response(content=body, media_type="application/json", headers=headers)
@@ -95,22 +100,21 @@ async def read_points_map(
 @router.get(
     "/{point_id}",
     response_model=PointDetailRead,
-    responses={404: {"description": "Unknown point; body mirrors REVE's error shape."}},
+    responses={404: {"description": "Unknown point."}},
 )
 async def read_point(
     point_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> Response:
+) -> PointDetailRead:
     point = await get_point(db, point_id)
     if point is None:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content=NOT_FOUND_BODY
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Charging point not found"
         )
     schedules = await point_price_schedules(db, point_id)
-    detail = PointDetailRead(
+    return PointDetailRead(
         **PointRead.model_validate(point).model_dump(),
         price_schedules=[
             ConnectorScheduleRead.model_validate(schedule) for schedule in schedules
         ],
     )
-    return JSONResponse(content=detail.model_dump(mode="json"))

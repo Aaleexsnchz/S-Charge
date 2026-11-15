@@ -1,20 +1,11 @@
-from collections.abc import Iterator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 
+from tests.auth.conftest import PASSWORD
+
 EMAIL = "namer@example.com"
-PASSWORD = "long-enough-password-123"
-
-
-@pytest.fixture
-def mock_verification_email() -> Iterator[AsyncMock]:
-    with patch(
-        "app.services.user_manager.send_verification_email",
-        new_callable=AsyncMock,
-    ) as mock:
-        yield mock
 
 
 @pytest.fixture

@@ -1,5 +1,4 @@
 import { createBrowserRouter, Outlet } from 'react-router'
-import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RootHydrateFallback } from '@/components/RootHydrateFallback'
 import { AuthLayout } from '@/features/auth/AuthLayout'
 import {
@@ -13,6 +12,7 @@ import { CheckEmailPage } from '@/features/auth/CheckEmailPage'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { rootLoader } from '@/features/auth/loaders'
+import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'

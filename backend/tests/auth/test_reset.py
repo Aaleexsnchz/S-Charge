@@ -8,8 +8,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.auth.conftest import PASSWORD
+
 EMAIL = "dave@example.com"
-PASSWORD = "long-enough-password-123"
 NEW_PASSWORD = "even-longer-new-password-321"
 NAME = "Dave"
 

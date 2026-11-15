@@ -61,7 +61,7 @@ Slices run in order; 3 and 4 both depend on 1 and 2 but not on each other. **Sli
 **Acceptance:** a user point priced fixed and one priced PVPC + margin both resolve a current price on the hourly tick, and the point detail shows what each costs.
 
 - [ ] A second resolver statement for `source = 'user'` connectors, run from the same tick as `recompute_connector_prices`: `fixed` writes the number, `pvpc_plus_margin` writes `PVPC(now) + margin`, and a missing PVPC hour writes `unknown`
-- [ ] `price_suggestion.py` finally gets its caller: the create form is offered the calibrated defaults (AC +0.22 / DC +0.32 €/kWh over PVPC, from ~27k real tariffs — [phase-3](phase-3.md)) as a starting margin, presented as a suggestion and overridable
+- [ ] A price-suggestion service: the create form is offered the calibrated defaults (AC +0.22 / DC +0.32 €/kWh over PVPC, from ~27k real tariffs — [phase-3](phase-3.md)) as a starting margin, presented as a suggestion and overridable
 - [ ] Point detail renders a user point's price: the fixed number, or the PVPC curve plus the owner's margin — the prices screen already draws that curve, so the band card should read it rather than grow a second renderer
 - [ ] Service tests for both modes, including the empty-PVPC case
 

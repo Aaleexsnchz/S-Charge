@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles'
+import { alpha, createTheme } from '@mui/material/styles'
 import type { CSSProperties } from 'react'
 
 const bodyFont = '"Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
@@ -76,7 +76,7 @@ export const theme = createTheme({
           WebkitFontSmoothing: 'antialiased',
           WebkitTapHighlightColor: 'transparent',
         },
-        '::selection': { background: 'rgba(127,231,196,0.25)' },
+        '::selection': { background: alpha(tokens.accent, 0.25) },
         '::-webkit-scrollbar': { width: 0, height: 0 },
         code: { fontFamily: monoFont },
       },

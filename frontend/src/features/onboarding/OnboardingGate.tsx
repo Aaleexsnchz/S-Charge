@@ -1,7 +1,7 @@
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import { type ReactNode, useState } from 'react'
-import { Form, useFetcher, useRouteLoaderData } from 'react-router'
-import type { RootLoaderData } from '@/features/auth/loaders'
+import { Form, useFetcher } from 'react-router'
+import { useCurrentUser } from '@/features/auth/currentUser'
 import { MAX_NAME_LENGTH, type NameActionData } from '@/features/profile/actions'
 
 function AskForName() {
@@ -55,7 +55,7 @@ function AskForName() {
 }
 
 export function OnboardingGate({ children }: { children: ReactNode }) {
-  const data = useRouteLoaderData('root') as RootLoaderData | undefined
-  if (!data?.user?.name?.trim()) return <AskForName />
+  const user = useCurrentUser()
+  if (!user?.name?.trim()) return <AskForName />
   return <>{children}</>
 }

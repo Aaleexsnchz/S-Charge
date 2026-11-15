@@ -42,7 +42,7 @@ export function useNearbyPoints(coords: Coords | null) {
       if (!data) {
         throw new Error(`nearby points request failed (${response.status})`)
       }
-      return (data as Point[])
+      return data
         .map((point) => ({
           ...point,
           distanceKm: haversineKm(center, { lat: point.latitude, lng: point.longitude }),

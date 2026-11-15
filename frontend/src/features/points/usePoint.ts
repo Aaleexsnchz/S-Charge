@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api/client'
 import type { components } from '@/lib/api/schema'
 
 export type Point = components['schemas']['PointRead']
-export type PointDetail = components['schemas']['PointDetailRead']
+type PointDetail = components['schemas']['PointDetailRead']
 
 export class PointNotFoundError extends Error {
   constructor() {

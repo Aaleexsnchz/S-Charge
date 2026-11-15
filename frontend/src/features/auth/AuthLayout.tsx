@@ -1,11 +1,11 @@
 import { Box, Stack, Typography } from '@mui/material'
-import { Navigate, Outlet, useRouteLoaderData } from 'react-router'
+import { Navigate, Outlet } from 'react-router'
 import { Wordmark } from '@/components/Wordmark'
-import type { RootLoaderData } from './loaders'
+import { useCurrentUser } from './currentUser'
 
 export function AuthLayout() {
-  const data = useRouteLoaderData('root') as RootLoaderData | undefined
-  if (data?.user) return <Navigate to="/" replace />
+  const user = useCurrentUser()
+  if (user) return <Navigate to="/" replace />
   return (
     <Box
       sx={{

@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import Response, status
 from fastapi.responses import RedirectResponse
 from fastapi_users.authentication import (
@@ -28,15 +30,14 @@ def get_jwt_strategy() -> JWTStrategy:
 class CookieRedirectTransport(CookieTransport):
     """CookieTransport variant that 303s to a frontend URL after login.
 
-    Stock CookieTransport returns 204 No Content, which works for email/password
-    (the frontend action handles the redirect) but leaves OAuth callbacks — a
-    top-level browser navigation from the provider — on a blank page. Emitting
-    a server-side 303 with Set-Cookie avoids a popup-based frontend flow that
-    would be fragile on installed PWAs (see slice 3).
+    Stock CookieTransport answers 204, which suits the email/password form but
+    leaves an OAuth callback, a top-level navigation from the provider, on a
+    blank page. A server-side 303 with Set-Cookie avoids a popup-based flow,
+    which is fragile on installed PWAs.
     """
 
-    def __init__(self, login_redirect_url: str, **kwargs: object) -> None:
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+    def __init__(self, login_redirect_url: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.login_redirect_url = login_redirect_url
 
     async def get_login_response(self, token: str) -> Response:
@@ -46,21 +47,18 @@ class CookieRedirectTransport(CookieTransport):
         return self._set_login_cookie(response, token)
 
 
-cookie_transport = CookieTransport(
-    cookie_name=COOKIE_NAME,
-    cookie_max_age=_SESSION_SECONDS,
-    cookie_secure=settings.session_cookie_secure,
-    cookie_httponly=True,
-    cookie_samesite="lax",
-)
+_COOKIE_SETTINGS: dict[str, Any] = {
+    "cookie_name": COOKIE_NAME,
+    "cookie_max_age": _SESSION_SECONDS,
+    "cookie_secure": settings.session_cookie_secure,
+    "cookie_httponly": True,
+    "cookie_samesite": "lax",
+}
+
+cookie_transport = CookieTransport(**_COOKIE_SETTINGS)
 
 oauth_cookie_transport = CookieRedirectTransport(
-    login_redirect_url=OAUTH_LOGIN_REDIRECT_URL,
-    cookie_name=COOKIE_NAME,
-    cookie_max_age=_SESSION_SECONDS,
-    cookie_secure=settings.session_cookie_secure,
-    cookie_httponly=True,
-    cookie_samesite="lax",
+    login_redirect_url=OAUTH_LOGIN_REDIRECT_URL, **_COOKIE_SETTINGS
 )
 
 auth_backend = AuthenticationBackend(

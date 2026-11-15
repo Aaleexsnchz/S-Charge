@@ -130,7 +130,7 @@ class ChargingPoint(Base):
 
     @property
     def aggregate_status(self) -> str:
-        """Marker-colour rollup of the EVSEs' (simulated) availability.
+        """Marker-colour rollup of the EVSEs' availability.
 
         Requires ``evses`` to be loaded; readers go through the points
         service, which eager-loads the full nesting.
@@ -166,9 +166,9 @@ class Evse(Base):
     floor_level: Mapped[str | None] = mapped_column(Text, nullable=True)
     capabilities: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     wheelchair_accessibility: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Availability (OCPI EVSE status, e.g. "AVAILABLE"), simulated in Phase 4 —
-    # not mirrored from REVE. Null until simulation runs. Operational status
-    # (working vs. broken) is assumed always-operational and is not modelled.
+    # Availability (OCPI EVSE status, e.g. "AVAILABLE"). No source feeds it yet:
+    # REVE's per-EVSE status endpoint is beyond its request quota. Operational
+    # status (working vs. broken) is assumed and not modelled.
     status: Mapped[str | None] = mapped_column(Text, nullable=True)
     status_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

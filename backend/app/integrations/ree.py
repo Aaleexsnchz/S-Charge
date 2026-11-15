@@ -8,6 +8,7 @@ import httpx
 
 from app.config import settings
 from app.utils.audit import audit
+from app.utils.dates import parse_datetime
 
 PVPC_INDICATOR_ID = "1001"
 PRICES_PATH = "/es/datos/mercados/precios-mercados-tiempo-real"
@@ -17,10 +18,8 @@ PRICES_PATH = "/es/datos/mercados/precios-mercados-tiempo-real"
 class PvpcSeries:
     """A day's curve and the moment REE last wrote it.
 
-    ``last_update`` is REE's, not ours. A day normally carries the evening
-    before it, but REE restates days after the fact -- 1-6 July 2026 were all
-    rewritten on 6 July -- so it is the only signal that a day already stored
-    has been superseded.
+    ``last_update`` is REE's, not ours. REE restates days after the fact, so it
+    is the only signal that a day already stored has been superseded.
     """
 
     prices: list[tuple[datetime, Decimal]]
@@ -51,7 +50,7 @@ class ReeClient:
         """Hourly PVPC prices for ``day``, in €/kWh, with REE's publication time.
 
         The series comes back empty when REE has not published the day yet;
-        measured, tomorrow appears around 20:46 CET the evening before.
+        tomorrow appears in the evening.
         """
         params = {
             "start_date": f"{day.isoformat()}T00:00",
@@ -60,8 +59,8 @@ class ReeClient:
         }
         response = await self._client.get(PRICES_PATH, params=params)
         if response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
-            # REE answers 5xx for days it has not published yet (measured: 502
-            # for tomorrow until ~20:46 CET) — "no data", not a hard failure.
+            # REE answers 5xx for a day it has not published yet: "no data",
+            # not a hard failure.
             audit(
                 "ree_day_not_published",
                 day=day.isoformat(),
@@ -87,7 +86,7 @@ class ReeClient:
             price_per_kwh = Decimal(str(value["value"])) / 1000
             prices.append((hour_start, price_per_kwh))
         return PvpcSeries(
-            prices=prices, last_update=_parse_dt(attributes.get("last-update"))
+            prices=prices, last_update=parse_datetime(attributes.get("last-update"))
         )
 
     @staticmethod
@@ -98,13 +97,4 @@ class ReeClient:
             title = str(entry.get("attributes", {}).get("title", ""))
             if title.upper().startswith("PVPC"):
                 return entry
-        return None
-
-
-def _parse_dt(raw: object) -> datetime | None:
-    if not isinstance(raw, str):
-        return None
-    try:
-        return datetime.fromisoformat(raw)
-    except ValueError:
         return None

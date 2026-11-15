@@ -10,14 +10,12 @@ import {
   Typography,
 } from '@mui/material'
 import { useNavigate } from 'react-router'
+import { ConnectorRow } from '@/features/points/ConnectorRow'
 import {
   googleMapsDirectionsUrl,
-  powerLabel,
-  pricingState,
+  pointTitle,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
-  shortPriceLabel,
-  standardLabel,
 } from '@/features/points/display'
 import { usePoint } from '@/features/points/usePoint'
 
@@ -30,8 +28,7 @@ export function PointSheet({ pointId, onClose }: Props) {
   const navigate = useNavigate()
   const { data: point, isPending, isError } = usePoint(pointId)
 
-  const connectors =
-    point?.evses.flatMap((evse) => evse.connectors.map((connector) => ({ evse, connector }))) ?? []
+  const connectors = point?.evses.flatMap((evse) => evse.connectors) ?? []
 
   return (
     <Drawer
@@ -78,7 +75,7 @@ export function PointSheet({ pointId, onClose }: Props) {
             >
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="h6" component="h2" noWrap>
-                  {point.name ?? point.cpo_name ?? 'Punto de carga'}
+                  {pointTitle(point)}
                 </Typography>
                 {point.name && point.cpo_name && (
                   <Typography variant="body2" color="text.secondary" noWrap>
@@ -106,23 +103,8 @@ export function PointSheet({ pointId, onClose }: Props) {
                   Sin información de conectores.
                 </Typography>
               )}
-              {connectors.map(({ connector }) => (
-                <Stack
-                  key={connector.id}
-                  direction="row"
-                  spacing={1}
-                  sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-                >
-                  <Typography variant="body2">
-                    {standardLabel(connector.standard)}
-                    {powerLabel(connector.max_electric_power)
-                      ? ` · ${powerLabel(connector.max_electric_power)}`
-                      : ''}
-                  </Typography>
-                  <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                    {shortPriceLabel(pricingState(connector))}
-                  </Typography>
-                </Stack>
+              {connectors.map((connector) => (
+                <ConnectorRow key={connector.id} connector={connector} />
               ))}
             </Stack>
 
@@ -133,13 +115,10 @@ export function PointSheet({ pointId, onClose }: Props) {
               <Button
                 variant="contained"
                 fullWidth
-                onClick={() =>
-                  window.open(
-                    googleMapsDirectionsUrl(point.latitude, point.longitude),
-                    '_blank',
-                    'noopener',
-                  )
-                }
+                component="a"
+                href={googleMapsDirectionsUrl(point.latitude, point.longitude)}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Navegar
               </Button>

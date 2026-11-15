@@ -3,42 +3,20 @@ import { Box, Divider, Fab, Paper, Stack, Typography } from '@mui/material'
 import { useSnackbar } from 'notistack'
 import { Eyebrow } from '@/components/Eyebrow'
 import { PlaceholderBadge } from '@/components/PlaceholderBadge'
-import { STATUS_DOT_COLOR, STATUS_DOT_GLOW, STATUS_LABELS } from '@/features/points/display'
+import { Stat } from '@/components/Stat'
+import { StatusDot } from '@/features/points/StatusDot'
+import { formatEur } from '@/lib/format'
+import { BOTTOM_NAV_HEIGHT } from '@/lib/layout'
 import { MOCK_OWNED_POINTS, type MockOwnedPoint } from './myPoints.mock'
 
-function Figure({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <Box sx={{ flex: 1 }}>
-      <Eyebrow>{label}</Eyebrow>
-      <Typography variant="numeric" sx={{ display: 'block', fontSize: 18, fontWeight: 600 }}>
-        {value}
-        {unit && (
-          <Box component="span" sx={{ fontSize: 11, color: 'text.secondary', ml: 0.4 }}>
-            {unit}
-          </Box>
-        )}
-      </Typography>
-    </Box>
-  )
-}
+const FIGURE_SX = { flex: 1 }
+const FIGURE_VALUE_SX = { display: 'block', fontSize: 18, fontWeight: 600 }
 
 function PointCard({ point }: { point: MockOwnedPoint }) {
   return (
     <Paper sx={{ p: 2 }}>
       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
-        <Box
-          role="img"
-          aria-label={STATUS_LABELS[point.status]}
-          sx={{
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            mt: 0.9,
-            flexShrink: 0,
-            bgcolor: STATUS_DOT_COLOR[point.status],
-            boxShadow: STATUS_DOT_GLOW[point.status],
-          }}
-        />
+        <StatusDot status={point.status} labelled sx={{ mt: 0.9, flexShrink: 0 }} />
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography sx={{ fontWeight: 600 }} noWrap>
             {point.name}
@@ -56,13 +34,17 @@ function PointCard({ point }: { point: MockOwnedPoint }) {
       <Divider sx={{ my: 1.75 }} />
 
       <Stack direction="row" spacing={2}>
-        <Figure label="Reservas" value={String(point.bookingsThisMonth)} />
-        <Figure
+        <Stat
+          sx={FIGURE_SX}
+          valueSx={FIGURE_VALUE_SX}
+          label="Reservas"
+          value={String(point.bookingsThisMonth)}
+        />
+        <Stat
+          sx={FIGURE_SX}
+          valueSx={FIGURE_VALUE_SX}
           label="Ingresos"
-          value={point.earningsEur.toLocaleString('es-ES', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+          value={formatEur(point.earningsEur)}
           unit="€"
         />
       </Stack>
@@ -93,7 +75,7 @@ export function MyPointsPage() {
         color="primary"
         aria-label="Registrar punto"
         onClick={() => enqueueSnackbar('Registro de puntos: próximamente', { variant: 'info' })}
-        sx={{ position: 'fixed', right: 16, bottom: 80 }}
+        sx={{ position: 'fixed', right: 16, bottom: BOTTOM_NAV_HEIGHT + 16 }}
       >
         <AddIcon />
       </Fab>

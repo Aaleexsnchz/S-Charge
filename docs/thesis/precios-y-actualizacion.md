@@ -97,9 +97,16 @@ el tick reintenta con la última ventana que REVE sí sirvió
 (`reve_etl_cursor.last_good_date_from`). Una ventana más ancha devuelve todo lo
 que devolvería la estrecha, así que **no se pierde nada** —al contrario que
 adelantar la marca de agua por encima de un hueco no servido, que lo pierde para
-siempre—. Si esa también falla, el tick se detiene y lo dice: la única opción más
-ancha es el drenaje sin filtro, 469 páginas y unos cuatro días, demasiado grande
-para lanzarlo solo ante un fallo que nadie ha mirado.
+siempre—. Si esa también falla, sigue una escalera fija: uno, siete, treinta y
+noventa días por detrás de la marca. Es geométrica porque el coste de una ventana
+filtrada **cae** con su anchura: durante una caída medida de REVE, 36 horas hacia
+atrás agotaban el tiempo, 26 días respondían en 16 s, 87 días en 2,7 s y sin
+filtro en 2,5 s, porque cuantas menos filas coinciden más tiene que recorrer REVE
+para llenar una página de 100. Por eso la ventana recordada sirve para un tropiezo
+corriente pero no para ese fallo: es reciente por construcción, justo la forma que
+más falla. No hay peldaño sin filtro: sería el drenaje completo, 469 páginas y
+unos cuatro días, demasiado grande para lanzarlo solo ante un fallo que nadie ha
+mirado; agotada la escalera, el tick se detiene y lo dice.
 
 **Por qué la marca de agua no puede quedarse atrás.** Lo que pesa no es la
 antigüedad absoluta de `date_from`, sino cuánto ha cambiado **entre `date_from` y
@@ -348,8 +355,7 @@ Las dos constantes siguen siendo un resultado válido y sobreviven cambiadas de
 sitio: son el valor **recomendado** que se ofrece al propietario de un punto
 privado cuando fija su propio precio (Fase 7), donde sugerir un número es el
 objetivo y no una afirmación sobre el poste de nadie. Ahí el propietario elige el
-precio o el margen que quiera (PVPC + margen, o precio fijo). El código vive en
-`backend/app/services/price_suggestion.py`, sin llamador hasta entonces.
+precio o el margen que quiera (PVPC + margen, o precio fijo).
 
 **5. Estado operativo frente a disponibilidad.** Son cosas distintas. El *estado
 operativo* (funciona / averiado) se asume siempre operativo y no se modela: se

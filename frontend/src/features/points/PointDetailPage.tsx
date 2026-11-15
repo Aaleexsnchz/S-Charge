@@ -14,18 +14,18 @@ import {
 import { useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
 import { type ConnectorOption, SimulateDialog } from '@/features/simulate/SimulateDialog'
+import { formatEur } from '@/lib/format'
+import { ConnectorRow } from './ConnectorRow'
 import {
+  connectorLabel,
   evseStatus,
   googleMapsDirectionsUrl,
   longPriceLabel,
   type PricingState,
   pointPricingState,
-  powerLabel,
-  pricingState,
+  pointTitle,
   STATUS_CHIP_COLOR,
   STATUS_LABELS,
-  shortPriceLabel,
-  standardLabel,
 } from './display'
 import { PriceScheduleCard } from './PriceScheduleCard'
 import { PointNotFoundError, usePoint } from './usePoint'
@@ -49,11 +49,7 @@ function PriceCard({ state }: { state: PricingState }) {
             lineHeight: 1.1,
           }}
         >
-          {state.pricePerKwh.toLocaleString('es-ES', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}{' '}
-          €
+          {formatEur(state.pricePerKwh)} €
         </Typography>
         <Typography variant="body2" color="text.secondary">
           por kWh
@@ -131,13 +127,7 @@ export function PointDetailPage() {
     evse.connectors.map((connector) => ({
       id: connector.id,
       isDC: connector.power_type === 'DC',
-      label: [
-        standardLabel(connector.standard),
-        powerLabel(connector.max_electric_power),
-        connector.power_type === 'DC' ? 'DC' : 'AC',
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      label: connectorLabel(connector),
     })),
   )
 
@@ -158,7 +148,7 @@ export function PointDetailPage() {
           </IconButton>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="h5" component="h1" noWrap>
-              {point.name ?? point.cpo_name ?? 'Punto de carga'}
+              {pointTitle(point)}
             </Typography>
             {point.name && point.cpo_name && (
               <Typography variant="body2" color="text.secondary" noWrap>
@@ -240,23 +230,7 @@ export function PointDetailPage() {
                 </Stack>
                 <Stack spacing={0.5} sx={{ mt: 0.75 }}>
                   {evse.connectors.map((connector) => (
-                    <Stack
-                      key={connector.id}
-                      direction="row"
-                      spacing={1}
-                      sx={{ justifyContent: 'space-between' }}
-                    >
-                      <Typography variant="body2">
-                        {standardLabel(connector.standard)}
-                        {powerLabel(connector.max_electric_power)
-                          ? ` · ${powerLabel(connector.max_electric_power)}`
-                          : ''}
-                        {` · ${connector.power_type === 'DC' ? 'DC' : 'AC'}`}
-                      </Typography>
-                      <Typography variant="numeric" sx={{ fontSize: 13 }} color="text.secondary">
-                        {shortPriceLabel(pricingState(connector))}
-                      </Typography>
-                    </Stack>
+                    <ConnectorRow key={connector.id} connector={connector} showPowerType />
                   ))}
                 </Stack>
               </Box>
@@ -273,13 +247,10 @@ export function PointDetailPage() {
         <Button
           variant="contained"
           size="large"
-          onClick={() =>
-            window.open(
-              googleMapsDirectionsUrl(point.latitude, point.longitude),
-              '_blank',
-              'noopener',
-            )
-          }
+          component="a"
+          href={googleMapsDirectionsUrl(point.latitude, point.longitude)}
+          target="_blank"
+          rel="noopener noreferrer"
         >
           Navegar
         </Button>

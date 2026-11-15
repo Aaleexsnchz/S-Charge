@@ -55,9 +55,8 @@ def _is_fresh(cached: _CachedMap | None) -> TypeGuard[_CachedMap]:
 async def cached_map_payload(db: AsyncSession) -> tuple[bytes, str]:
     """The serialised FeatureCollection and its ETag, built at most once per TTL.
 
-    Two costs are being avoided, not one: the aggregate over every unarchived
-    point, and serialising ~3.4 MB of JSON. Both used to run on every request
-    for a payload identical to the one served a moment earlier.
+    Spares both the aggregate over every unarchived point and the serialisation
+    of a multi-megabyte payload that is identical for every caller.
     """
     global _map_cache
     cached = _map_cache
@@ -134,9 +133,9 @@ async def get_point(db: AsyncSession, point_id: uuid.UUID) -> ChargingPoint | No
 async def map_feature_collection(db: AsyncSession) -> dict[str, Any]:
     """Slim GeoJSON FeatureCollection for the map: one aggregated row per point.
 
-    Availability rollup over the EVSEs' (simulated) status. Duplicate evse rows
-    from the connector join don't skew the aggregates, and ``count(status) == 0``
-    means no evse has a status yet — i.e. unknown.
+    Availability rolls up the EVSEs' status. Duplicate evse rows from the
+    connector join don't skew the aggregates, and ``count(status) == 0`` means
+    no evse has a status, i.e. unknown.
     """
     aggregate_status = case(
         (func.count(Evse.status) == 0, "unknown"),

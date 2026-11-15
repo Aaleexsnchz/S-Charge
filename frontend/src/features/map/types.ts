@@ -1,4 +1,6 @@
-export type AggregateStatus = 'available' | 'occupied' | 'unknown'
+import type { components } from '@/lib/api/schema'
+
+export type AggregateStatus = components['schemas']['PointRead']['aggregate_status']
 
 export type MapPointProperties = {
   id: string

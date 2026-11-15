@@ -17,11 +17,10 @@ async def reve_etl_lock(engine: AsyncEngine) -> AsyncIterator[bool]:
     touch ``reve_etl_cursor``. That row is read-modify-written every tick, and
     two writers corrupt the refresh watermark.
 
-    The lock lives on **its own connection**, not on the caller's session.
-    A session releases its connection back to the pool on commit, so a
-    session-level lock would be held by whichever pooled connection happened to
-    take it, while later statements ran on another one. Single-threaded that
-    works by accident, because the pool hands the same connection back.
+    The lock lives on its own connection, not the caller's session: a session
+    returns its connection to the pool on commit, so a lock taken through it
+    would stay with whichever pooled connection took it while later statements
+    ran on another.
     """
     async with engine.connect() as conn:
         acquired = bool(

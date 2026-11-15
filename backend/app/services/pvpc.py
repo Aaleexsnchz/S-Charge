@@ -6,7 +6,6 @@ What electricity costs the country, not what a charging operator charges for it
 
 from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -29,12 +28,3 @@ async def prices_for_day(db: AsyncSession, day: date) -> Sequence[ElectricityPri
         .order_by(ElectricityPrice.hour_start)
     )
     return (await db.execute(stmt)).scalars().all()
-
-
-async def price_for_hour(db: AsyncSession, hour: datetime) -> Decimal | None:
-    """PVPC price for the slot containing ``hour`` (a tz-aware instant)."""
-    slot = hour.astimezone(MARKET_TZ).replace(minute=0, second=0, microsecond=0)
-    stmt = select(ElectricityPrice.price_per_kwh).where(
-        ElectricityPrice.hour_start == slot
-    )
-    return (await db.execute(stmt)).scalar_one_or_none()

@@ -1,12 +1,9 @@
 # Runs under supercronic in the `scheduler` service (TZ=Europe/Madrid via
-# compose); job stdout/stderr land in the container log stream.
-# On the hour, not past it: the tick also reprices every connector, and the
-# bands REVE publishes change at :00 (00:00-06:59 / 07:00-22:59).
+# compose); job output lands in the container log.
+# On the hour: the tick also reprices every connector, and REVE's bands change
+# at :00.
 0 * * * * python -m scripts.refresh_reve
-# Hourly rather than at a chosen hour. PVPC is day-ahead, published for tomorrow
-# around 20:46 the evening before, so this catches the publication instead of
-# sampling and REE's release time can drift without anything to retune. Nearly
-# free: each run resumes from the last stored hour, costing one request once
-# tomorrow is in and two while REE still answers 502 for it. That resume is also
-# why a restatement of an older day is invisible here -- see operations.md.
+# Hourly, so tomorrow's PVPC is picked up whenever REE publishes it in the
+# evening. Each run resumes from the last stored hour, so it costs a request or
+# two and never revisits an older restated day (see operations.md).
 0 * * * * python -m scripts.fetch_pvpc

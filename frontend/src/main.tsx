@@ -9,12 +9,7 @@ import { CssBaseline, ThemeProvider } from '@mui/material'
 import { router } from './app/routes'
 import { theme } from './theme'
 
-// Subset-scoped imports. The bare `400.css` entry points pull every subset
-// @fontsource ships — vietnamese, cyrillic and greek included — which this app
-// never renders: it is Spanish, over a Spanish charging catalogue. The browser
-// would not download those files, thanks to unicode-range, but their @font-face
-// rules still ship in render-blocking CSS. latin-ext stays so an accented name
-// outside the base latin range still has a face to fall back on.
+// Latin subsets only: the bare entry points ship every subset's @font-face in render-blocking CSS.
 import '@fontsource/hanken-grotesk/latin-400.css'
 import '@fontsource/hanken-grotesk/latin-500.css'
 import '@fontsource/hanken-grotesk/latin-600.css'

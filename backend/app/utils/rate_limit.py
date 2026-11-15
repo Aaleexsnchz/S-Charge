@@ -19,9 +19,9 @@ UNKNOWN_CLIENT = "unknown"
 def _client_key(request: Request) -> str:
     """Identify the caller by IP.
 
-    Behind Caddy this is only the real client because the proxy overwrites
-    `X-Forwarded-For` and uvicorn is told to trust the Docker network; without
-    both, every caller shares one bucket and one attacker throttles everyone.
+    Behind Caddy this is the real client only because Caddy overwrites
+    `X-Forwarded-For` and uvicorn trusts the Docker network; otherwise every
+    caller would share one bucket.
     """
     return request.client.host if request.client else UNKNOWN_CLIENT
 

@@ -49,6 +49,11 @@ class ChargePhysics:
     steps: tuple[ChargeStep, ...]
 
 
+def charge_type_for(power_type: str) -> ChargeType:
+    """Collapse OCPI's power types (``DC``, ``AC_1_PHASE``, ...) to AC or DC."""
+    return "DC" if power_type.upper().startswith("DC") else "AC"
+
+
 def _power_at_soc(peak_kw: Decimal, charge_type: ChargeType, soc: Decimal) -> Decimal:
     if charge_type == "AC" or soc <= DC_TAPER_KNEE_SOC:
         return peak_kw
@@ -132,10 +137,9 @@ async def _price_window(
     quoting one band for a charge that crossed two would be a number no meter
     ever reads.
 
-    A connector the source published no usable energy price for costs nothing
-    rather than an estimate. ``PVPC + margen`` is a suggestion for an owner
-    pricing their own point, and attributing it to someone else's charger makes
-    a plausible number look like a quoted one.
+    A connector with no published energy price gets no cost rather than an
+    estimate: a plausible number attributed to someone else's charger reads as
+    a quoted one.
     """
     if connector.pricing_kind is PricingKind.FREE:
         return Decimal(0), Decimal(0)
@@ -155,9 +159,8 @@ async def _price_window(
         minute = window_start + timedelta(minutes=int(step.midpoint_minutes))
         price = prices.get(minute)
         # A cost covering part of the session reads as covering all of it, and
-        # understating one is the same failure as inventing one. Bands tile the
-        # day for every priced connector measured, so this is a guard on a
-        # tariff that leaves a hole, not a path taken today.
+        # understating one is the same failure as inventing one. Guards a
+        # tariff whose bands leave a hole in the day.
         if price is None:
             return None, None
         cost += step.energy_kwh * price
@@ -174,10 +177,7 @@ async def run_simulation(
     vehicle = await _load_vehicle(db, request.vehicle_id)
     connector = await _load_connector(db, request.connector_id)
 
-    charge_type: ChargeType = (
-        "DC" if connector.power_type.upper().startswith("DC") else "AC"
-    )
-
+    charge_type = charge_type_for(connector.power_type)
     if charge_type == "DC":
         vehicle_limit = vehicle.max_dc_kw
         if vehicle_limit is None:
