@@ -6,7 +6,7 @@ At a point the user owns, the cheapest way to charge tonight: given the PVPC cur
 
 ## Planned
 
-`POST /api/recommend` returning the cheapest schedule plus one or two alternatives and the saving against charging immediately, with a UI at an owned point and an algorithm chapter in [thesis/](../thesis/).
+`POST /api/recommend` returning the cheapest schedule plus one or two alternatives and the saving against charging immediately, with a UI at an owned point.
 
 It depends only on [owner points](owner-points.md) (Phase 8) and the [price history](prices.md) (already shipped), which is why it is scheduled before the wallet: it is one of the thesis's evaluable algorithms and should not be what runs out of time.
 

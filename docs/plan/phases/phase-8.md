@@ -1,6 +1,6 @@
 # Phase 8 — Private charging points + owner pricing
 
-Per [plan.md](../plan.md): a user registers their own charging point, decides whether it is publicly listed, and prices it — the first data in the system REVE does not provide, and the phase that turns a catalogue into a platform. What it owns is [features/owner-points.md](../../features/owner-points.md); the price model it plugs into is [be-0003](../../decisions/be-0003-price-on-the-connector.md) and [thesis/precios-y-actualizacion.md](../../thesis/precios-y-actualizacion.md).
+Per [plan.md](../plan.md): a user registers their own charging point, decides whether it is publicly listed, and prices it — the first data in the system REVE does not provide, and the phase that turns a catalogue into a platform. What it owns is [features/owner-points.md](../../features/owner-points.md); the price model it plugs into is [be-0003](../../decisions/be-0003-price-on-the-connector.md) and [the thesis](../../thesis/S-Charge-TFM.pdf).
 
 It deliberately does not touch what a point *earns* or what happens *at* it: no sessions, no bookings, no wallet, no revenue. Those are phases 10 and 11, and the per-point stats the mock screen promises stay unbuilt until the data behind them exists.
 

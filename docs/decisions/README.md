@@ -19,7 +19,6 @@ Note this only excuses *givens*, not casual choices: a dependency you would have
 - **Ids are area-prefixed**, not globally sequential: `auth-`, `be-` (backend, non-auth), `fe-` (frontend), `infra-`. The area is readable without opening the file. Numbers are never reused, including after a supersession.
 - **Sections:** Decision · Rationale · Consequences · Rejected alternatives · References, with `Implementation` where the rollout detail is worth keeping. Front-matter carries `id`, `status`, `phase`, `date`, and `related` / `supersedes` / `superseded_by`.
 - **Statuses:** `proposed` — decided, not yet implemented. `accepted` — implemented and in force. `superseded` — replaced; add `superseded_by:` and a banner at the top. `rejected` — decided against, or abandoned before implementation; keep the record with a banner explaining what closed it, because the analysis still saves the next person the work.
-- **Thesis chapters may narrate abandoned approaches** as a *camino no tomado*; that is content there, not clutter.
 
 ## Auth
 
@@ -31,7 +30,7 @@ Note this only excuses *givens*, not casual choices: a dependency you would have
 | [auth-0004](auth-0004-rate-limits-and-client-ip.md) | Rate-limit the auth endpoints; treat the audited client IP as personal data | 5 |
 | [auth-0005](auth-0005-name-is-the-onboarding-state.md) | A mandatory display name, with the null name as its own onboarding state | 8 |
 
-Concept-level summary: [thesis/autenticacion.md](../thesis/autenticacion.md).
+Concept-level summary: [the thesis](../thesis/S-Charge-TFM.pdf).
 
 ## Backend
 

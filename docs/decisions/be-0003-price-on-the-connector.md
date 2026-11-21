@@ -37,5 +37,4 @@ Nothing had to be re-fetched to fix it: all 2,126 stored tariffs already held th
 
 **References.**
 
-- [thesis/precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md) — the measurements behind the numbers here.
 - [be-0001](be-0001-reve-mirror-not-proxy.md) — mirror, not proxy.

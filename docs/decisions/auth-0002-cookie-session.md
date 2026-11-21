@@ -35,7 +35,7 @@ Slice 1. fastapi-users' `CookieTransport` configured with our security flags, co
 ## Consequences
 
 - **Sessions cannot be revoked.** The JWT is stateless, so a stolen cookie stays valid until it expires — up to 14 days. Nothing in the app can log another device out. Accepted for a thesis demo; the upgrade path is a session table, which is the same work as DB-backed refresh rotation.
-- XSS can act as the user while the page is open, but cannot exfiltrate the credential. That is the ceiling this design buys, and it is the honest answer to "is this resistant to session theft?" — see [thesis/robo-de-sesion.md](../thesis/robo-de-sesion.md).
+- XSS can act as the user while the page is open, but cannot exfiltrate the credential. That is the ceiling this design buys, and it is the honest answer to "is this resistant to session theft?".
 - `SameSite=Lax` rather than `Strict` is a requirement of the OAuth callback redirect, not a preference.
 - Everything must stay same-origin. A split frontend/API origin would force `SameSite=None` and reintroduce the CSRF surface this avoids — which is why [infra-0001](infra-0001-deployment.md) puts both behind one reverse proxy.
 

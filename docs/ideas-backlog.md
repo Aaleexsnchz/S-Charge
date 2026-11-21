@@ -65,8 +65,7 @@ the LLM (keep money/optimisation deterministic, let the LLM orchestrate and expl
 ## Notes
 
 - The original ACN-Data integration (real-session-grounded occupancy + simulation
-  realism) was **dropped, not deferred** — it is not a backlog item. It lives only as a
-  documented road-not-taken in [thesis/indice.md](thesis/indice.md).
+  realism) was **dropped, not deferred** — it is not a backlog item.
 
 ## Reserving a point ahead
 

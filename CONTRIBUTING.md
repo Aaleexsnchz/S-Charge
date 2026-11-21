@@ -46,9 +46,7 @@ A change that leaves a document stale is not finished. When a slice ships, work 
 - **[docs/README.md](docs/README.md)** — add or adjust the index row when you add, move or remove a doc
 - **[docs/tech-stack.md](docs/tech-stack.md)** — a new library or tool gets a row with one line on why it is there
 - **[docs/decisions/](docs/decisions/)** — a fork in the road gets a record; the test is in [decisions/README.md](docs/decisions/README.md)
-- **[docs/thesis/](docs/thesis/)** — update the matching chapter when a cross-cutting system lands (auth, ETL, simulation); write a new one if none matches. **Chapters are in Spanish**, keeping established technical terms in English (bearer token, upsert, rate limit)
 - **[README.md](README.md)** — only what a contributor needs: a changed quick start, a new top-level component, a stack change. Phase and thesis status do not belong there
-- **[docs/thesis/skills.md](docs/thesis/skills.md)** — if you used an agent skill not already listed
 
 How to write those docs — current reality only, the two exceptions, phase plans being disposable — is in [AGENTS.md](AGENTS.md) → Documentation discipline, because it applies while writing, not only at the end.
 
