@@ -8,7 +8,9 @@
   ],
   "timezone": "Europe/Madrid",
   "schedule": ["* 0-5 * * 1"],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "dependencyDashboardApproval": true,
   "configMigration": true,
   "prConcurrentLimit": 5,
