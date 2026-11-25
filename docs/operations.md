@@ -123,7 +123,7 @@ CI builds all three, so a broken Dockerfile fails there rather than on the serve
 docker compose -f docker-compose.prod.yml exec -T backend python -m scripts.refresh_reve --status
 ```
 
-That makes no REVE call, so it is free to run as often as you like. A healthy drain shows `next page` climbing by 5 an hour, `cycle end` **frozen** (it is the cycle's upper bound and must not move mid-flight), `watermark` unchanged until the cycle drains, and `failing since` empty. The first line is the catalogue backlog — connectors REVE serves tariffs for that the mirror does not hold; see [be-0003](decisions/be-0003-price-on-the-connector.md) and the [prices chapter](thesis/precios-y-actualizacion.md).
+That makes no REVE call, so it is free to run as often as you like. A healthy drain shows `next page` climbing by 5 an hour, `cycle end` **frozen** (it is the cycle's upper bound and must not move mid-flight), `watermark` unchanged until the cycle drains, and `failing since` empty. The first line is the catalogue backlog — connectors REVE serves tariffs for that the mirror does not hold; see [be-0003](decisions/be-0003-price-on-the-connector.md).
 
 **A failing target starves every target below it, so read `failing since` per endpoint, not just the first one.** The tick walks `/connectors/tariffs` → `/cpos` → `/locations` in dependency order and stops on the first error, because a CPO the mirror lacks is a foreign-key violation waiting to happen on the next location. A stalled catalogue is invisible at a glance — prices keep updating perfectly, and only that endpoint's `failing since` and its `last attempt` standing still give it away.
 

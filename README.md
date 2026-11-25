@@ -95,7 +95,7 @@ S-Charge/
 
 Every change reaches `main` through a pull request. `just install` puts the lefthook hooks in place: commits lint and format the staged files, and pushes run the full CI gate, so `just ci` is the same thing on demand. The commit-time secret scan needs [betterleaks](https://github.com/betterleaks/betterleaks) on `PATH` — it is best-effort locally and authoritative as a CI job over the full history. Branch naming, commit conventions and what to update before opening the PR: **[CONTRIBUTING.md](CONTRIBUTING.md)**. The code-level conventions — layout, testing, migrations, documentation discipline — are in [AGENTS.md](AGENTS.md).
 
-**Agent skills.** `.claude/skills/` is gitignored, so on a fresh clone materialise them from [skills-lock.json](skills-lock.json), which pins each skill to its `source`, `skillPath` and a content hash: install with the skill manager that wrote the lockfile, or copy the upstream `skillPath` to `.claude/skills/<name>/SKILL.md` by hand. Which skills this project uses, and what for: [docs/thesis/skills.md](docs/thesis/skills.md) — add a row the first time you use a new one.
+**Agent skills.** `.claude/skills/` is gitignored, so on a fresh clone materialise them from [skills-lock.json](skills-lock.json), which pins each skill to its `source`, `skillPath` and a content hash: install with the skill manager that wrote the lockfile, or copy the upstream `skillPath` to `.claude/skills/<name>/SKILL.md` by hand.
 
 ## Documentation
 

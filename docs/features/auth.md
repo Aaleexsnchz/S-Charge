@@ -15,7 +15,7 @@ Email/password and Google sign-in, with email verification and password reset. A
 
 ## Decisions
 
-[auth-0001](../decisions/auth-0001-fastapi-users.md) library choice · [auth-0002](../decisions/auth-0002-cookie-session.md) cookie session, no refresh tokens · [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) pre-registration shell mitigation · [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md) rate limits and the audited client IP · [auth-0005](../decisions/auth-0005-name-is-the-onboarding-state.md) a mandatory display name, with the null name as its own onboarding state. Concept chapter: [thesis/autenticacion.md](../thesis/autenticacion.md).
+[auth-0001](../decisions/auth-0001-fastapi-users.md) library choice · [auth-0002](../decisions/auth-0002-cookie-session.md) cookie session, no refresh tokens · [auth-0003](../decisions/auth-0003-preregistration-shell-mitigation.md) pre-registration shell mitigation · [auth-0004](../decisions/auth-0004-rate-limits-and-client-ip.md) rate limits and the audited client IP · [auth-0005](../decisions/auth-0005-name-is-the-onboarding-state.md) a mandatory display name, with the null name as its own onboarding state. Thesis: [S-Charge-TFM.pdf](../thesis/S-Charge-TFM.pdf).
 
 ## Pending
 

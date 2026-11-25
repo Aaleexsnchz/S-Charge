@@ -60,22 +60,7 @@ Authoring rules, the local convention and what belongs here rather than in [tech
 
 ### The thesis document
 
-**The submitted memoria is [thesis/S-Charge-TFM.pdf](thesis/S-Charge-TFM.pdf)**, exported from the Word source, which lives outside this repository. A Markdown mirror of the chapters lived here and was deleted: keeping two copies in step cost more than it returned, and the one that fell behind was always this one. Nothing else in `docs/` may claim to be the submitted text.
-
-### Thesis chapters
-
-Concept-level write-ups (in Spanish) that feed the memoria; each links out to the ADRs for deep rationale. These are working notes, not the submitted document.
-
-| Chapter | Covers |
-| --- | --- |
-| [thesis/indice.md](thesis/indice.md) | The outline the memoria was written from. The structure that ships is the Word document's, not this one. |
-| [thesis/autenticacion.md](thesis/autenticacion.md) | Identity, password storage, session, OAuth, verification, audit, rate limiting. |
-| [thesis/modelo-de-datos.md](thesis/modelo-de-datos.md) | The OCPI 2.2.1 hierarchy (CPO → Charging Point → EVSE → Connector) mirrored from REVE, and why we own the catalogue. |
-| [thesis/precios-y-actualizacion.md](thesis/precios-y-actualizacion.md) | Pricing (stored tariff → PVPC + margin) and catalogue-freshness strategy. |
-| [thesis/simulacion-de-recarga.md](thesis/simulacion-de-recarga.md) | Pre-charge simulation: spec-based power/energy/duration model (AC flat, DC taper) and cost. |
-| [thesis/planificacion-de-siembra.md](thesis/planificacion-de-siembra.md) | Why cron, the per-tick contract, bootstrap → steady state, the WSL2 idle caveat. |
-| [thesis/robo-de-sesion.md](thesis/robo-de-sesion.md) | Threat model for infostealer + cookie replay; what an app can and cannot defend. |
-| [thesis/skills.md](thesis/skills.md) | Which agent skills the project uses and what for; how to materialise them on a fresh clone. Add a row the first time you use a new one. |
+**The submitted memoria (Spanish) is [thesis/S-Charge-TFM.pdf](thesis/S-Charge-TFM.pdf)**, exported from the Word source, which lives outside this repository.
 
 ## Project management
 
@@ -91,4 +76,4 @@ Planning and status; not part of the Diátaxis taxonomy.
 
 ## Maintenance
 
-Which docs to update when a slice ships is in [AGENTS.md](../AGENTS.md) → Documentation discipline. In short: docs state **current reality only** — no dated revision blocks, no superseded prose left in place. Two exceptions: [decisions/](decisions/), where a reversed decision is superseded by a new ADR rather than edited away, and [thesis/](thesis/), where an abandoned approach is narrated as a *camino no tomado* because that is academic content.
+Which docs to update when a slice ships is in [AGENTS.md](../AGENTS.md) → Documentation discipline. In short: docs state **current reality only** — no dated revision blocks, no superseded prose left in place. One exception: [decisions/](decisions/), where a reversed decision is superseded by a new ADR rather than edited away.

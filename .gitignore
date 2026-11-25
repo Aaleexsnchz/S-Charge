@@ -30,7 +30,7 @@ docker-compose.override.yml
 # Database backups (large; stored out-of-band, see scripts/backup_db.sh)
 backups/
 
-# Claude Code (skills tracked in docs/thesis/skills.md + skills-lock.json; user-local settings and
+# Claude Code (skills tracked in skills-lock.json; user-local settings and
 # other-agent copies excluded)
 **/.claude/skills/
 **/.claude/settings.local.json

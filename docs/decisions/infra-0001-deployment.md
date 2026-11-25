@@ -14,7 +14,7 @@ related: [auth-0002, fe-0002]
 **Rationale.** Constraints: 1–2 users (just me at first, a couple at the live demo), minimal spend, must be secure, must keep the refresh ETL running with my laptop closed, and must give a real HTTPS URL openable on a phone. A single VPS is the tightest fit:
 
 - *Same artifact, built from this repo.* The app is a `docker compose` stack (Postgres, backend, frontend, Caddy, scheduler). A VPS runs it unchanged — no re-platforming, no serverless rewrite, no splitting the stack. Development runs the backend and frontend natively against a containerised Postgres, so dev is deliberately *not* the deployed artifact; the prod stack is instead verified by `just prod-up` locally and by CI building all three prod images on every pull request.
-- *Makes the ETL laptop-independent.* The biggest practical reason to deploy: `refresh_reve.py` and the PVPC ingest move to a host that is on 24/7, so the catalogue stays fresh without my machine awake. (Today they run from the laptop's cron — see [thesis/planificacion-de-siembra.md](../thesis/planificacion-de-siembra.md).)
+- *Makes the ETL laptop-independent.* The biggest practical reason to deploy: `refresh_reve.py` and the PVPC ingest move to a host that is on 24/7, so the catalogue stays fresh without my machine awake. (Today they run from the laptop's cron — see [the thesis](../thesis/S-Charge-TFM.pdf).)
 - *Same-origin keeps the session model simple and safe.* Auth is a single HttpOnly cookie ([auth-0002](auth-0002-cookie-session.md)). Serving the SPA and the API from one domain behind one proxy avoids `SameSite=None` cross-site cookies and broad CORS — fewer moving parts and a smaller attack surface than a split frontend/backend.
 - *HTTPS is required anyway.* The PWA ([fe-0002](fe-0002-pwa.md)) and browser geolocation both need a secure context; Caddy provides and auto-renews certificates with near-zero config.
 - *Cost is ~€7–18/mo*, with no per-service multiplication and no free-tier sleeping.
@@ -63,6 +63,6 @@ related: [auth-0002, fe-0002]
 - [plan.md](../plan/plan.md) — Phase 5 and the scaling-strategy artifact; [plan/phases/phase-5.md](../plan/phases/phase-5.md) — the slice plan.
 - [setup/deployment.md](../setup/deployment.md) — host provisioning runbook; [operations.md](../operations.md) — day-2 operations.
 - [auth-0002](auth-0002-cookie-session.md) cookie session; [fe-0002](fe-0002-pwa.md) PWA (secure-context requirement).
-- [thesis/planificacion-de-siembra.md](../thesis/planificacion-de-siembra.md) — why the refresh runs on a schedule (and why a server, not a laptop, should host it).
+- [the thesis](../thesis/S-Charge-TFM.pdf) — seed scheduling.
 
 **Scope note.** This ADR governs the live demo deployment only. The thesis *scaling* strategy (how this would grow to many users) is a separate written artifact.

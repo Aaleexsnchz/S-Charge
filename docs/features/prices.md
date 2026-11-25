@@ -11,4 +11,4 @@ Spain's regulated hourly electricity price, ingested daily from REE's public API
 
 ## Related
 
-The price cascade — real REVE tariff → owner price → `PVPC + margin` (defaults AC +0.22 / DC +0.32 €/kWh) — is documented in [thesis/precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md).
+The price cascade — real REVE tariff → owner price → `PVPC + margin` (defaults AC +0.22 / DC +0.32 €/kWh) — is described in [the thesis](../thesis/S-Charge-TFM.pdf).

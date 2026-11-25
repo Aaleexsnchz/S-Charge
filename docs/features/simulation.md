@@ -34,7 +34,7 @@ actually costs. A quote above 10 € is the expected result, not a sign of a bug
 
 ## Related
 
-Algorithm chapter: [thesis/simulacion-de-recarga.md](../thesis/simulacion-de-recarga.md).
+Thesis: [S-Charge-TFM.pdf](../thesis/S-Charge-TFM.pdf).
 
 ## Pending
 

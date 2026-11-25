@@ -18,7 +18,7 @@ The Spanish charging network, mirrored from REVE into our own database and serve
 
 ## Related
 
-Data model chapter: [thesis/modelo-de-datos.md](../thesis/modelo-de-datos.md). Pricing and freshness: [thesis/precios-y-actualizacion.md](../thesis/precios-y-actualizacion.md). Seed scheduling: [thesis/planificacion-de-siembra.md](../thesis/planificacion-de-siembra.md).
+The data model, pricing and seed scheduling are described in [the thesis](../thesis/S-Charge-TFM.pdf).
 
 ## Pending
 
